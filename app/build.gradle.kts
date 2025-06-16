@@ -40,9 +40,10 @@ android {
 }
 
 dependencies {
+    implementation(libs.accompanist.permissions)
 
-    implementation ("androidx.navigation:navigation-compose:2.4.0") // Make sure this is in your dependencies
-
+    implementation (libs.androidx.navigation.compose) // Make sure this is in your dependencies
+    implementation(libs.guava)
     implementation (libs.barcode.scanning)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -57,6 +58,8 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation (libs.androidx.camera.camera2)
     implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.androidx.scenecore)
+    implementation(libs.androidx.runtime.livedata)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
