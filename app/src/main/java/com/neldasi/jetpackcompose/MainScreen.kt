@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -56,17 +58,37 @@ fun MainScreen(navController: NavController) {
         }
     }
 
+    // State for menu and dialogs
+    var showMenu by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = Modifier.systemBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { Text("Scanned Items") },
                 actions = {
-                    IconButton(onClick = { /* TODO: Implement actual settings */ }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    // 3-dot menu
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                     }
-                    IconButton(onClick = { /* TODO: Implement About screen */ }) {
-                        Icon(Icons.Filled.Info, contentDescription = "About")
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Settings") },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                            onClick = { showMenu = false; /* TODO: Implement actual settings */ }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Clear All") },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = { showMenu = false; showClearDialog = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("About") },
+                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
+                            onClick = { showMenu = false; showInfoDialog = true }
+                        )
                     }
                 }
             )
@@ -111,6 +133,39 @@ fun MainScreen(navController: NavController) {
                 }
             }
         }
+    }
+
+    // Confirmation dialog for "Clear All"
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Confirm Clear") },
+            text = { Text("Are you sure you want to clear all scanned items?") },
+            confirmButton = {
+                Button(onClick = {
+                    showClearDialog = false
+                    itemsSet.clear()
+                    sharedPreferences.edit { putStringSet("items", emptySet()) }
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showClearDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Info dialog
+    if (showInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            title = { Text("About") },
+            text = { Text("This is a QR scanning app.\n\n(More info to be added here later.)") },
+            confirmButton = {
+                Button(onClick = { showInfoDialog = false }) { Text("OK") }
+            }
+        )
     }
 
     PermissionRationaleDialog(
