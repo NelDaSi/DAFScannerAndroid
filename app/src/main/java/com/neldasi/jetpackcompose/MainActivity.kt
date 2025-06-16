@@ -11,28 +11,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.neldasi.jetpackcompose.ui.theme.JetpackComposeTheme
 
-// --- Navigation Constants ---
-object AppDestinations {
-    const val MAIN_SCREEN = "main"
-    const val CAMERA_SCREEN = "camera"
-}
-object NavKeys {
-    const val SCANNED_RESULT = "scanned_result"
-}
-
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = AppDestinations.MAIN_SCREEN) {
         composable(AppDestinations.MAIN_SCREEN) {
-            MainScreen(navController) // MainScreen will get the result from SavedStateHandle
+            MainScreen(navController)
         }
         composable(AppDestinations.CAMERA_SCREEN) {
-            CameraScanScreen(
-                // navController is passed for the back button in CameraScanScreen
-                navController = navController
-            )
+            CameraScanScreen(navController = navController)
         }
     }
 }
@@ -40,10 +28,9 @@ fun AppNavigation() {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Enable edge-to-edge display for a more immersive UI
         enableEdgeToEdge()
         setContent {
-            JetpackComposeTheme { // Apply your theme
+            JetpackComposeTheme {
                 AppNavigation()
             }
         }

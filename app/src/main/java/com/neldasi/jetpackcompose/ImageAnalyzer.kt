@@ -11,36 +11,31 @@ fun processImageProxy(
     barcodeScanner: BarcodeScanner,
     imageProxy: ImageProxy,
     onScannedValue: (String) -> Unit,
-    onError: ((Throwable) -> Unit)? = null // optional error callback
+    onError: ((Throwable) -> Unit)? = null
 ) {
     val mediaImage = imageProxy.image
-    if (mediaImage != null) {
-        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-        var valueFound = false // To ensure onScannedValue is called only once per frame analysis
-
-        barcodeScanner.process(image)
-            .addOnSuccessListener { barcodes ->
-                // Log.d("Scanner", "Found ${barcodes.size} barcode(s)")
-                for (barcode in barcodes) {
-                    if (valueFound) return@addOnSuccessListener // Already processed a barcode in this frame
-
-                    barcode.rawValue?.let { value ->
-                        // Log.d("Scanner", "Scanned value: $value")
-                        onScannedValue(value)
-                        valueFound = true // Mark as found
-                    }
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.e("Scanner", "Barcode scanning failed", exception)
-                onError?.invoke(exception)
-            }
-            .addOnCompleteListener {
-                imageProxy.close() // CRITICAL: Always close the ImageProxy
-            }
-    } else {
+    if (mediaImage == null) {
         Log.w("Scanner", "ImageProxy contained no image.")
-        imageProxy.close() // Still close if no image
+        imageProxy.close()
         onError?.invoke(IllegalStateException("ImageProxy contained no image"))
+        return
     }
+
+    val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+
+    barcodeScanner.process(inputImage)
+        .addOnSuccessListener { barcodes ->
+            // Take first non-null barcode
+            val firstValue = barcodes.firstOrNull { it.rawValue != null }?.rawValue
+            if (firstValue != null) {
+                onScannedValue(firstValue)
+            }
+        }
+        .addOnFailureListener { exception ->
+            Log.e("Scanner", "Barcode scanning failed", exception)
+            onError?.invoke(exception)
+        }
+        .addOnCompleteListener {
+            imageProxy.close()
+        }
 }
