@@ -212,7 +212,7 @@ fun MainScreen(navController: NavController) {
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
             title = { Text("Over") },
-            text = { Text("QR Scanner App\n\nVersie: $appVersion\nAuteur: Nel Dasi\n\nMet deze app kunt u QR-codes scannen en de gescande gegevens beheren.") },
+            text = { Text("QR Scanner App\n\nVersie: $appVersion\nAuteur: Neldasi\n\nMet deze app kunt u QR-codes scannen en de gescande gegevens beheren.") },
             confirmButton = {
                 Button(onClick = { showInfoDialog = false }) { Text("OK") }
             }

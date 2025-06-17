@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -35,6 +37,12 @@ fun CameraScanScreen(navController: NavController) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    val defaultAllowedTypes = setOf("1615188", "1656701", "2265920")
+    val allowedTypes = remember {
+        prefs.getStringSet("allowedTypes", defaultAllowedTypes)?.toMutableSet() ?: defaultAllowedTypes.toMutableSet()
+    }
+    var showNotAllowedDialog by remember { mutableStateOf(false) }
 
     var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(null) }
     var scannedResult by remember { mutableStateOf<String?>(null) }
@@ -80,8 +88,13 @@ fun CameraScanScreen(navController: NavController) {
                         }
 
                         val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
-                            if (scannedResult == null) {
-                                scannedResult = scannedValue
+                            val type = scannedValue.take(7)
+                            if (allowedTypes.contains(type)) {
+                                if (scannedResult == null) {
+                                    scannedResult = scannedValue
+                                }
+                            } else {
+                                showNotAllowedDialog = true
                             }
                         }
 
@@ -107,6 +120,19 @@ fun CameraScanScreen(navController: NavController) {
             isCameraReady = isCameraReady,
             errorMessage = cameraError,
             onBackPressed = { navController.popBackStack() }
+        )
+    }
+
+    if (showNotAllowedDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotAllowedDialog = false },
+            title = { Text("Unsupported Code") },
+            text = { Text("The scanned code is not supported and will not be saved.") },
+            confirmButton = {
+                Button(onClick = { showNotAllowedDialog = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 }
