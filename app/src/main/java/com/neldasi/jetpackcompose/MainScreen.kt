@@ -4,6 +4,7 @@
 package com.neldasi.jetpackcompose
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -100,7 +101,7 @@ fun MainScreen(navController: NavController) {
         modifier = Modifier.systemBarsPadding(),
         topBar = {
             TopAppBar(
-                title = { Text("Scanned Items") },
+                title = { Text("Gescande Items") },
                 actions = {
                     // 3-dot menu
                     IconButton(onClick = { showMenu = true }) {
@@ -108,7 +109,7 @@ fun MainScreen(navController: NavController) {
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Settings") },
+                            text = { Text("Instellingen") },
                             leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -116,12 +117,12 @@ fun MainScreen(navController: NavController) {
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Clear All") },
+                            text = { Text("Alles wissen") },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                             onClick = { showMenu = false; showClearDialog = true }
                         )
                         DropdownMenuItem(
-                            text = { Text("About") },
+                            text = { Text("Over") },
                             leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
                             onClick = { showMenu = false; showInfoDialog = true }
                         )
@@ -144,7 +145,7 @@ fun MainScreen(navController: NavController) {
                     }
                 }
             }) {
-                Icon(Icons.Filled.Search, contentDescription = "Scan")
+                Icon(Icons.Filled.Search, contentDescription = "Scannen")
             }
         }
     ) { paddingValues ->
@@ -156,10 +157,10 @@ fun MainScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (scannedParts.isEmpty()) {
-                Text("No items scanned yet.", textAlign = TextAlign.Center)
+                Text("Nog geen items gescand.", textAlign = TextAlign.Center)
                 if (!cameraPermissionState.status.isGranted) {
                     Spacer(Modifier.height(8.dp))
-                    Text("Camera permission is needed to scan items.", textAlign = TextAlign.Center)
+                    Text("Cameratoestemming is nodig om items te scannen.", textAlign = TextAlign.Center)
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -168,11 +169,11 @@ fun MainScreen(navController: NavController) {
                         if (parsed != null && parsed.typeCode in validTypes) {
                             Column(Modifier.padding(vertical = 8.dp)) {
                                 Text("Type: ${parsed.typeCode}")
-                                Text("Serial: ${parsed.serialNumber}")
-                                Text("Date: ${Date(part.timestamp)}")
+                                Text("Serienummer: ${parsed.serialNumber}")
+                                Text("Datum: ${Date(part.timestamp)}")
                             }
                         } else {
-                            Text("Invalid part: ${part.fullCode}")
+                            Text("Ongeldig onderdeel: ${part.fullCode}")
                         }
                     }
                 }
@@ -184,29 +185,34 @@ fun MainScreen(navController: NavController) {
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Confirm Clear") },
-            text = { Text("Are you sure you want to clear all scanned items?") },
+            title = { Text("Wissen bevestigen") },
+            text = { Text("Weet u zeker dat u alle gescande items wilt wissen?") },
             confirmButton = {
                 Button(onClick = {
                     showClearDialog = false
                     scannedParts.clear()
                     sharedPreferences.edit { remove("items") }
                 }) {
-                    Text("Yes")
+                    Text("Ja")
                 }
             },
             dismissButton = {
-                Button(onClick = { showClearDialog = false }) { Text("Cancel") }
+                Button(onClick = { showClearDialog = false }) { Text("Annuleren") }
             }
         )
     }
 
     // Info dialog
     if (showInfoDialog) {
+        val appVersion = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        } catch (_: PackageManager.NameNotFoundException) {
+            "N/A"
+        }
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
-            title = { Text("About") },
-            text = { Text("This is a QR scanning app.\n\n(More info to be added here later.)") },
+            title = { Text("Over") },
+            text = { Text("QR Scanner App\n\nVersie: $appVersion\nAuteur: Nel Dasi\n\nMet deze app kunt u QR-codes scannen en de gescande gegevens beheren.") },
             confirmButton = {
                 Button(onClick = { showInfoDialog = false }) { Text("OK") }
             }
@@ -234,10 +240,10 @@ private fun PermissionRationaleDialog(show: Boolean, onDismiss: () -> Unit, onCo
     if (show) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Camera Permission Required") },
-            text = { Text("This app needs camera access to scan QR codes.") },
-            confirmButton = { Button(onClick = onConfirm) { Text("Grant") } },
-            dismissButton = { Button(onClick = onDismiss) { Text("Cancel") } }
+            title = { Text("Cameratoestemming vereist") },
+            text = { Text("Deze app heeft cameratoegang nodig om QR-codes te scannen.") },
+            confirmButton = { Button(onClick = onConfirm) { Text("Toestaan") } },
+            dismissButton = { Button(onClick = onDismiss) { Text("Annuleren") } }
         )
     }
 }
@@ -247,17 +253,17 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
     if (show) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Permission Required") },
-            text = { Text("Camera permission has been permanently denied. Please enable it in settings.") },
+            title = { Text("Toestemming vereist") },
+            text = { Text("Cameratoestemming is permanent geweigerd. Schakel deze in via de instellingen.") },
             confirmButton = {
                 Button(onClick = {
                     onDismiss()
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                     intent.data = Uri.fromParts("package", context.packageName, null)
                     context.startActivity(intent)
-                }) { Text("Open Settings") }
+                }) { Text("Instellingen openen") }
             },
-            dismissButton = { Button(onClick = onDismiss) { Text("Cancel") } }
+            dismissButton = { Button(onClick = onDismiss) { Text("Annuleren") } }
         )
     }
 }
