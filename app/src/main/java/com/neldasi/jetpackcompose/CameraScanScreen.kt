@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import java.util.concurrent.Executors
+import java.util.concurrent.ExecutorService
 
 
 
@@ -72,10 +73,10 @@ fun CameraScanScreen(navController: NavController) {
                         cameraProvider = provider
 
                         val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
+                            it.surfaceProvider = previewView.surfaceProvider
                         }
 
-                        val analyzer = buildImageAnalyzer { scannedValue ->
+                        val analyzer = buildImageAnalyzer(cameraExecutor) { scannedValue ->
                             if (scannedResult == null) {
                                 scannedResult = scannedValue
                             }
@@ -141,13 +142,16 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?, onBackP
 }
 
 // Extract image analyzer builder
-private fun buildImageAnalyzer(onScannedValue: (String) -> Unit): ImageAnalysis {
+private fun buildImageAnalyzer(
+    cameraExecutor: ExecutorService,
+    onScannedValue: (String) -> Unit
+): ImageAnalysis {
     val barcodeScanner = BarcodeScanning.getClient()
     return ImageAnalysis.Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .build()
         .also { analysis ->
-            analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+            analysis.setAnalyzer(cameraExecutor) { imageProxy ->
                 processImageProxy(
                     barcodeScanner,
                     imageProxy,

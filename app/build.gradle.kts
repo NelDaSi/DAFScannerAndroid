@@ -40,8 +40,9 @@ android {
 }
 
 dependencies {
-    implementation(libs.accompanist.permissions)
 
+    implementation(libs.accompanist.permissions)
+    implementation(libs.gson)
     implementation (libs.androidx.navigation.compose) // Make sure this is in your dependencies
     implementation(libs.guava)
     implementation (libs.barcode.scanning)

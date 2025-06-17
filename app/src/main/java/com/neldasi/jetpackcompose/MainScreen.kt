@@ -1,3 +1,4 @@
+
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 
 package com.neldasi.jetpackcompose
@@ -51,15 +52,18 @@ import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import com.google.gson.Gson
+import java.util.Date
 
 @Composable
 fun MainScreen(navController: NavController) {
     val context = LocalContext.current
+    val validTypes = loadAllowedTypes(context)
     val sharedPreferences = remember {
         context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     }
 
-    val itemsSet = remember { mutableStateListOf<String>() }
+    val scannedParts = remember { mutableStateListOf<ScannedPart>() }
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
@@ -67,18 +71,22 @@ fun MainScreen(navController: NavController) {
 
     // Load data once on first composition
     LaunchedEffect(Unit) {
-        val saved = sharedPreferences.getStringSet("items", emptySet()) ?: emptySet()
-        itemsSet.clear()
-        itemsSet.addAll(saved)
+        val json = sharedPreferences.getString("items", null)
+        if (json != null) {
+            val loaded = Gson().fromJson(json, Array<ScannedPart>::class.java)
+            scannedParts.addAll(loaded)
+        }
     }
 
     // Collect scanned result from navigation
     LaunchedEffect(Unit) {
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
             val scannedValue = backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)
-            if (!scannedValue.isNullOrBlank() && scannedValue !in itemsSet) {
-                itemsSet.add(scannedValue)
-                sharedPreferences.edit { putStringSet("items", itemsSet.toSet()) }
+            if (!scannedValue.isNullOrBlank() && scannedParts.none { it.fullCode == scannedValue }) {
+                val newPart = ScannedPart(scannedValue, System.currentTimeMillis())
+                scannedParts.add(newPart)
+                val jsonString = Gson().toJson(scannedParts.toTypedArray())
+                sharedPreferences.edit { putString("items", jsonString) }
             }
         }
     }
@@ -147,7 +155,7 @@ fun MainScreen(navController: NavController) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (itemsSet.isEmpty()) {
+            if (scannedParts.isEmpty()) {
                 Text("No items scanned yet.", textAlign = TextAlign.Center)
                 if (!cameraPermissionState.status.isGranted) {
                     Spacer(Modifier.height(8.dp))
@@ -155,8 +163,17 @@ fun MainScreen(navController: NavController) {
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(itemsSet.toList().reversed()) { item ->
-                        Text(text = item, modifier = Modifier.padding(vertical = 4.dp))
+                    items(scannedParts.toList().sortedByDescending { it.timestamp }) { part ->
+                        val parsed = parseScannedCode(part.fullCode)
+                        if (parsed != null && parsed.typeCode in validTypes) {
+                            Column(Modifier.padding(vertical = 8.dp)) {
+                                Text("Type: ${parsed.typeCode}")
+                                Text("Serial: ${parsed.serialNumber}")
+                                Text("Date: ${Date(part.timestamp)}")
+                            }
+                        } else {
+                            Text("Invalid part: ${part.fullCode}")
+                        }
                     }
                 }
             }
@@ -172,8 +189,8 @@ fun MainScreen(navController: NavController) {
             confirmButton = {
                 Button(onClick = {
                     showClearDialog = false
-                    itemsSet.clear()
-                    sharedPreferences.edit { putStringSet("items", emptySet()) }
+                    scannedParts.clear()
+                    sharedPreferences.edit { remove("items") }
                 }) {
                     Text("Yes")
                 }
@@ -244,3 +261,18 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
         )
     }
 }
+fun loadAllowedTypes(context: Context): List<String> {
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val defaultTypes = setOf(
+        "1615188", "1615597", "1656701", "1665585", "1669851",
+        "1783137", "2187738", "2126628", "2266341", "2150000",
+        "2265920", "2265921", "2002045", "2002046", "2002047",
+        "2002048", "2002049", "2002050", "2002051", "2245293",
+        "2245295", "2204980", "2261325", "2260980"
+    )
+    val types = prefs.getStringSet("allowedTypes", defaultTypes)
+    return types?.toList() ?: defaultTypes.toList()
+}
+
+// --- Data classes and helpers for scanned parts ---
+data class ScannedPart(val fullCode: String, val timestamp: Long)
