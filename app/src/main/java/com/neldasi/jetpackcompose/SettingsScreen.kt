@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.core.content.edit
 
+
 // SettingsScreen composable
 @Composable
 fun SettingsScreen(navController: NavController) {
@@ -82,7 +83,7 @@ fun SettingsScreen(navController: NavController) {
             screenAlwaysOn = prefs.getBoolean("screenAlwaysOn", false)
         }
 
-        val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(loadAllowedTypes(context)) } }
+        val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(SettingsRepository.loadAllowedTypes(context)) } }
         val defaultAllowedTypes = setOf(
             "2245293", "2245295", "2261325"
         )

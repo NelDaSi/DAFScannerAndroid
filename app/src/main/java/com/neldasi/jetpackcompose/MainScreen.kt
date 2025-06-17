@@ -1,4 +1,3 @@
-
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 
 package com.neldasi.jetpackcompose
@@ -59,7 +58,6 @@ import java.util.Date
 @Composable
 fun MainScreen(navController: NavController) {
     val context = LocalContext.current
-    val validTypes = loadAllowedTypes(context)
     val sharedPreferences = remember {
         context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     }
@@ -165,15 +163,11 @@ fun MainScreen(navController: NavController) {
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(scannedParts.toList().sortedByDescending { it.timestamp }) { part ->
-                        val parsed = parseScannedCode(part.fullCode)
-                        if (parsed != null && parsed.typeCode in validTypes) {
-                            Column(Modifier.padding(vertical = 8.dp)) {
-                                Text("Type: ${parsed.typeCode}")
-                                Text("Serienummer: ${parsed.serialNumber}")
-                                Text("Datum: ${Date(part.timestamp)}")
-                            }
-                        } else {
-                            Text("Ongeldig onderdeel: ${part.fullCode}")
+                        Column(Modifier.padding(vertical = 8.dp)) {
+                            val parsed = parseScannedCode(part.fullCode)
+                            Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
+                            Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}")
+                            Text("Datum: ${Date(part.timestamp)}")
                         }
                     }
                 }
@@ -266,14 +260,6 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
             dismissButton = { Button(onClick = onDismiss) { Text("Annuleren") } }
         )
     }
-}
-fun loadAllowedTypes(context: Context): List<String> {
-    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-    val defaultTypes = setOf(
-        "2245293", "2245295", "2261325"
-    )
-    val types = prefs.getStringSet("allowedTypes", defaultTypes)
-    return types?.toList() ?: defaultTypes.toList()
 }
 
 // --- Data classes and helpers for scanned parts ---
