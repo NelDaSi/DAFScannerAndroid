@@ -165,9 +165,13 @@ fun MainScreen(navController: NavController) {
                     items(scannedParts.toList().sortedByDescending { it.timestamp }) { part ->
                         Column(Modifier.padding(vertical = 8.dp)) {
                             val parsed = parseScannedCode(part.fullCode)
+                            val formattedDate = remember(part.timestamp) {
+                                java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
+                                    .format(Date(part.timestamp))
+                            }
                             Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
                             Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}")
-                            Text("Datum: ${Date(part.timestamp)}")
+                            Text("Datum: $formattedDate")
                         }
                     }
                 }
