@@ -23,6 +23,8 @@ import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import java.util.concurrent.Executors
 
+
+
 @Composable
 fun CameraScanScreen(navController: NavController) {
     val context = LocalContext.current

@@ -20,7 +20,10 @@ fun AppNavigation() {
             MainScreen(navController)
         }
         composable(AppDestinations.CAMERA_SCREEN) {
-            CameraScanScreen(navController = navController)
+            CameraScanScreen(navController)
+        }
+        composable(AppDestinations.SETTINGS_SCREEN) {
+            SettingsScreen(navController)
         }
     }
 }
