@@ -264,11 +264,7 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
 fun loadAllowedTypes(context: Context): List<String> {
     val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     val defaultTypes = setOf(
-        "1615188", "1615597", "1656701", "1665585", "1669851",
-        "1783137", "2187738", "2126628", "2266341", "2150000",
-        "2265920", "2265921", "2002045", "2002046", "2002047",
-        "2002048", "2002049", "2002050", "2002051", "2245293",
-        "2245295", "2204980", "2261325", "2260980"
+        "2245293", "2245295", "2261325"
     )
     val types = prefs.getStringSet("allowedTypes", defaultTypes)
     return types?.toList() ?: defaultTypes.toList()

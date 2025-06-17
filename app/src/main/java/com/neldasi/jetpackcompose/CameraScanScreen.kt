@@ -1,5 +1,6 @@
 package com.neldasi.jetpackcompose
 
+import android.content.Context
 import android.util.Log
 import android.view.ViewGroup
 import androidx.camera.core.*
@@ -29,6 +30,8 @@ import java.util.concurrent.ExecutorService
 @Composable
 fun CameraScanScreen(navController: NavController) {
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -76,7 +79,7 @@ fun CameraScanScreen(navController: NavController) {
                             it.surfaceProvider = previewView.surfaceProvider
                         }
 
-                        val analyzer = buildImageAnalyzer(cameraExecutor) { scannedValue ->
+                        val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
                             if (scannedResult == null) {
                                 scannedResult = scannedValue
                             }
@@ -144,6 +147,8 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?, onBackP
 // Extract image analyzer builder
 private fun buildImageAnalyzer(
     cameraExecutor: ExecutorService,
+    context: Context,
+    vibrateEnabled: Boolean,
     onScannedValue: (String) -> Unit
 ): ImageAnalysis {
     val barcodeScanner = BarcodeScanning.getClient()
@@ -155,6 +160,8 @@ private fun buildImageAnalyzer(
                 processImageProxy(
                     barcodeScanner,
                     imageProxy,
+                    context,
+                    vibrateEnabled,
                     onScannedValue
                 )
             }

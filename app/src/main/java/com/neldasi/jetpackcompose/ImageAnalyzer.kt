@@ -1,5 +1,9 @@
-package com.neldasi.jetpackcompose
 
+package com.neldasi.jetpackcompose
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
@@ -11,6 +15,8 @@ import com.google.mlkit.vision.common.InputImage
 fun processImageProxy(
     barcodeScanner: BarcodeScanner,
     imageProxy: ImageProxy,
+    context: Context,
+    vibrateEnabled: Boolean,
     onScannedValue: (String) -> Unit,
     onError: ((Throwable) -> Unit)? = null
 ) {
@@ -30,6 +36,15 @@ fun processImageProxy(
 
             if (firstValue != null) {
                 onScannedValue(firstValue)
+                if (vibrateEnabled) {
+                    val vibrator = context.getSystemService(Vibrator::class.java)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate(100)
+                    }
+                }
             }
         }
         .addOnFailureListener { exception ->

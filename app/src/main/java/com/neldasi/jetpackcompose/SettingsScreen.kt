@@ -2,7 +2,9 @@
 
 package com.neldasi.jetpackcompose
 
+import android.app.Activity
 import android.content.Context
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,6 +39,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,13 +72,19 @@ fun SettingsScreen(navController: NavController) {
     ) { padding ->
         val context = LocalContext.current
 
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        var vibrateEnabled by remember { mutableStateOf(false) }
+        var screenAlwaysOn by remember { mutableStateOf(false) }
+
+        // Load preferences once on first composition
+        LaunchedEffect(Unit) {
+            vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
+            screenAlwaysOn = prefs.getBoolean("screenAlwaysOn", false)
+        }
+
         val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(loadAllowedTypes(context)) } }
         val defaultAllowedTypes = setOf(
-            "1615188", "1615597", "1656701", "1665585", "1669851",
-            "1783137", "2187738", "2126628", "2266341", "2150000",
-            "2265920", "2265921", "2002045", "2002046", "2002047",
-            "2002048", "2002049", "2002050", "2002051", "2245293",
-            "2245295", "2204980", "2261325", "2260980"
+            "2245293", "2245295", "2261325"
         )
         var showAddDialog by remember { mutableStateOf(false) }
         var newType by remember { mutableStateOf("") }
@@ -88,23 +97,40 @@ fun SettingsScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text("Scanner Settings", style = MaterialTheme.typography.headlineSmall)
-            var vibrateEnabled by remember { mutableStateOf(true) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Vibrate on scan")
                 Spacer(modifier = Modifier.weight(1f))
-                Switch(checked = vibrateEnabled, onCheckedChange = { vibrateEnabled = it })
+                Switch(
+                    checked = vibrateEnabled,
+                    onCheckedChange = {
+                        vibrateEnabled = it
+                        prefs.edit { putBoolean("vibrateEnabled", it) }
+                    }
+                )
             }
 
-            var screenAlwaysOn by remember { mutableStateOf(false) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Screen always on")
                 Spacer(modifier = Modifier.weight(1f))
-                Switch(checked = screenAlwaysOn, onCheckedChange = { screenAlwaysOn = it })
+                Switch(
+                    checked = screenAlwaysOn,
+                    onCheckedChange = {
+                        screenAlwaysOn = it
+                        prefs.edit { putBoolean("screenAlwaysOn", it) }
+
+                        val activity = (context as? Activity)
+                        if (it) {
+                            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            var expanded by remember { mutableStateOf(false) }
+            var expanded by remember { mutableStateOf(true) }
 
             Row(
                 modifier = Modifier
