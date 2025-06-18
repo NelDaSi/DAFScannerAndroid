@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
@@ -47,6 +48,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +64,8 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.google.gson.Gson
 import java.util.Date
 
+data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
+
 @Composable
 fun MainScreen(navController: NavController) {
     val context = LocalContext.current
@@ -68,7 +73,7 @@ fun MainScreen(navController: NavController) {
         context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     }
 
-    val scannedParts = remember { mutableStateListOf<ScannedPart>() }
+    val scannedParts = remember { mutableStateListOf<SelectablePart>() }
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
@@ -76,12 +81,14 @@ fun MainScreen(navController: NavController) {
 
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(null) }
 
+    var selectionMode by remember { mutableStateOf(false) }
+
     // Load data once on first composition
     LaunchedEffect(Unit) {
         val json = sharedPreferences.getString("items", null)
         if (json != null) {
             val loaded = Gson().fromJson(json, Array<ScannedPart>::class.java)
-            scannedParts.addAll(loaded)
+            scannedParts.addAll(loaded.map { SelectablePart(it) })
         }
     }
 
@@ -89,10 +96,10 @@ fun MainScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
             val scannedValue = backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)
-            if (!scannedValue.isNullOrBlank() && scannedParts.none { it.fullCode == scannedValue }) {
+            if (!scannedValue.isNullOrBlank() && scannedParts.none { it.part.fullCode == scannedValue }) {
                 val newPart = ScannedPart(scannedValue, System.currentTimeMillis())
-                scannedParts.add(newPart)
-                val jsonString = Gson().toJson(scannedParts.toTypedArray())
+                scannedParts.add(SelectablePart(newPart))
+                val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
                 sharedPreferences.edit { putString("items", jsonString) }
             }
         }
@@ -109,6 +116,16 @@ fun MainScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Gescande Items") },
                 actions = {
+                    if (selectionMode) {
+                        IconButton(onClick = {
+                            scannedParts.removeAll { it.isSelected }
+                            val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
+                            sharedPreferences.edit { putString("items", jsonString) }
+                            selectionMode = false
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Verwijder selectie")
+                        }
+                    }
                     // 3-dot menu
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -125,7 +142,11 @@ fun MainScreen(navController: NavController) {
                         DropdownMenuItem(
                             text = { Text("Alles wissen") },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = { showMenu = false; showClearDialog = true }
+                            onClick = {
+                                showMenu = false
+                                showClearDialog = true
+                                selectionMode = false
+                            }
                         )
                         DropdownMenuItem(
                             text = { Text("Over") },
@@ -170,40 +191,60 @@ fun MainScreen(navController: NavController) {
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(scannedParts.toList().sortedByDescending { it.timestamp }) { part ->
-                        Column(
+                    items(scannedParts.toList().sortedByDescending { it.part.timestamp }) { selectablePart ->
+                        val part = selectablePart.part
+                        val parsed = parseScannedCode(part.fullCode)
+                        val formattedDate = remember(part.timestamp) {
+                            java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
+                                .format(Date(part.timestamp))
+                        }
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
                                     onClick = {
-                                        navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
+                                        if (selectionMode) {
+                                            selectablePart.isSelected = !selectablePart.isSelected
+                                        } else {
+                                            navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
+                                        }
                                     },
                                     onLongClick = {
-                                        itemToDelete = part
+                                        selectionMode = true
+                                        selectablePart.isSelected = true
                                     }
                                 )
                                 .padding(vertical = 8.dp)
+                                .drawBehind {
+                                    if (selectablePart.isSelected) {
+                                        drawRect(
+                                            color = Color(0xFFBBDEFB)
+                                        )
+                                        drawRect(
+                                            color = Color(0xFF1976D2),
+                                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
+                                        )
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            val parsed = parseScannedCode(part.fullCode)
-                            val formattedDate = remember(part.timestamp) {
-                                java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
-                                    .format(Date(part.timestamp))
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
+                            if (selectablePart.isSelected) {
                                 Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = "Scanned item",
-                                    modifier = Modifier.size(50.dp)
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Geselecteerd",
+                                    tint = Color(0xFF1976D2)
                                 )
-                                Column {
-                                    Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
-                                    Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}", fontWeight = FontWeight.Bold)
-                                    Text("Datum: $formattedDate")
-                                }
+                            }
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Scanned item",
+                                modifier = Modifier.size(50.dp)
+                            )
+                            Column {
+                                Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
+                                Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}", fontWeight = FontWeight.Bold)
+                                Text("Datum: $formattedDate")
                             }
                         }
                     }
@@ -257,8 +298,8 @@ fun MainScreen(navController: NavController) {
             text = { Text("Weet je zeker dat je dit item wilt verwijderen?") },
             confirmButton = {
                 Button(onClick = {
-                    scannedParts.remove(itemToDelete)
-                    val jsonString = Gson().toJson(scannedParts.toTypedArray())
+                    scannedParts.removeAll { it.part == itemToDelete }
+                    val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
                     sharedPreferences.edit { putString("items", jsonString) }
                     itemToDelete = null
                 }) {
