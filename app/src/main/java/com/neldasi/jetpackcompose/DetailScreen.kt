@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -183,165 +181,175 @@ fun DetailScreen(
             }
         }
 
-        Column(
+        androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Image
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .aspectRatio(1f)
-                        .background(Color.DarkGray)
-                        .clipToBounds()
-                        .clickable { /* no-op or open image */ },
-                    contentAlignment = Alignment.Center
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    when {
-                        imageUri != null -> Image(
-                            painter = rememberAsyncImagePainter(imageUri),
-                            contentDescription = "Selected image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        else -> Text("Tap camera or gallery below", color = Color.LightGray)
+                    // Image
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .background(Color.DarkGray)
+                            .clipToBounds()
+                            .clickable { /* no-op or open image */ },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when {
+                            imageUri != null -> Image(
+                                painter = rememberAsyncImagePainter(imageUri),
+                                contentDescription = "Selected image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            else -> Text("Tap camera or gallery below", color = Color.LightGray)
+                        }
+                    }
+
+                    // Action buttons
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        IconButton(onClick = { shareLauncher.launch(Intent.createChooser(shareIntent, "Share via")) }) {
+                            Icon(Icons.Filled.Share, contentDescription = "Share")
+                        }
+                        IconButton(onClick = { cameraLauncher.launch(null) }) {
+                            Icon(Icons.Filled.CameraAlt, contentDescription = "Take photo")
+                        }
+                        IconButton(onClick = { galleryLauncher.launch("image/*") }) {
+                            Icon(Icons.Filled.PhotoLibrary, contentDescription = "Pick from gallery")
+                        }
                     }
                 }
+            }
 
-                // Action buttons
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            item {
+                // 3) Note field
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    IconButton(onClick = { shareLauncher.launch(Intent.createChooser(shareIntent, "Share via")) }) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share")
-                    }
-                    IconButton(onClick = { cameraLauncher.launch(null) }) {
-                        Icon(Icons.Filled.CameraAlt, contentDescription = "Take photo")
-                    }
-                    IconButton(onClick = { galleryLauncher.launch("image/*") }) {
-                        Icon(Icons.Filled.PhotoLibrary, contentDescription = "Pick from gallery")
-                    }
-                }
-            }
-
-            // 3) Note field
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = {
-                        note = it
-                        prefs.edit().putString("${fullCode}_note", it).apply()
-                    },
-                    label = { Text("Extra note") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                )
-            }
-
-            HorizontalDivider()
-
-            // 4) Parsed info and scanned date
-            val formattedDate = remember(timestamp) {
-                SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-                    .format(Date(timestamp))
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    parsed?.let {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Type:", style = MaterialTheme.typography.bodyLarge)
-                                Text(it.typeCode, style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Supplier:", style = MaterialTheme.typography.bodyLarge)
-                                Text(it.supplierCode, style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Serial:", style = MaterialTheme.typography.bodyLarge)
-                                Text(it.serialNumber, style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Batch:", style = MaterialTheme.typography.bodyLarge)
-                                Text(it.batchNumber, style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // Optionally give scanned date its own card for consistency:
-                    Card(
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = {
+                            note = it
+                            prefs.edit().putString("${fullCode}_note", it).apply()
+                        },
+                        label = { Text("Extra note") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                    ) {
-                        Text(
-                            "Scanned at: $formattedDate",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                            .padding(16.dp)
+                    )
+                }
+            }
+
+            item {
+                HorizontalDivider()
+            }
+
+            item {
+                // 4) Parsed info and scanned date
+                val formattedDate = remember(timestamp) {
+                    SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+                        .format(Date(timestamp))
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        parsed?.let {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Type:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(it.typeCode, style = MaterialTheme.typography.bodyLarge)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Supplier:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(it.supplierCode, style = MaterialTheme.typography.bodyLarge)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Serial:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(it.serialNumber, style = MaterialTheme.typography.bodyLarge)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Batch:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(it.batchNumber, style = MaterialTheme.typography.bodyLarge)
+                                }
+                            }
+                        }
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Scanned at:", style = MaterialTheme.typography.bodyLarge)
+                                Text(formattedDate, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
                     }
                 }
             }
@@ -356,7 +364,7 @@ fun DetailScreenPreview() {
     val mockNavController = NavController(LocalContext.current)
 
     // Sample data for preview
-    val sampleFullCode = "TYPE123;SUPP456;SERIAL789;BATCH000"
+    val sampleFullCode = "21500018842993A10000000000K6805"
     val sampleTimestamp = System.currentTimeMillis()
 
     DetailScreen(
