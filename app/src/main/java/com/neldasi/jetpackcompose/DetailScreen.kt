@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
@@ -96,14 +97,37 @@ fun DetailScreen(
         imageUri = null
     }
 
-    // Share launcher
+    // Share launcher with formatted details
     val shareLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { /* no-op */ }
-    val shareIntent = remember(fullCode) {
+
+    val shareIntent = remember(fullCode, imageUri, note) {
         Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, fullCode)
+            val parsedText = buildString {
+                appendLine("Part Details:")
+                parsed?.let {
+                    appendLine("Type: ${it.typeCode}")
+                    appendLine("Supplier: ${it.supplierCode}")
+                    appendLine("Serial: ${it.serialNumber}")
+                    appendLine("Batch: ${it.batchNumber}")
+                }
+                val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+                appendLine("Scanned at: $formattedDate")
+                if (note.isNotBlank()) appendLine("Note: $note")
+            }
+
+            putExtra(Intent.EXTRA_TEXT, parsedText)
+
+            imageUri?.let {
+                val file = File(context.filesDir, "img_$fullCode.jpg")
+                val sharedUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                putExtra(Intent.EXTRA_STREAM, sharedUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                type = "image/jpeg"
+            } ?: run {
+                type = "text/plain"
+            }
         }
     }
 
