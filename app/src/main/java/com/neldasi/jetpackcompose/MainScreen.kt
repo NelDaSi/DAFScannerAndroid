@@ -188,9 +188,9 @@ fun MainScreen(navController: NavController) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.Settings, // Changed to gear icon
+                                    Icons.Default.Settings,
                                     contentDescription = "Scanned item",
-                                    modifier = Modifier.size(50.dp) // Set size to 50x50
+                                    modifier = Modifier.size(50.dp)
                                 )
                                 Column {
                                     Text("Type: ${parsed?.typeCode ?: "Onbekend"}")

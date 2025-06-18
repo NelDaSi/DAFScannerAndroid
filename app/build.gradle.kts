@@ -40,7 +40,7 @@ android {
 }
 
 dependencies {
-    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
     implementation(libs.gson)
     implementation (libs.androidx.navigation.compose) // Make sure this is in your dependencies
