@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -118,41 +119,53 @@ fun MainScreen(navController: NavController) {
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = {
-                            scannedParts.removeAll { it.isSelected }
+                            val updatedList = scannedParts.filterNot { it.isSelected }.toMutableList()
+                            scannedParts.clear()
+                            scannedParts.addAll(updatedList)
                             val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
                             sharedPreferences.edit { putString("items", jsonString) }
                             selectionMode = false
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = "Verwijder selectie")
                         }
-                    }
-                    // 3-dot menu
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                    }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Instellingen") },
-                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                navController.navigate(AppDestinations.SETTINGS_SCREEN)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Alles wissen") },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                showClearDialog = true
-                                selectionMode = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Over") },
-                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
-                            onClick = { showMenu = false; showInfoDialog = true }
-                        )
+                        IconButton(onClick = {
+                            // Deselect all items and exit selection mode
+                            val updatedList = scannedParts.map { it.copy(isSelected = false) }
+                            scannedParts.clear()
+                            scannedParts.addAll(updatedList)
+                            selectionMode = false
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Annuleer selectie")
+                        }
+                    } else {
+                        // 3-dot menu
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Instellingen") },
+                                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    navController.navigate(AppDestinations.SETTINGS_SCREEN)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Alles wissen") },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    showClearDialog = true
+                                    selectionMode = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Over") },
+                                leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
+                                onClick = { showMenu = false; showInfoDialog = true }
+                            )
+                        }
                     }
                 }
             )
