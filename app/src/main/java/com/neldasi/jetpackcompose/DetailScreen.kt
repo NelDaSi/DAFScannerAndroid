@@ -88,7 +88,7 @@ fun DetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     fun deleteImageForCode() {
-        val file = File(context.filesDir, "img_$fullCode.png")
+        val file = File(context.filesDir, "img_$fullCode.jpg")
         if (file.exists()) file.delete()
         prefs.edit().remove("${fullCode}_imageUri").apply()
         imageUri = null
@@ -152,9 +152,9 @@ fun DetailScreen(
         ) { bitmap ->
             bitmap?.let {
                 // Save bitmap to internal storage
-                val file = File(context.filesDir, "img_$fullCode.png")
+                val file = File(context.filesDir, "img_$fullCode.jpg")
                 FileOutputStream(file).use { out ->
-                    it.compress(CompressFormat.PNG, 100, out)
+                    it.compress(CompressFormat.JPEG, 95, out)
                 }
                 val uri = Uri.fromFile(file)
                 prefs.edit().putString("${fullCode}_imageUri", uri.toString()).apply()
@@ -167,7 +167,7 @@ fun DetailScreen(
         ) { uri ->
             uri?.let { selectedUri ->
                 deleteImageForCode()
-                val file = File(context.filesDir, "img_$fullCode.png")
+                val file = File(context.filesDir, "img_$fullCode.jpg")
                 context.contentResolver.openInputStream(selectedUri)?.use { input ->
                     FileOutputStream(file).use { output ->
                         input.copyTo(output)
