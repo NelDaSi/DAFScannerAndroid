@@ -186,41 +186,46 @@ fun DetailScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1) Big image placeholder
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .background(Color.DarkGray)
-                    .clipToBounds()
-                    .clickable { /* no-op or open image */ },
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    imageUri != null -> Image(
-                        painter = rememberAsyncImagePainter(imageUri),
-                        contentDescription = "Selected image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    else -> Text("Tap camera or gallery below", color = Color.LightGray)
-                }
-            }
-
-            // 2) Action buttons: Share, Camera, Gallery
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { shareLauncher.launch(Intent.createChooser(shareIntent, "Share via")) }) {
-                    Icon(Icons.Filled.Share, contentDescription = "Share")
+                // Image
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .background(Color.DarkGray)
+                        .clipToBounds()
+                        .clickable { /* no-op or open image */ },
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        imageUri != null -> Image(
+                            painter = rememberAsyncImagePainter(imageUri),
+                            contentDescription = "Selected image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        else -> Text("Tap camera or gallery below", color = Color.LightGray)
+                    }
                 }
-                IconButton(onClick = { cameraLauncher.launch(null) }) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = "Take photo")
-                }
-                IconButton(onClick = { galleryLauncher.launch("image/*") }) {
-                    Icon(Icons.Filled.PhotoLibrary, contentDescription = "Pick from gallery")
+
+                // Action buttons
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    IconButton(onClick = { shareLauncher.launch(Intent.createChooser(shareIntent, "Share via")) }) {
+                        Icon(Icons.Filled.Share, contentDescription = "Share")
+                    }
+                    IconButton(onClick = { cameraLauncher.launch(null) }) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = "Take photo")
+                    }
+                    IconButton(onClick = { galleryLauncher.launch("image/*") }) {
+                        Icon(Icons.Filled.PhotoLibrary, contentDescription = "Pick from gallery")
+                    }
                 }
             }
 
