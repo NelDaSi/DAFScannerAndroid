@@ -3,16 +3,21 @@
 package com.neldasi.jetpackcompose
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -163,22 +169,41 @@ fun MainScreen(navController: NavController) {
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(scannedParts.toList().sortedByDescending { it.timestamp }) { part ->
-                        Column(Modifier.padding(vertical = 8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
+                                }
+                                .padding(vertical = 8.dp)
+                        ) {
                             val parsed = parseScannedCode(part.fullCode)
                             val formattedDate = remember(part.timestamp) {
                                 java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
                                     .format(Date(part.timestamp))
                             }
-                            Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
-                            Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}")
-                            Text("Datum: $formattedDate")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Settings, // Changed to gear icon
+                                    contentDescription = "Scanned item",
+                                    modifier = Modifier.size(50.dp) // Set size to 50x50
+                                )
+                                Column {
+                                    Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
+                                    Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}", fontWeight = FontWeight.Bold)
+                                    Text("Datum: $formattedDate")
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
-
     // Confirmation dialog for "Clear All"
     if (showClearDialog) {
         AlertDialog(
