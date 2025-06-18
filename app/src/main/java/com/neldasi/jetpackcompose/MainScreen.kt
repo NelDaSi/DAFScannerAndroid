@@ -8,7 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -73,6 +73,8 @@ fun MainScreen(navController: NavController) {
 
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+
+    var itemToDelete by remember { mutableStateOf<ScannedPart?>(null) }
 
     // Load data once on first composition
     LaunchedEffect(Unit) {
@@ -172,9 +174,14 @@ fun MainScreen(navController: NavController) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
-                                }
+                                .combinedClickable(
+                                    onClick = {
+                                        navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
+                                    },
+                                    onLongClick = {
+                                        itemToDelete = part
+                                    }
+                                )
                                 .padding(vertical = 8.dp)
                         ) {
                             val parsed = parseScannedCode(part.fullCode)
@@ -238,6 +245,30 @@ fun MainScreen(navController: NavController) {
             text = { Text("QR Scanner App\n\nVersie: $appVersion\nAuteur: Neldasi\n\nMet deze app kunt u QR-codes scannen en de gescande gegevens beheren.") },
             confirmButton = {
                 Button(onClick = { showInfoDialog = false }) { Text("OK") }
+            }
+        )
+    }
+
+    // Delete item confirmation dialog
+    if (itemToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { itemToDelete = null },
+            title = { Text("Item verwijderen") },
+            text = { Text("Weet je zeker dat je dit item wilt verwijderen?") },
+            confirmButton = {
+                Button(onClick = {
+                    scannedParts.remove(itemToDelete)
+                    val jsonString = Gson().toJson(scannedParts.toTypedArray())
+                    sharedPreferences.edit { putString("items", jsonString) }
+                    itemToDelete = null
+                }) {
+                    Text("Verwijderen")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { itemToDelete = null }) {
+                    Text("Annuleren")
+                }
             }
         )
     }
