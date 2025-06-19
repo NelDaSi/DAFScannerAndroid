@@ -10,9 +10,7 @@ import com.neldasi.jetpackcompose.ui.theme.JetpackComposeTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val prefs = getSharedPreferences("prefs", MODE_PRIVATE)
-        val screenAlwaysOn = prefs.getBoolean("screenAlwaysOn", false)
-        if (screenAlwaysOn) {
+        if (SettingsRepository.shouldKeepScreenOn(this)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

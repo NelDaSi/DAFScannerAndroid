@@ -47,7 +47,9 @@ import java.util.concurrent.Executors
 fun CameraScanScreen(navController: NavController) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-    val vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
+    val vibrateEnabled by remember {
+        mutableStateOf(prefs.getBoolean("vibrateEnabled", false))
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -102,7 +104,7 @@ fun CameraScanScreen(navController: NavController) {
 
                         val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
                             val type = scannedValue.take(7)
-                            if (allowedTypes.contains(type)) {
+                            if (type in allowedTypes) {
                                 if (scannedResult == null) {
                                     scannedResult = scannedValue
                                 }

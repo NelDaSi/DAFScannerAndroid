@@ -28,8 +28,8 @@ fun AppNavigation() {
                 navArgument("timestamp") { type = NavType.LongType }
             )
         ) { backStackEntry ->
-            val fullCode = backStackEntry.arguments?.getString("fullCode")!!
-            val timestamp = backStackEntry.arguments?.getLong("timestamp")!!
+            val fullCode = backStackEntry.arguments?.getString("fullCode") ?: return@composable
+            val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: return@composable
             DetailScreen(navController, fullCode, timestamp)
         }
     }

@@ -305,90 +305,34 @@ fun DetailScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         parsed?.let {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(stringResource(R.string.type), style = MaterialTheme.typography.bodyLarge)
-                                    Text(it.typeCode, style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(stringResource(R.string.supplier), style = MaterialTheme.typography.bodyLarge)
-                                    Text(it.supplierCode, style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(stringResource(R.string.serial), style = MaterialTheme.typography.bodyLarge)
-                                    Text(it.serialNumber, style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(stringResource(R.string.batch), style = MaterialTheme.typography.bodyLarge)
-                                    Text(it.batchNumber, style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
+                            InfoRow(stringResource(R.string.type), it.typeCode)
+                            InfoRow(stringResource(R.string.supplier), it.supplierCode)
+                            InfoRow(stringResource(R.string.serial), it.serialNumber)
+                            InfoRow(stringResource(R.string.batch), it.batchNumber)
                         }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(stringResource(R.string.scanned_at), style = MaterialTheme.typography.bodyLarge)
-                                Text(formattedDate, style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
+                        InfoRow(stringResource(R.string.scanned_at), formattedDate)
                     }
                 }
             }
+        }
+    }
+}
+@Composable
+fun InfoRow(label: String, value: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(value, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }

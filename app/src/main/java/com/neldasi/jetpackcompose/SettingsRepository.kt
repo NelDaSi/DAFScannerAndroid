@@ -12,4 +12,8 @@ object SettingsRepository {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         return prefs.getStringSet("allowedTypes", defaultAllowedTypes) ?: defaultAllowedTypes
     }
+    fun shouldKeepScreenOn(context: Context): Boolean {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean("screenAlwaysOn", false)
+    }
 }

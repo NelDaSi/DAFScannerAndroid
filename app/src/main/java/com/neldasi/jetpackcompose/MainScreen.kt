@@ -101,8 +101,7 @@ fun MainScreen(navController: NavController) {
             if (!scannedValue.isNullOrBlank() && scannedParts.none { it.part.fullCode == scannedValue }) {
                 val newPart = ScannedPart(scannedValue, System.currentTimeMillis())
                 scannedParts.add(SelectablePart(newPart))
-                val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
-                sharedPreferences.edit { putString("items", jsonString) }
+                saveParts(context, scannedParts.map { it.part })
             }
         }
     }
@@ -123,8 +122,7 @@ fun MainScreen(navController: NavController) {
                             val updatedList = scannedParts.filterNot { it.isSelected }.toMutableList()
                             scannedParts.clear()
                             scannedParts.addAll(updatedList)
-                            val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
-                            sharedPreferences.edit { putString("items", jsonString) }
+                            saveParts(context, scannedParts.map { it.part })
                             selectionMode = false
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
@@ -316,8 +314,7 @@ fun MainScreen(navController: NavController) {
             confirmButton = {
                 Button(onClick = {
                     scannedParts.removeAll { it.part == itemToDelete }
-                    val jsonString = Gson().toJson(scannedParts.map { it.part }.toTypedArray())
-                    sharedPreferences.edit { putString("items", jsonString) }
+                    saveParts(context, scannedParts.map { it.part })
                     itemToDelete = null
                 }) {
                     Text(stringResource(R.string.delete))
@@ -378,6 +375,14 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
             dismissButton = { Button(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
         )
     }
+}
+
+
+// Helper to save parts to SharedPreferences as JSON
+private fun saveParts(context: Context, parts: List<ScannedPart>) {
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val json = Gson().toJson(parts.toTypedArray())
+    prefs.edit { putString("items", json) }
 }
 
 // --- Data classes and helpers for scanned parts ---
