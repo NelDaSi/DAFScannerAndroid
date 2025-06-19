@@ -1,0 +1,93 @@
+<resources>
+    <string name="app_name">DAF Scanner</string>
+
+    <!-- DetailScreen Strings -->
+    <string name="share_title">Onderdeeldetails</string>
+    <string name="share_type">Type: %1$s</string>
+    <string name="share_supplier">Leverancier: %1$s</string>
+    <string name="share_serial">Serienummer: %1$s</string>
+    <string name="share_batch">Batch: %1$s</string>
+    <string name="share_scanned_at">Gescand op: %1$s</string>
+    <string name="share_note">Notitie: %1$s</string>
+    <string name="share_subject">DAF Scan Rapport</string>
+
+    <string name="part_details">Onderdeeldetails</string>
+    <string name="back">Terug</string>
+    <string name="remove_image">Afbeelding verwijderen</string>
+    <string name="remove_image_title">Afbeelding verwijderen?</string>
+    <string name="remove_image_confirm">Weet je zeker dat je deze afbeelding wilt verwijderen?</string>
+<!--    <string name="delete">Delete</string>-->
+<!--    <string name="cancel">Cancel</string>-->
+
+    <string name="tap_to_add_image">Tik hieronder op camera of galerij</string>
+    <string name="share">Delen</string>
+    <string name="take_photo">Foto maken</string>
+    <string name="pick_gallery">Kies uit galerij</string>
+    <string name="extra_note">Extra opmerking</string>
+
+    <string name="type">Type:</string>
+    <string name="supplier">Leverancier:</string>
+    <string name="serial">Serienummer:</string>
+    <string name="batch">Batch:</string>
+    <string name="scanned_at">Gescand op:</string>
+
+    <!-- MainScreen -->
+    <string name="title_scanned_items">Gescande items</string>
+    <string name="delete_selected">Geselecteerde verwijderen</string>
+    <string name="cancel_selection">Selectie annuleren</string>
+    <string name="menu">Menu</string>
+    <string name="menu_settings">Instellingen</string>
+    <string name="menu_clear_all">Alles wissen</string>
+    <string name="menu_about">Over</string>
+    <string name="scan">Scannen</string>
+    <string name="no_items_scanned">Nog geen items gescand.</string>
+    <string name="camera_permission_required">Camera machtiging vereist om items te scannen.</string>
+    <string name="scanned_item">Gescand item</string>
+    <string name="unknown">Onbekend</string>
+
+    <!-- Clear-all confirmation -->
+    <string name="clear_confirm_title">Bevestig alles wissen</string>
+    <string name="clear_confirm_text">Weet je zeker dat je alle gescande items wilt verwijderen?</string>
+
+    <!-- Common buttons -->
+    <string name="yes">Ja</string>
+    <string name="cancel">Annuleren</string>
+
+    <!-- Single-item deletion -->
+    <string name="delete_item_title">Item verwijderen</string>
+    <string name="delete_item_text">Weet je zeker dat je dit item wilt verwijderen?</string>
+    <string name="delete">Verwijderen</string>
+
+    <!-- About dialog -->
+    <string name="about_title">Over</string>
+    <string name="about_text">Versie: %1$s</string>
+    <string name="ok">OK</string>
+
+    <!-- Permission rationale dialog -->
+    <string name="camera_permission_title">Camera machtiging vereist</string>
+    <string name="camera_permission_text">Deze app heeft cameratoegang nodig om codes te scannen. Geef de machtiging.</string>
+    <string name="allow">Toestaan</string>
+
+    <!-- Permission settings dialog -->
+    <string name="permission_required_title">Machtiging vereist</string>
+    <string name="permission_required_text">Camera machtiging is permanent geweigerd. Schakel deze in in de instellingen.</string>
+    <string name="open_settings">Open instellingen</string>
+
+    <!-- Settings Screen Strings -->
+    <string name="settings_screen_title">Instellingen</string>
+    <string name="scanner_settings_title">Scanner instellingen</string>
+    <string name="vibrate_on_scan_label">Trillen bij scannen</string>
+    <string name="screen_always_on_label">Scherm altijd aan</string>
+    <string name="allowed_types_title">Toegestane types</string>
+    <string name="expand">Uitklappen</string>
+    <string name="collapse">Inklappen</string>
+    <string name="add_type">Type toevoegen</string>
+    <string name="add_allowed_type_title">Toegestaan type toevoegen</string>
+    <string name="type_code_label">Typecode</string>
+    <string name="type_not_empty_message">Type mag niet leeg zijn</string>
+    <string name="add">Toevoegen</string>
+
+
+    <string name="unsupported_code_title">Onondersteunde code</string>
+    <string name="unsupported_code_text">De gescande code wordt niet ondersteund en wordt niet opgeslagen.</string>
+</resources>
