@@ -1,7 +1,5 @@
 package com.neldasi.jetpackcompose
 
-import android.util.Size
-
 import android.content.Context
 import android.util.Log
 import android.view.ViewGroup
@@ -194,7 +192,6 @@ private fun buildImageAnalyzer(
 ): ImageAnalysis {
     val barcodeScanner = BarcodeScanning.getClient()
     return ImageAnalysis.Builder()
-        .setTargetResolution(Size(320, 240))
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .build()
         .also { analysis ->
