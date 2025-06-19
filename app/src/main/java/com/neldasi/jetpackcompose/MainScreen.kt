@@ -65,6 +65,8 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.google.gson.Gson
 import java.util.Date
 
+import androidx.compose.ui.res.stringResource
+
 data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
 
 @Composable
@@ -115,7 +117,7 @@ fun MainScreen(navController: NavController) {
         modifier = Modifier.systemBarsPadding(),
         topBar = {
             TopAppBar(
-                title = { Text("Gescande Items") },
+                title = { Text(stringResource(R.string.title_scanned_items)) },
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = {
@@ -126,7 +128,7 @@ fun MainScreen(navController: NavController) {
                             sharedPreferences.edit { putString("items", jsonString) }
                             selectionMode = false
                         }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Verwijder selectie")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
                         }
                         IconButton(onClick = {
                             // Deselect all items and exit selection mode
@@ -135,16 +137,16 @@ fun MainScreen(navController: NavController) {
                             scannedParts.addAll(updatedList)
                             selectionMode = false
                         }) {
-                            Icon(Icons.Default.Close, contentDescription = "Annuleer selectie")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel_selection))
                         }
                     } else {
                         // 3-dot menu
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
                         }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                             DropdownMenuItem(
-                                text = { Text("Instellingen") },
+                                text = { Text(stringResource(R.string.menu_settings)) },
                                 leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -152,7 +154,7 @@ fun MainScreen(navController: NavController) {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Alles wissen") },
+                                text = { Text(stringResource(R.string.menu_clear_all)) },
                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                 onClick = {
                                     showMenu = false
@@ -161,7 +163,7 @@ fun MainScreen(navController: NavController) {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Over") },
+                                text = { Text(stringResource(R.string.menu_about)) },
                                 leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
                                 onClick = { showMenu = false; showInfoDialog = true }
                             )
@@ -185,7 +187,7 @@ fun MainScreen(navController: NavController) {
                     }
                 }
             }) {
-                Icon(Icons.Filled.Search, contentDescription = "Scannen")
+                Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.scan))
             }
         }
     ) { paddingValues ->
@@ -197,10 +199,10 @@ fun MainScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (scannedParts.isEmpty()) {
-                Text("Nog geen items gescand.", textAlign = TextAlign.Center)
+                Text(stringResource(R.string.no_items_scanned), textAlign = TextAlign.Center)
                 if (!cameraPermissionState.status.isGranted) {
                     Spacer(Modifier.height(8.dp))
-                    Text("Cameratoestemming is nodig om items te scannen.", textAlign = TextAlign.Center)
+                    Text(stringResource(R.string.camera_permission_required), textAlign = TextAlign.Center)
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -245,18 +247,18 @@ fun MainScreen(navController: NavController) {
                             if (selectablePart.isSelected) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Geselecteerd",
+                                    contentDescription = null,
                                     tint = Color(0xFF1976D2)
                                 )
                             }
                             Icon(
                                 Icons.Default.Settings,
-                                contentDescription = "Scanned item",
+                                contentDescription = stringResource(R.string.scanned_item),
                                 modifier = Modifier.size(50.dp)
                             )
                             Column {
-                                Text("Type: ${parsed?.typeCode ?: "Onbekend"}")
-                                Text("Serienummer: ${parsed?.serialNumber ?: "Onbekend"}", fontWeight = FontWeight.Bold)
+                                Text("Type: ${parsed?.typeCode ?: stringResource(R.string.unknown)}")
+                                Text("Serienummer: ${parsed?.serialNumber ?: stringResource(R.string.unknown)}", fontWeight = FontWeight.Bold)
                                 Text("Datum: $formattedDate")
                             }
                         }
@@ -269,19 +271,19 @@ fun MainScreen(navController: NavController) {
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Wissen bevestigen") },
-            text = { Text("Weet u zeker dat u alle gescande items wilt wissen?") },
+            title = { Text(stringResource(R.string.clear_confirm_title)) },
+            text = { Text(stringResource(R.string.clear_confirm_text)) },
             confirmButton = {
                 Button(onClick = {
                     showClearDialog = false
                     scannedParts.clear()
                     sharedPreferences.edit { remove("items") }
                 }) {
-                    Text("Ja")
+                    Text(stringResource(R.string.yes))
                 }
             },
             dismissButton = {
-                Button(onClick = { showClearDialog = false }) { Text("Annuleren") }
+                Button(onClick = { showClearDialog = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -289,16 +291,19 @@ fun MainScreen(navController: NavController) {
     // Info dialog
     if (showInfoDialog) {
         val appVersion = try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            context.packageManager
+                .getPackageInfo(context.packageName, 0)
+                .versionName
+                ?: "N/A"
         } catch (_: PackageManager.NameNotFoundException) {
             "N/A"
         }
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
-            title = { Text("Over") },
-            text = { Text("QR Scanner App\n\nVersie: $appVersion\nAuteur: Neldasi\n\nMet deze app kunt u QR-codes scannen en de gescande gegevens beheren.") },
+            title = { Text(stringResource(R.string.about_title)) },
+            text = { Text(stringResource(R.string.about_text, appVersion)) },
             confirmButton = {
-                Button(onClick = { showInfoDialog = false }) { Text("OK") }
+                Button(onClick = { showInfoDialog = false }) { Text(stringResource(R.string.ok)) }
             }
         )
     }
@@ -307,8 +312,8 @@ fun MainScreen(navController: NavController) {
     if (itemToDelete != null) {
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
-            title = { Text("Item verwijderen") },
-            text = { Text("Weet je zeker dat je dit item wilt verwijderen?") },
+            title = { Text(stringResource(R.string.delete_item_title)) },
+            text = { Text(stringResource(R.string.delete_item_text)) },
             confirmButton = {
                 Button(onClick = {
                     scannedParts.removeAll { it.part == itemToDelete }
@@ -316,12 +321,12 @@ fun MainScreen(navController: NavController) {
                     sharedPreferences.edit { putString("items", jsonString) }
                     itemToDelete = null
                 }) {
-                    Text("Verwijderen")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 Button(onClick = { itemToDelete = null }) {
-                    Text("Annuleren")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -348,10 +353,10 @@ private fun PermissionRationaleDialog(show: Boolean, onDismiss: () -> Unit, onCo
     if (show) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Cameratoestemming vereist") },
-            text = { Text("Deze app heeft cameratoegang nodig om QR-codes te scannen.") },
-            confirmButton = { Button(onClick = onConfirm) { Text("Toestaan") } },
-            dismissButton = { Button(onClick = onDismiss) { Text("Annuleren") } }
+            title = { Text(stringResource(R.string.camera_permission_title)) },
+            text = { Text(stringResource(R.string.camera_permission_text)) },
+            confirmButton = { Button(onClick = onConfirm) { Text(stringResource(R.string.allow)) } },
+            dismissButton = { Button(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }
@@ -361,17 +366,17 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
     if (show) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Toestemming vereist") },
-            text = { Text("Cameratoestemming is permanent geweigerd. Schakel deze in via de instellingen.") },
+            title = { Text(stringResource(R.string.permission_required_title)) },
+            text = { Text(stringResource(R.string.permission_required_text)) },
             confirmButton = {
                 Button(onClick = {
                     onDismiss()
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                     intent.data = Uri.fromParts("package", context.packageName, null)
                     context.startActivity(intent)
-                }) { Text("Instellingen openen") }
+                }) { Text(stringResource(R.string.open_settings)) }
             },
-            dismissButton = { Button(onClick = onDismiss) { Text("Annuleren") } }
+            dismissButton = { Button(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
         )
     }
 }

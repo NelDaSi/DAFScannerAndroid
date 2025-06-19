@@ -63,6 +63,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.ui.res.stringResource
+
 
 @SuppressLint("UseKtx")
 @Composable
@@ -105,18 +107,23 @@ fun DetailScreen(
     val shareIntent = remember(fullCode, imageUri, note) {
         Intent(Intent.ACTION_SEND).apply {
             val parsedText = buildString {
-                appendLine("Part Details:")
+                appendLine(context.getString(R.string.share_title))
+                appendLine()
                 parsed?.let {
-                    appendLine("Type: ${it.typeCode}")
-                    appendLine("Supplier: ${it.supplierCode}")
-                    appendLine("Serial: ${it.serialNumber}")
-                    appendLine("Batch: ${it.batchNumber}")
+                    appendLine(context.getString(R.string.share_type, it.typeCode))
+                    appendLine(context.getString(R.string.share_supplier, it.supplierCode))
+                    appendLine(context.getString(R.string.share_serial, it.serialNumber))
+                    appendLine(context.getString(R.string.share_batch, it.batchNumber))
+                    appendLine()
                 }
                 val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
-                appendLine("Scanned at: $formattedDate")
-                if (note.isNotBlank()) appendLine("Note: $note")
+                appendLine(context.getString(R.string.share_scanned_at, formattedDate))
+                if (note.isNotBlank()) {
+                    appendLine(context.getString(R.string.share_note, note))
+                }
             }
 
+            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
             putExtra(Intent.EXTRA_TEXT, parsedText)
 
             imageUri?.let {
@@ -134,10 +141,10 @@ fun DetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Part Details") },
+                title = { Text(stringResource(R.string.part_details)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -150,21 +157,21 @@ fun DetailScreen(
                                         deleteImageForCode()
                                         showDeleteDialog = false
                                     }) {
-                                        Text("Delete")
+                                        Text(stringResource(R.string.delete))
                                     }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showDeleteDialog = false }) {
-                                        Text("Cancel")
+                                        Text(stringResource(R.string.cancel))
                                     }
                                 },
-                                title = { Text("Remove Image?") },
-                                text = { Text("Are you sure you want to remove this image?") }
+                                title = { Text(stringResource(R.string.remove_image_title)) },
+                                text = { Text(stringResource(R.string.remove_image_confirm)) }
                             )
                         }
 
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Remove image")
+                            Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.remove_image))
                         }
                     }
                 }
@@ -231,11 +238,11 @@ fun DetailScreen(
                         when {
                             imageUri != null -> Image(
                                 painter = rememberAsyncImagePainter(imageUri),
-                                contentDescription = "Selected image",
+                                contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            else -> Text("Tap camera or gallery below", color = Color.LightGray)
+                            else -> Text(stringResource(R.string.tap_to_add_image), color = Color.LightGray)
                         }
                     }
 
@@ -244,14 +251,19 @@ fun DetailScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        IconButton(onClick = { shareLauncher.launch(Intent.createChooser(shareIntent, "Share via")) }) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share")
+                        IconButton(onClick = {
+                            val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.share))
+                            // Grant temporary read permission to the content URI for the chosen app
+                            chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            shareLauncher.launch(chooserIntent)
+                        }) {
+                            Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                         }
                         IconButton(onClick = { cameraLauncher.launch(null) }) {
-                            Icon(Icons.Filled.CameraAlt, contentDescription = "Take photo")
+                            Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.take_photo))
                         }
                         IconButton(onClick = { galleryLauncher.launch("image/*") }) {
-                            Icon(Icons.Filled.PhotoLibrary, contentDescription = "Pick from gallery")
+                            Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(R.string.pick_gallery))
                         }
                     }
                 }
@@ -269,7 +281,7 @@ fun DetailScreen(
                             note = it
                             prefs.edit().putString("${fullCode}_note", it).apply()
                         },
-                        label = { Text("Extra note") },
+                        label = { Text(stringResource(R.string.extra_note)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
@@ -305,7 +317,7 @@ fun DetailScreen(
                                         .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Type:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.type), style = MaterialTheme.typography.bodyLarge)
                                     Text(it.typeCode, style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
@@ -321,7 +333,7 @@ fun DetailScreen(
                                         .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Supplier:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.supplier), style = MaterialTheme.typography.bodyLarge)
                                     Text(it.supplierCode, style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
@@ -337,7 +349,7 @@ fun DetailScreen(
                                         .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Serial:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.serial), style = MaterialTheme.typography.bodyLarge)
                                     Text(it.serialNumber, style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
@@ -353,7 +365,7 @@ fun DetailScreen(
                                         .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Batch:", style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.batch), style = MaterialTheme.typography.bodyLarge)
                                     Text(it.batchNumber, style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
@@ -370,7 +382,7 @@ fun DetailScreen(
                                     .padding(12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Scanned at:", style = MaterialTheme.typography.bodyLarge)
+                                Text(stringResource(R.string.scanned_at), style = MaterialTheme.typography.bodyLarge)
                                 Text(formattedDate, style = MaterialTheme.typography.bodyLarge)
                             }
                         }
