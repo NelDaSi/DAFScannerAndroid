@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -244,17 +243,10 @@ fun MainScreen(navController: NavController) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (selectablePart.isSelected) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF1976D2)
-                                )
-                            }
                             Icon(
                                 Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.scanned_item),
-                                modifier = Modifier.size(50.dp)
+                                modifier = Modifier.size(80.dp)
                             )
                             Column {
                                 Text(
