@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -65,6 +66,11 @@ import com.google.gson.Gson
 import java.util.Date
 
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.Image
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 
 data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
 
@@ -90,7 +96,13 @@ fun MainScreen(navController: NavController) {
         val json = sharedPreferences.getString("items", null)
         if (json != null) {
             val loaded = Gson().fromJson(json, Array<ScannedPart>::class.java)
-            scannedParts.addAll(loaded.map { SelectablePart(it) })
+            scannedParts.addAll(
+                loaded.map {
+                    val uri = sharedPreferences.getString("${it.fullCode}_imageUri", null)
+                    val note = sharedPreferences.getString("${it.fullCode}_note", null)
+                    SelectablePart(it.copy(imageUri = uri, note = note))
+                }
+            )
         }
     }
 
@@ -241,11 +253,22 @@ fun MainScreen(navController: NavController) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.scanned_item),
-                                modifier = Modifier.size(80.dp)
-                            )
+                            if (part.imageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(Uri.parse(part.imageUri)),
+                                    contentDescription = stringResource(R.string.scanned_item),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(75.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = stringResource(R.string.scanned_item),
+                                    modifier = Modifier.size(80.dp)
+                                )
+                            }
                             Column {
                                 Text(
                                     text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(R.string.unknown)}"
@@ -257,6 +280,12 @@ fun MainScreen(navController: NavController) {
                                 Text(
                                     text = "${stringResource(R.string.date_label)}: $formattedDate"
                                 )
+                                if (!part.note.isNullOrBlank()) {
+                                    Text(
+                                        text = "${stringResource(R.string.note_label)}: ${part.note}",
+                                        fontStyle = FontStyle.Italic
+                                    )
+                                }
                             }
                         }
                     }
@@ -386,4 +415,9 @@ private fun saveParts(context: Context, parts: List<ScannedPart>) {
 }
 
 // --- Data classes and helpers for scanned parts ---
-data class ScannedPart(val fullCode: String, val timestamp: Long)
+data class ScannedPart(
+    val fullCode: String,
+    val timestamp: Long,
+    val imageUri: String? = null,
+    val note: String? = null
+)
