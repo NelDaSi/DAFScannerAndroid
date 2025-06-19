@@ -93,4 +93,5 @@
     <string name="type_label">Type</string>
     <string name="serial_number_label">Serienummer</string>
     <string name="date_label">Datum</string>
+    <string name="note_label">Notitie</string>
 </resources>

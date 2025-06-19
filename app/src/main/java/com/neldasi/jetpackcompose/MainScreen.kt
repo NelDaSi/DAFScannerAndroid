@@ -66,7 +66,6 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.google.gson.Gson
 import java.util.Date
-
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import coil.compose.rememberAsyncImagePainter
@@ -226,7 +225,6 @@ fun MainScreen(navController: NavController) {
                             java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
                                 .format(Date(part.timestamp))
                         }
-                        val imageSize = if (!part.note.isNullOrBlank()) 80.dp else 60.dp
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -270,14 +268,14 @@ fun MainScreen(navController: NavController) {
                                         contentDescription = stringResource(R.string.scanned_item),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
-                                            .size(imageSize)
+                                            .size(100.dp)
                                             .clip(CircleShape)
                                     )
                                 } else {
                                     Icon(
                                         Icons.Default.Settings,
                                         contentDescription = stringResource(R.string.scanned_item),
-                                        modifier = Modifier.size(imageSize)
+                                        modifier = Modifier.size(100.dp)
                                     )
                                 }
                                 Column {
@@ -291,12 +289,10 @@ fun MainScreen(navController: NavController) {
                                     Text(
                                         text = "${stringResource(R.string.date_label)}: $formattedDate"
                                     )
-                                    if (!part.note.isNullOrBlank()) {
-                                        Text(
-                                            text = "${stringResource(R.string.note_label)}: ${part.note}",
-                                            fontStyle = FontStyle.Italic
-                                        )
-                                    }
+                                    Text(
+                                        text = "${stringResource(R.string.note_label)}: ${part.note}",
+                                        fontStyle = FontStyle.Italic
+                                    )
                                 }
                             }
                         }
