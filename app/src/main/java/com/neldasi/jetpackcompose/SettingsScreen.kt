@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.core.content.edit
+import androidx.compose.ui.res.stringResource
 
 
 // SettingsScreen composable
@@ -62,10 +63,10 @@ fun SettingsScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_screen_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -97,9 +98,9 @@ fun SettingsScreen(navController: NavController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Scanner Settings", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.scanner_settings_title), style = MaterialTheme.typography.headlineSmall)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Vibrate on scan")
+                Text(stringResource(R.string.vibrate_on_scan_label))
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
                     checked = vibrateEnabled,
@@ -111,7 +112,7 @@ fun SettingsScreen(navController: NavController) {
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Screen always on")
+                Text(stringResource(R.string.screen_always_on_label))
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
                     checked = screenAlwaysOn,
@@ -139,11 +140,11 @@ fun SettingsScreen(navController: NavController) {
                     .clickable { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Allowed Types", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.allowed_types_title), style = MaterialTheme.typography.headlineSmall)
                 Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                    contentDescription = if (expanded) "Collapse" else "Expand"
+                    contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 FloatingActionButton(
@@ -152,7 +153,7 @@ fun SettingsScreen(navController: NavController) {
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Type")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_type))
                 }
             }
 
@@ -172,7 +173,7 @@ fun SettingsScreen(navController: NavController) {
                             if (type !in defaultAllowedTypes) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
+                                    contentDescription = stringResource(R.string.delete),
                                     tint = Color.Red,
                                     modifier = Modifier
                                         .clickable {
@@ -190,12 +191,12 @@ fun SettingsScreen(navController: NavController) {
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Add Allowed Type") },
+                title = { Text(stringResource(R.string.add_allowed_type_title)) },
                 text = {
                     OutlinedTextField(
                         value = newType,
                         onValueChange = { newType = it },
-                        label = { Text("Type Code") }
+                        label = { Text(stringResource(R.string.type_code_label)) }
                     )
                 },
                 confirmButton = {
@@ -206,15 +207,15 @@ fun SettingsScreen(navController: NavController) {
                             newType = ""
                             showAddDialog = false
                         } else {
-                            Toast.makeText(context, "Type cannot be empty", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.type_not_empty_message), Toast.LENGTH_SHORT).show()
                         }
                     }) {
-                        Text("Add")
+                        Text(stringResource(R.string.add))
                     }
                 },
                 dismissButton = {
                     Button(onClick = { showAddDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )

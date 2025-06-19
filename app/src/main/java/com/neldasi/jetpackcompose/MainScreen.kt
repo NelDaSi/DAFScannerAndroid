@@ -257,9 +257,16 @@ fun MainScreen(navController: NavController) {
                                 modifier = Modifier.size(50.dp)
                             )
                             Column {
-                                Text("Type: ${parsed?.typeCode ?: stringResource(R.string.unknown)}")
-                                Text("Serienummer: ${parsed?.serialNumber ?: stringResource(R.string.unknown)}", fontWeight = FontWeight.Bold)
-                                Text("Datum: $formattedDate")
+                                Text(
+                                    text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(R.string.unknown)}"
+                                )
+                                Text(
+                                    text = "${stringResource(R.string.serial_number_label)}: ${parsed?.serialNumber ?: stringResource(R.string.unknown)}",
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "${stringResource(R.string.date_label)}: $formattedDate"
+                                )
                             }
                         }
                     }
