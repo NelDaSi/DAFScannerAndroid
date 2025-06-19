@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,8 +71,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.core.net.toUri
 
 data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
 
@@ -222,69 +226,77 @@ fun MainScreen(navController: NavController) {
                             java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
                                 .format(Date(part.timestamp))
                         }
-                        Row(
+                        val imageSize = if (!part.note.isNullOrBlank()) 80.dp else 60.dp
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = {
-                                        if (selectionMode) {
-                                            selectablePart.isSelected = !selectablePart.isSelected
-                                        } else {
-                                            navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
+                                .padding(vertical = 6.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (selectionMode) {
+                                                selectablePart.isSelected = !selectablePart.isSelected
+                                            } else {
+                                                navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
+                                            }
+                                        },
+                                        onLongClick = {
+                                            selectionMode = true
+                                            selectablePart.isSelected = true
+                                        }
+                                    )
+                                    .padding(12.dp)
+                                    .drawBehind {
+                                        if (selectablePart.isSelected) {
+                                            drawRect(
+                                                color = Color(0xFFBBDEFB)
+                                            )
+                                            drawRect(
+                                                color = Color(0xFF1976D2),
+                                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
+                                            )
                                         }
                                     },
-                                    onLongClick = {
-                                        selectionMode = true
-                                        selectablePart.isSelected = true
-                                    }
-                                )
-                                .padding(vertical = 8.dp)
-                                .drawBehind {
-                                    if (selectablePart.isSelected) {
-                                        drawRect(
-                                            color = Color(0xFFBBDEFB)
-                                        )
-                                        drawRect(
-                                            color = Color(0xFF1976D2),
-                                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
-                                        )
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (part.imageUri != null) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(Uri.parse(part.imageUri)),
-                                    contentDescription = stringResource(R.string.scanned_item),
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(75.dp)
-                                        .clip(CircleShape)
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = stringResource(R.string.scanned_item),
-                                    modifier = Modifier.size(80.dp)
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(R.string.unknown)}"
-                                )
-                                Text(
-                                    text = "${stringResource(R.string.serial_number_label)}: ${parsed?.serialNumber ?: stringResource(R.string.unknown)}",
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "${stringResource(R.string.date_label)}: $formattedDate"
-                                )
-                                if (!part.note.isNullOrBlank()) {
-                                    Text(
-                                        text = "${stringResource(R.string.note_label)}: ${part.note}",
-                                        fontStyle = FontStyle.Italic
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (part.imageUri != null) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(part.imageUri.toUri()),
+                                        contentDescription = stringResource(R.string.scanned_item),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(imageSize)
+                                            .clip(CircleShape)
                                     )
+                                } else {
+                                    Icon(
+                                        Icons.Default.Settings,
+                                        contentDescription = stringResource(R.string.scanned_item),
+                                        modifier = Modifier.size(imageSize)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(R.string.unknown)}"
+                                    )
+                                    Text(
+                                        text = "${stringResource(R.string.serial_number_label)}: ${parsed?.serialNumber ?: stringResource(R.string.unknown)}",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "${stringResource(R.string.date_label)}: $formattedDate"
+                                    )
+                                    if (!part.note.isNullOrBlank()) {
+                                        Text(
+                                            text = "${stringResource(R.string.note_label)}: ${part.note}",
+                                            fontStyle = FontStyle.Italic
+                                        )
+                                    }
                                 }
                             }
                         }
