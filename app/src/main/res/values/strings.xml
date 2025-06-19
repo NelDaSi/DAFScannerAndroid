@@ -72,4 +72,22 @@
     <string name="permission_required_title">Permission Required</string>
     <string name="permission_required_text">Camera permission has been permanently denied. Please enable it in settings.</string>
     <string name="open_settings">Open Settings</string>
+
+    <!-- Settings Screen Strings -->
+    <string name="settings_screen_title">Settings</string>
+    <string name="scanner_settings_title">Scanner Settings</string>
+    <string name="vibrate_on_scan_label">Vibrate on scan</string>
+    <string name="screen_always_on_label">Screen always on</string>
+    <string name="allowed_types_title">Allowed Types</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
+    <string name="add_type">Add Type</string>
+    <string name="add_allowed_type_title">Add Allowed Type</string>
+    <string name="type_code_label">Type code</string>
+    <string name="type_not_empty_message">Type cannot be empty</string>
+    <string name="add">Add</string>
+
+
+    <string name="unsupported_code_title">Unsupported code</string>
+    <string name="unsupported_code_text">The scanned code is not supported and will not be saved.</string>
 </resources>
