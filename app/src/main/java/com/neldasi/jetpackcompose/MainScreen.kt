@@ -268,14 +268,14 @@ fun MainScreen(navController: NavController) {
                                         contentDescription = stringResource(R.string.scanned_item),
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
-                                            .size(100.dp)
+                                            .size(80.dp)
                                             .clip(CircleShape)
                                     )
                                 } else {
                                     Icon(
                                         Icons.Default.Settings,
                                         contentDescription = stringResource(R.string.scanned_item),
-                                        modifier = Modifier.size(100.dp)
+                                        modifier = Modifier.size(80.dp)
                                     )
                                 }
                                 Column {
