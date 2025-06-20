@@ -91,7 +91,7 @@
     <string name="unsupported_code_title">Unsupported code</string>
     <string name="unsupported_code_text">The scanned code is not supported and will not be saved.</string>
     <string name="type_label">Type</string>
-    <string name="serial_number_label">Serial number</string>
+    <string name="serial_number_label">Serial</string>
     <string name="date_label">Date</string>
     <string name="note_label">Note</string>
 </resources>

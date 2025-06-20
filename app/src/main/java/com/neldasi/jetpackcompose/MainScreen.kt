@@ -289,10 +289,12 @@ fun MainScreen(navController: NavController) {
                                     Text(
                                         text = "${stringResource(R.string.date_label)}: $formattedDate"
                                     )
-                                    Text(
-                                        text = "${stringResource(R.string.note_label)}: ${part.note}",
-                                        fontStyle = FontStyle.Italic
-                                    )
+                                    if (!part.note.isNullOrEmpty()) {
+                                        Text(
+                                            text = "${stringResource(R.string.note_label)}: ${part.note}",
+                                            fontStyle = FontStyle.Italic
+                                        )
+                                    }
                                 }
                             }
                         }

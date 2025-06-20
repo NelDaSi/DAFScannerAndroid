@@ -91,7 +91,7 @@
     <string name="unsupported_code_title">Onondersteunde code</string>
     <string name="unsupported_code_text">De gescande code wordt niet ondersteund en wordt niet opgeslagen.</string>
     <string name="type_label">Type</string>
-    <string name="serial_number_label">Serienummer</string>
+    <string name="serial_number_label">Serie</string>
     <string name="date_label">Datum</string>
     <string name="note_label">Notitie</string>
 </resources>
