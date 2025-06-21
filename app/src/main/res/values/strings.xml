@@ -19,7 +19,7 @@
 <!--    <string name="delete">Delete</string>-->
 <!--    <string name="cancel">Cancel</string>-->
 
-    <string name="tap_to_add_image">Tap camera or gallery below</string>
+    <string name="tap_to_add_image">Tap here to add an image</string>
     <string name="share">Share</string>
     <string name="take_photo">Take Photo</string>
     <string name="pick_gallery">Pick from gallery</string>
@@ -94,4 +94,5 @@
     <string name="serial_number_label">Serial</string>
     <string name="date_label">Date</string>
     <string name="note_label">Note</string>
+    <string name="select_image_source">Select a image</string>
 </resources>

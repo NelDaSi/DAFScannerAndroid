@@ -19,7 +19,7 @@
 <!--    <string name="delete">Delete</string>-->
 <!--    <string name="cancel">Cancel</string>-->
 
-    <string name="tap_to_add_image">Tik hieronder op camera of galerij</string>
+    <string name="tap_to_add_image">Tik hier om a foto toe te voegen</string>
     <string name="share">Delen</string>
     <string name="take_photo">Foto maken</string>
     <string name="pick_gallery">Kies uit galerij</string>

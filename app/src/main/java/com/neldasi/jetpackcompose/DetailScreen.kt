@@ -11,7 +11,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +50,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -62,8 +62,6 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-import androidx.compose.ui.res.stringResource
 
 
 @SuppressLint("UseKtx")
@@ -91,6 +89,7 @@ fun DetailScreen(
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
 
     fun deleteImageForCode() {
         val file = File(context.filesDir, "img_$fullCode.jpg")
@@ -148,6 +147,14 @@ fun DetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.share))
+                        // Grant temporary read permission to the content URI for the chosen app
+                        chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        shareLauncher.launch(chooserIntent)
+                    }) {
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
+                    }
                     if (imageUri != null) {
                         if (showDeleteDialog) {
                             AlertDialog(
@@ -212,6 +219,36 @@ fun DetailScreen(
             }
         }
 
+        if (showImageSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showImageSourceDialog = false },
+                title = { Text(stringResource(R.string.select_image_source)) },
+                text = {
+                    Column {
+                        TextButton(onClick = {
+                            cameraLauncher.launch(null)
+                            showImageSourceDialog = false
+                        }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.take_photo), modifier = Modifier.padding(end = 8.dp))
+                                Text(stringResource(R.string.take_photo))
+                            }
+                        }
+                        TextButton(onClick = {
+                            galleryLauncher.launch("image/*")
+                            showImageSourceDialog = false
+                        }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(R.string.pick_gallery), modifier = Modifier.padding(end = 8.dp))
+                                Text(stringResource(R.string.pick_gallery))
+                            }
+                        }
+                    }
+                },
+                confirmButton = {} // No confirm button needed as actions are direct
+            )
+        }
+
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
@@ -226,44 +263,26 @@ fun DetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Image
-                    Box(
+                    Card(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f)
-                            .background(Color.DarkGray)
-                            .clipToBounds()
-                            .clickable { /* no-op or open image */ },
-                        contentAlignment = Alignment.Center
+                            .clickable { showImageSourceDialog = true },
+                        colors = CardDefaults.cardColors(containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        when {
-                            imageUri != null -> Image(
-                                painter = rememberAsyncImagePainter(imageUri),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                            else -> Text(stringResource(R.string.tap_to_add_image), color = Color.LightGray)
-                        }
-                    }
-
-                    // Action buttons
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        IconButton(onClick = {
-                            val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.share))
-                            // Grant temporary read permission to the content URI for the chosen app
-                            chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            shareLauncher.launch(chooserIntent)
-                        }) {
-                            Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
-                        }
-                        IconButton(onClick = { cameraLauncher.launch(null) }) {
-                            Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.take_photo))
-                        }
-                        IconButton(onClick = { galleryLauncher.launch("image/*") }) {
-                            Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(R.string.pick_gallery))
+                        Box(
+                            modifier = Modifier.fillMaxSize().clipToBounds(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when {
+                                imageUri != null -> Image(
+                                    painter = rememberAsyncImagePainter(imageUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                else -> Text(stringResource(R.string.tap_to_add_image), color = Color.DarkGray)
+                            }
                         }
                     }
                 }
@@ -285,6 +304,7 @@ fun DetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
+
                     )
                 }
             }
