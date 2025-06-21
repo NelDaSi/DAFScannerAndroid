@@ -88,7 +88,6 @@ fun DetailScreen(
         )
     }
 
-    var showDeleteDialog by remember { mutableStateOf(false) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
 
     fun deleteImageForCode() {
@@ -155,32 +154,6 @@ fun DetailScreen(
                     }) {
                         Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                     }
-                    if (imageUri != null) {
-                        if (showDeleteDialog) {
-                            AlertDialog(
-                                onDismissRequest = { showDeleteDialog = false },
-                                confirmButton = {
-                                    TextButton(onClick = {
-                                        deleteImageForCode()
-                                        showDeleteDialog = false
-                                    }) {
-                                        Text(stringResource(R.string.delete))
-                                    }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { showDeleteDialog = false }) {
-                                        Text(stringResource(R.string.cancel))
-                                    }
-                                },
-                                title = { Text(stringResource(R.string.remove_image_title)) },
-                                text = { Text(stringResource(R.string.remove_image_confirm)) }
-                            )
-                        }
-
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.remove_image))
-                        }
-                    }
                 }
             )
         }
@@ -225,22 +198,34 @@ fun DetailScreen(
                 title = { Text(stringResource(R.string.select_image_source)) },
                 text = {
                     Column {
-                        TextButton(onClick = {
-                            cameraLauncher.launch(null)
-                            showImageSourceDialog = false
-                        }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.take_photo), modifier = Modifier.padding(end = 8.dp))
-                                Text(stringResource(R.string.take_photo))
+                        if (imageUri != null) {
+                            TextButton(onClick = {
+                                deleteImageForCode()
+                                showImageSourceDialog = false
+                            }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.remove_image), modifier = Modifier.padding(end = 8.dp))
+                                    Text(stringResource(R.string.remove_image))
+                                }
                             }
-                        }
-                        TextButton(onClick = {
-                            galleryLauncher.launch("image/*")
-                            showImageSourceDialog = false
-                        }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(R.string.pick_gallery), modifier = Modifier.padding(end = 8.dp))
-                                Text(stringResource(R.string.pick_gallery))
+                        } else {
+                            TextButton(onClick = {
+                                cameraLauncher.launch(null)
+                                showImageSourceDialog = false
+                            }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.take_photo), modifier = Modifier.padding(end = 8.dp))
+                                    Text(stringResource(R.string.take_photo))
+                                }
+                            }
+                            TextButton(onClick = {
+                                galleryLauncher.launch("image/*")
+                                showImageSourceDialog = false
+                            }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(R.string.pick_gallery), modifier = Modifier.padding(end = 8.dp))
+                                    Text(stringResource(R.string.pick_gallery))
+                                }
                             }
                         }
                     }
@@ -281,7 +266,20 @@ fun DetailScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
-                                else -> Text(stringResource(R.string.tap_to_add_image), color = Color.DarkGray)
+                                else -> Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CameraAlt,
+                                        contentDescription = stringResource(R.string.tap_to_add_image),
+                                        tint = Color.Gray,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.tap_to_add_image),
+                                        color = Color.DarkGray
+                                    )
+                                }
                             }
                         }
                     }

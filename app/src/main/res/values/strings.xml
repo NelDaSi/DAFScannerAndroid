@@ -95,4 +95,5 @@
     <string name="date_label">Date</string>
     <string name="note_label">Note</string>
     <string name="select_image_source">Select a image</string>
+    <string name="manage_image">Manage Image</string>
 </resources>
