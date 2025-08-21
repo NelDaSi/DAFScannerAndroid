@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.neldasi.jetpackcompose"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.neldasi.jetpackcompose"

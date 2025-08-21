@@ -5,11 +5,9 @@ package com.neldasi.jetpackcompose
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap.CompressFormat
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -43,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -91,6 +90,7 @@ fun DetailScreen(
                 ?.toUri()
         )
     }
+    var imageFileUri by remember { mutableStateOf<Uri?>(null) }
 
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var showImagePreview by remember { mutableStateOf(false) }
@@ -166,17 +166,11 @@ fun DetailScreen(
 
         // Launchers
         val cameraLauncher = rememberLauncherForActivityResult(
-            TakePicturePreview()
-        ) { bitmap ->
-            bitmap?.let {
-                // Save bitmap to internal storage
-                val file = File(context.filesDir, "img_$fullCode.jpg")
-                FileOutputStream(file).use { out ->
-                    it.compress(CompressFormat.JPEG, 95, out)
-                }
-                val uri = Uri.fromFile(file)
-                prefs.edit().putString("${fullCode}_imageUri", uri.toString()).apply()
-                imageUri = uri
+            ActivityResultContracts.TakePicture()
+        ) { success ->
+            if (success && imageFileUri != null) {
+                prefs.edit().putString("${fullCode}_imageUri", imageFileUri.toString()).apply()
+                imageUri = imageFileUri
             }
         }
 
@@ -215,7 +209,10 @@ fun DetailScreen(
                             }
                         } else {
                             TextButton(onClick = {
-                                cameraLauncher.launch(null)
+                                val file = File(context.filesDir, "img_$fullCode.jpg")
+                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                imageFileUri = uri
+                                cameraLauncher.launch(uri)
                                 showImageSourceDialog = false
                             }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -391,7 +388,7 @@ fun DetailScreenPreview() {
 
 @Composable
 fun ZoomableImage(uri: Uri) {
-    var scale by remember { mutableStateOf(1f) }
+    var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     val state = rememberTransformableState { zoomChange, offsetChange, _ ->
         scale *= zoomChange
