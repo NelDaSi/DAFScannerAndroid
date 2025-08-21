@@ -11,7 +11,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +49,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -89,6 +93,7 @@ fun DetailScreen(
     }
 
     var showImageSourceDialog by remember { mutableStateOf(false) }
+    var showImagePreview by remember { mutableStateOf(false) }
 
     fun deleteImageForCode() {
         val file = File(context.filesDir, "img_$fullCode.jpg")
@@ -252,7 +257,10 @@ fun DetailScreen(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f)
-                            .clickable { showImageSourceDialog = true },
+                            .combinedClickable(
+                                onClick = { showImageSourceDialog = true },
+                                onLongClick = { if (imageUri != null) showImagePreview = true }
+                            ),
                         colors = CardDefaults.cardColors(containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Box(
@@ -334,6 +342,15 @@ fun DetailScreen(
             }
         }
     }
+    if (showImagePreview && imageUri != null) {
+        AlertDialog(
+            onDismissRequest = { showImagePreview = false },
+            confirmButton = {},
+            text = {
+                ZoomableImage(imageUri!!)
+            }
+        )
+    }
 }
 @Composable
 fun InfoRow(label: String, value: String) {
@@ -370,4 +387,34 @@ fun DetailScreenPreview() {
         fullCode = sampleFullCode,
         timestamp = sampleTimestamp
     )
+}
+
+@Composable
+fun ZoomableImage(uri: Uri) {
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    val state = rememberTransformableState { zoomChange, offsetChange, _ ->
+        scale *= zoomChange
+        offset += offsetChange
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .graphicsLayer(
+                scaleX = scale.coerceIn(1f, 5f),
+                scaleY = scale.coerceIn(1f, 5f),
+                translationX = offset.x,
+                translationY = offset.y
+            )
+            .transformable(state = state)
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(uri),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
+    }
 }

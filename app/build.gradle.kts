@@ -44,9 +44,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
     implementation(libs.gson)
-    implementation (libs.androidx.navigation.compose) // Make sure this is in your dependencies
+    implementation(libs.androidx.navigation.compose) // Make sure this is in your dependencies
     implementation(libs.guava)
-    implementation (libs.barcode.scanning)
+    implementation(libs.barcode.scanning)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
