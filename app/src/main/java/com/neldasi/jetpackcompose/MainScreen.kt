@@ -4,6 +4,7 @@ package com.neldasi.jetpackcompose
 
 import android.Manifest
 import android.content.Context
+import android.widget.Toast
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -113,10 +114,14 @@ fun MainScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
             val scannedValue = backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)
-            if (!scannedValue.isNullOrBlank() && scannedParts.none { it.part.fullCode == scannedValue }) {
-                val newPart = ScannedPart(scannedValue, System.currentTimeMillis())
-                scannedParts.add(SelectablePart(newPart))
-                saveParts(context, scannedParts.map { it.part })
+            if (!scannedValue.isNullOrBlank()) {
+                if (scannedParts.none { it.part.fullCode == scannedValue }) {
+                    val newPart = ScannedPart(scannedValue, System.currentTimeMillis())
+                    scannedParts.add(SelectablePart(newPart))
+                    saveParts(context, scannedParts.map { it.part })
+                } else {
+                    Toast.makeText(context, context.getString(R.string.code_already_added), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

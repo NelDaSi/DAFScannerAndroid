@@ -94,4 +94,7 @@
     <string name="serial_number_label">Serie</string>
     <string name="date_label">Datum</string>
     <string name="note_label">Notitie</string>
+    <string name="select_image_source">Selecteer een afbeelding</string>
+    <string name="manage_image">Afbeelding beheeren</string>
+    <string name="code_already_added">Deze code is al toegevoegd</string>
 </resources>
