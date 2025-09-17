@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose
+package com.neldasi.jetpackcompose.Screens
 
 import android.Manifest
 import android.content.Context
@@ -73,8 +73,17 @@ import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
+import androidx.navigation.compose.rememberNavController
+import com.neldasi.jetpackcompose.AppDestinations
+import com.neldasi.jetpackcompose.NavKeys
+import com.neldasi.jetpackcompose.R
+import com.neldasi.jetpackcompose.parseScannedCode
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
 
@@ -233,7 +242,7 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                         val part = selectablePart.part
                         val parsed = parseScannedCode(part.fullCode)
                         val formattedDate = remember(part.timestamp) {
-                            java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
+                            SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
                                 .format(Date(part.timestamp))
                         }
                         Card(
@@ -266,7 +275,7 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                                             )
                                             drawRect(
                                                 color = Color(0xFF1976D2),
-                                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f)
+                                                style = Stroke(width = 4f)
                                             )
                                         }
                                     },
@@ -291,10 +300,12 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                                 }
                                 Column {
                                     Text(
-                                        text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(R.string.unknown)}"
+                                        text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(
+                                            R.string.unknown)}"
                                     )
                                     Text(
-                                        text = "${stringResource(R.string.serial_number_label)}: ${parsed?.serialNumber ?: stringResource(R.string.unknown)}",
+                                        text = "${stringResource(R.string.serial_number_label)}: ${parsed?.serialNumber ?: stringResource(
+                                            R.string.unknown)}",
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
@@ -443,10 +454,10 @@ data class ScannedPart(
     val note: String? = null
 )
 
-@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
-    val mockNavController = androidx.navigation.compose.rememberNavController()
+    val mockNavController = rememberNavController()
     val mockItems = remember {
         mutableStateListOf(
             SelectablePart(ScannedPart("TYPEA12345678", System.currentTimeMillis() - 100000, note = "This is a note for item 1.")),

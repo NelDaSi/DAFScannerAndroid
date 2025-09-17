@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose
+package com.neldasi.jetpackcompose.Screens
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -60,6 +61,8 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.neldasi.jetpackcompose.R
+import com.neldasi.jetpackcompose.parseScannedCode
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -147,7 +150,8 @@ fun DetailScreen(
                 title = { Text(stringResource(R.string.part_details)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
+                            R.string.back))
                     }
                 },
                 actions = {
@@ -216,7 +220,8 @@ fun DetailScreen(
                                 showImageSourceDialog = false
                             }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.take_photo), modifier = Modifier.padding(end = 8.dp))
+                                    Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(
+                                        R.string.take_photo), modifier = Modifier.padding(end = 8.dp))
                                     Text(stringResource(R.string.take_photo))
                                 }
                             }
@@ -225,7 +230,8 @@ fun DetailScreen(
                                 showImageSourceDialog = false
                             }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(R.string.pick_gallery), modifier = Modifier.padding(end = 8.dp))
+                                    Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(
+                                        R.string.pick_gallery), modifier = Modifier.padding(end = 8.dp))
                                     Text(stringResource(R.string.pick_gallery))
                                 }
                             }
@@ -236,7 +242,7 @@ fun DetailScreen(
             )
         }
 
-        androidx.compose.foundation.lazy.LazyColumn(
+        LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp)

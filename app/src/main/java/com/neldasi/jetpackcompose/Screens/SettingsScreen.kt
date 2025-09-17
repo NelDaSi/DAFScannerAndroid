@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose
+package com.neldasi.jetpackcompose.Screens
 
 import android.app.Activity
 import android.content.Context
@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.core.content.edit
 import androidx.compose.ui.res.stringResource
+import com.neldasi.jetpackcompose.R
+import com.neldasi.jetpackcompose.SettingsRepository
 
 
 // SettingsScreen composable
@@ -67,7 +69,8 @@ fun SettingsScreen(navController: NavController) {
                 title = { Text(stringResource(R.string.settings_screen_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
+                            R.string.back))
                     }
                 }
             )
@@ -145,7 +148,8 @@ fun SettingsScreen(navController: NavController) {
                 Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                    contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand)
+                    contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(
+                        R.string.expand)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 FloatingActionButton(
