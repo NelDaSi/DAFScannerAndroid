@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose
+package com.neldasi.jetpackcompose.extras
 import android.content.Context
 import android.os.VibrationEffect
 import android.os.Vibrator

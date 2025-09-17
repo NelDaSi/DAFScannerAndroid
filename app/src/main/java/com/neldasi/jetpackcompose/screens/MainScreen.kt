@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose.Screens
+package com.neldasi.jetpackcompose.screens
 
 import android.Manifest
 import android.content.Context
@@ -78,10 +78,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
-import com.neldasi.jetpackcompose.AppDestinations
-import com.neldasi.jetpackcompose.NavKeys
+import com.neldasi.jetpackcompose.navigation.AppDestinations
+import com.neldasi.jetpackcompose.navigation.NavKeys
 import com.neldasi.jetpackcompose.R
-import com.neldasi.jetpackcompose.parseScannedCode
+import com.neldasi.jetpackcompose.extras.parseScannedCode
 import java.text.SimpleDateFormat
 import java.util.Locale
 

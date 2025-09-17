@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose
+package com.neldasi.jetpackcompose.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
@@ -6,10 +6,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.neldasi.jetpackcompose.Screens.CameraScanScreen
-import com.neldasi.jetpackcompose.Screens.DetailScreen
-import com.neldasi.jetpackcompose.Screens.MainScreen
-import com.neldasi.jetpackcompose.Screens.SettingsScreen
+import com.neldasi.jetpackcompose.screens.CameraScanScreen
+import com.neldasi.jetpackcompose.screens.DetailScreen
+import com.neldasi.jetpackcompose.screens.MainScreen
+import com.neldasi.jetpackcompose.screens.SettingsScreen
 
 @Composable
 fun AppNavigation() {

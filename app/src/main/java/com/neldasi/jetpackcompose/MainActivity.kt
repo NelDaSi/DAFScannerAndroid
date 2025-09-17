@@ -5,6 +5,8 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.neldasi.jetpackcompose.extras.SettingsRepository
+import com.neldasi.jetpackcompose.navigation.AppNavigation
 import com.neldasi.jetpackcompose.ui.theme.JetpackComposeTheme
 
 class MainActivity : ComponentActivity() {

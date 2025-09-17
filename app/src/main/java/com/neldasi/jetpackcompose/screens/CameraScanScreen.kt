@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.Screens
+package com.neldasi.jetpackcompose.screens
 
 import android.content.Context
 import android.util.Log
@@ -39,9 +39,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.neldasi.jetpackcompose.NavKeys
-import com.neldasi.jetpackcompose.SettingsRepository
-import com.neldasi.jetpackcompose.processImageProxy
+import com.neldasi.jetpackcompose.navigation.NavKeys
+import com.neldasi.jetpackcompose.extras.SettingsRepository
+import com.neldasi.jetpackcompose.extras.processImageProxy
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 

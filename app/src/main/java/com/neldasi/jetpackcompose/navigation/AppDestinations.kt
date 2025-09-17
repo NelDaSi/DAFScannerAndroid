@@ -1,5 +1,4 @@
-package com.neldasi.jetpackcompose
-
+package com.neldasi.jetpackcompose.navigation
 
 object AppDestinations {
     const val MAIN_SCREEN = "main"

@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose.Screens
+package com.neldasi.jetpackcompose.screens
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -62,7 +62,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.neldasi.jetpackcompose.R
-import com.neldasi.jetpackcompose.parseScannedCode
+import com.neldasi.jetpackcompose.extras.parseScannedCode
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat

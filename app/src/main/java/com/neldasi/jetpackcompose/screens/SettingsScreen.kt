@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose.Screens
+package com.neldasi.jetpackcompose.screens
 
 import android.app.Activity
 import android.content.Context
@@ -57,7 +57,7 @@ import androidx.navigation.NavController
 import androidx.core.content.edit
 import androidx.compose.ui.res.stringResource
 import com.neldasi.jetpackcompose.R
-import com.neldasi.jetpackcompose.SettingsRepository
+import com.neldasi.jetpackcompose.extras.SettingsRepository
 
 
 // SettingsScreen composable
