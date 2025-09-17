@@ -79,13 +79,17 @@ import androidx.core.net.toUri
 data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
 
 @Composable
-fun MainScreen(navController: NavController) {
+fun MainScreen(navController: NavController, initialItems: List<SelectablePart>? = null) {
     val context = LocalContext.current
     val sharedPreferences = remember {
         context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     }
 
-    val scannedParts = remember { mutableStateListOf<SelectablePart>() }
+    val scannedParts = remember {
+        mutableStateListOf<SelectablePart>().also {
+            if (initialItems != null) it.addAll(initialItems)
+        }
+    }
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
@@ -96,17 +100,19 @@ fun MainScreen(navController: NavController) {
     var selectionMode by remember { mutableStateOf(false) }
 
     // Load data once on first composition
-    LaunchedEffect(Unit) {
-        val json = sharedPreferences.getString("items", null)
-        if (json != null) {
-            val loaded = Gson().fromJson(json, Array<ScannedPart>::class.java)
-            scannedParts.addAll(
-                loaded.map {
-                    val uri = sharedPreferences.getString("${it.fullCode}_imageUri", null)
-                    val note = sharedPreferences.getString("${it.fullCode}_note", null)
-                    SelectablePart(it.copy(imageUri = uri, note = note))
-                }
-            )
+    if (initialItems == null) {
+        LaunchedEffect(Unit) {
+            val json = sharedPreferences.getString("items", null)
+            if (json != null) {
+                val loaded = Gson().fromJson(json, Array<ScannedPart>::class.java)
+                scannedParts.addAll(
+                    loaded.map {
+                        val uri = sharedPreferences.getString("${it.fullCode}_imageUri", null)
+                        val note = sharedPreferences.getString("${it.fullCode}_note", null)
+                        SelectablePart(it.copy(imageUri = uri, note = note))
+                    }
+                )
+            }
         }
     }
 
@@ -436,3 +442,17 @@ data class ScannedPart(
     val imageUri: String? = null,
     val note: String? = null
 )
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun MainScreenPreview() {
+    val mockNavController = androidx.navigation.compose.rememberNavController()
+    val mockItems = remember {
+        mutableStateListOf(
+            SelectablePart(ScannedPart("TYPEA12345678", System.currentTimeMillis() - 100000, note = "This is a note for item 1.")),
+            SelectablePart(ScannedPart("TYPEB87654321", System.currentTimeMillis() - 200000, imageUri = "https://via.placeholder.com/150")),
+            SelectablePart(ScannedPart("TYPEC55555555", System.currentTimeMillis() - 300000, note = "Another note here.", imageUri = "https://via.placeholder.com/150"))
+        )
+    }
+    MainScreen(navController = mockNavController, initialItems = mockItems)
+}

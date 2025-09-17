@@ -208,3 +208,13 @@ private fun buildImageAnalyzer(
             }
         }
 }
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+fun CameraScanScreenPreview() {
+    MaterialTheme {
+        // Since we can't preview the actual camera, we can preview the overlay
+        // with different states.
+        CameraOverlay(isCameraReady = true, errorMessage = null, onBackPressed = {})
+    }
+}

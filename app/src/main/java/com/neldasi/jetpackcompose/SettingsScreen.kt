@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.core.content.edit
@@ -228,4 +229,10 @@ fun SettingsScreen(navController: NavController) {
 fun saveAllowedTypes(context: Context, types: List<String>) {
     val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     prefs.edit { putStringSet("allowedTypes", types.toSet()) }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    SettingsScreen(navController = NavController(LocalContext.current))
 }
