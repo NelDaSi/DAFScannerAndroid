@@ -81,11 +81,13 @@ fun SettingsScreen(navController: NavController) {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         var vibrateEnabled by remember { mutableStateOf(false) }
         var screenAlwaysOn by remember { mutableStateOf(false) }
+        var continuousScanEnabled by remember { mutableStateOf(false) }
 
         // Load preferences once on first composition
         LaunchedEffect(Unit) {
             vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
             screenAlwaysOn = prefs.getBoolean("screenAlwaysOn", false)
+            continuousScanEnabled = prefs.getBoolean("continuousScanEnabled", false)
         }
 
         val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(SettingsRepository.loadAllowedTypes(context)) } }
@@ -111,6 +113,18 @@ fun SettingsScreen(navController: NavController) {
                     onCheckedChange = {
                         vibrateEnabled = it
                         prefs.edit { putBoolean("vibrateEnabled", it) }
+                    }
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Stay in scanner after each scan")
+                Spacer(modifier = Modifier.weight(1f))
+                Switch(
+                    checked = continuousScanEnabled,
+                    onCheckedChange = {
+                        continuousScanEnabled = it
+                        prefs.edit { putBoolean("continuousScanEnabled", it) }
                     }
                 )
             }

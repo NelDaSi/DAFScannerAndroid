@@ -10,6 +10,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +55,10 @@ fun CameraScanScreen(navController: NavController) {
     val vibrateEnabled by remember {
         mutableStateOf(prefs.getBoolean("vibrateEnabled", false))
     }
+    val continuousScanEnabled by remember {
+        mutableStateOf(prefs.getBoolean("continuousScanEnabled", false))
+    }
+    val recentScans = remember { mutableStateListOf<String>() }
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -74,13 +80,28 @@ fun CameraScanScreen(navController: NavController) {
         }
     }
 
-    // Trigger navigation when scanned result is ready
+    // Trigger navigation or stay in scanner based on continuousScanEnabled
     LaunchedEffect(scannedResult) {
         scannedResult?.let { value ->
-            navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.set(NavKeys.SCANNED_RESULT, value)
-            navController.popBackStack()
+            if (continuousScanEnabled) {
+                // Stay in scanner mode and show recent results
+                if (!recentScans.contains(value)) {
+                    recentScans.add(0, value)
+                    if (recentScans.size > 5) recentScans.lastIndex
+                }
+                // Send it back to main list without leaving
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set(NavKeys.SCANNED_RESULT, value)
+                appendPendingScan(context, value)
+                scannedResult = null // reset so next scan can trigger
+            } else {
+                // Default behavior: close scanner
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set(NavKeys.SCANNED_RESULT, value)
+                navController.popBackStack()
+            }
         }
     }
 
@@ -134,6 +155,31 @@ fun CameraScanScreen(navController: NavController) {
             modifier = Modifier.fillMaxSize()
         )
 
+        if (continuousScanEnabled && recentScans.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(12.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Recent scans:",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    for (code in recentScans) {
+                        Text(
+                            text = code,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
         CameraOverlay(
             isCameraReady = isCameraReady,
             errorMessage = cameraError,
@@ -186,6 +232,18 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?, onBackP
             )
         }
     }
+}
+
+private fun appendPendingScan(context: Context, code: String) {
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val existing = prefs.getString("pending_scans", null)
+    val array = try {
+        if (existing.isNullOrBlank()) org.json.JSONArray() else org.json.JSONArray(existing)
+    } catch (_: Exception) {
+        org.json.JSONArray()
+    }
+    array.put(code)
+    prefs.edit().putString("pending_scans", array.toString()).apply()
 }
 
 // Extract image analyzer builder

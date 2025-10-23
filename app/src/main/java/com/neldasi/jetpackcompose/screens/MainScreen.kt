@@ -125,19 +125,51 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
         }
     }
 
-    // Collect scanned result from navigation
+    // Collect scanned results (single or batched) and also consume any pending queue from prefs
     LaunchedEffect(Unit) {
-        navController.currentBackStackEntryFlow.collect { backStackEntry ->
-            val scannedValue = backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)
-            if (!scannedValue.isNullOrBlank()) {
-                if (scannedParts.none { it.part.fullCode == scannedValue }) {
-                    val newPart = ScannedPart(scannedValue, System.currentTimeMillis())
-                    scannedParts.add(SelectablePart(newPart))
-                    saveParts(context, scannedParts.map { it.part })
-                } else {
-                    Toast.makeText(context, context.getString(R.string.code_already_added), Toast.LENGTH_SHORT).show()
-                }
+        // Helper to add a code into the list and persist it
+        fun addCodeIfNew(code: String) {
+            if (code.isBlank()) return
+            if (scannedParts.none { it.part.fullCode == code }) {
+                val newPart = ScannedPart(code, System.currentTimeMillis())
+                scannedParts.add(SelectablePart(newPart))
+                saveParts(context, scannedParts.map { it.part })
+            } else {
+                Toast.makeText(context, context.getString(R.string.code_already_added), Toast.LENGTH_SHORT).show()
             }
+        }
+
+        // 1) When Main becomes current again, consume any pending scans persisted by the scanner
+        fun consumePendingFromPrefs() {
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val json = prefs.getString("pending_scans", null)
+            if (!json.isNullOrBlank()) {
+                try {
+                    val arr = Gson().fromJson(json, Array<String>::class.java)
+                    arr?.forEach { code ->
+                        // Using try/catch to avoid blocking all on one bad entry
+                        try { addCodeIfNew(code) } catch (_: Exception) {}
+                    }
+                } catch (_: Exception) { /* ignore malformed */ }
+                // Clear the queue once consumed
+                prefs.edit { remove("pending_scans") }
+            }
+        }
+
+        // Always consume any pending queue first
+        consumePendingFromPrefs()
+
+        navController.currentBackStackEntryFlow.collect { backStackEntry ->
+            // Single item
+            backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)?.let { code ->
+                addCodeIfNew(code)
+            }
+            // Batch (if the scanner ever sends a list)
+            backStackEntry.savedStateHandle.remove<List<String>>("SCANNED_RESULTS")?.let { list ->
+                list.forEach { code -> addCodeIfNew(code) }
+            }
+            // Also attempt to consume any queued items that might have been appended while we were away
+            consumePendingFromPrefs()
         }
     }
 
