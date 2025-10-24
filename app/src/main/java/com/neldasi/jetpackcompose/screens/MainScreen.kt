@@ -1,17 +1,14 @@
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 package com.neldasi.jetpackcompose.screens
 
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.derivedStateOf
 import android.Manifest
 import android.content.Context
-import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.material3.TextField
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -42,50 +40,51 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.google.gson.Gson
-import java.util.Date
-import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.Image
-import coil.compose.rememberAsyncImagePainter
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.net.toUri
-import androidx.navigation.compose.rememberNavController
-import com.neldasi.jetpackcompose.navigation.AppDestinations
-import com.neldasi.jetpackcompose.navigation.NavKeys
 import com.neldasi.jetpackcompose.R
 import com.neldasi.jetpackcompose.extras.parseScannedCode
+import com.neldasi.jetpackcompose.navigation.AppDestinations
+import com.neldasi.jetpackcompose.navigation.NavKeys
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
@@ -550,10 +549,10 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
 
     // Duplicates found dialog (for already scanned codes)
     if (showDuplicateDialog) {
-        val codesForDisplay = duplicateCodes.map { code ->
+        val codesForDisplay = duplicateCodes.joinToString(separator = "\n") { code ->
             val serial = parseScannedCode(code)?.serialNumber
             if (serial.isNullOrBlank()) code else serial
-        }.joinToString(separator = "\n")
+        }
 
         AlertDialog(
             onDismissRequest = {
