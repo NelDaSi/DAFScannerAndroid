@@ -1,3 +1,4 @@
+
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 package com.neldasi.jetpackcompose.screens
 
@@ -52,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,7 +70,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -78,8 +79,8 @@ import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
-import com.google.gson.Gson
 import com.neldasi.jetpackcompose.R
+import com.neldasi.jetpackcompose.extras.ScanStorage
 import com.neldasi.jetpackcompose.extras.parseScannedCode
 import com.neldasi.jetpackcompose.navigation.AppDestinations
 import com.neldasi.jetpackcompose.navigation.NavKeys
@@ -93,7 +94,7 @@ data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false
 fun MainScreen(navController: NavController, initialItems: List<SelectablePart>? = null) {
     val context = LocalContext.current
     val sharedPreferences = remember {
-        context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        ScanStorage.prefs(context)
     }
 
     val scannedParts = remember {
@@ -115,20 +116,12 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
     val duplicateCodes = remember { mutableStateListOf<String>() }
     var showDuplicateDialog by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
+
     // Load data once on first composition
     if (initialItems == null) {
         LaunchedEffect(Unit) {
-            val json = sharedPreferences.getString("items", null)
-            if (json != null) {
-                val loaded = Gson().fromJson(json, Array<ScannedPart>::class.java)
-                scannedParts.addAll(
-                    loaded.map {
-                        val uri = sharedPreferences.getString("${it.fullCode}_imageUri", null)
-                        val note = sharedPreferences.getString("${it.fullCode}_note", null)
-                        SelectablePart(it.copy(imageUri = uri, note = note))
-                    }
-                )
-            }
+            ScanStorage.loadSavedParts(sharedPreferences, scannedParts)
         }
     }
 
@@ -137,42 +130,34 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
         // Helper to add a code into the list and persist it
         fun addCodeIfNew(code: String) {
             if (code.isBlank()) return
-            if (scannedParts.none { it.part.fullCode == code }) {
-                val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                val lastOrdinal = prefs.getInt("lastOrdinal", 0)
-                val nextOrdinal = lastOrdinal + 1
 
-                val newPart = ScannedPart(code, System.currentTimeMillis(), ordinal = nextOrdinal)
-                scannedParts.add(SelectablePart(newPart))
-                saveParts(context, scannedParts.map { it.part })
-                prefs.edit { putInt("lastOrdinal", nextOrdinal) }
-            } else {
-                // Instead of showing many Toasts, collect duplicates and show once in a dialog
+            // Already scanned?
+            if (scannedParts.any { it.part.fullCode == code }) {
                 if (!duplicateCodes.contains(code)) {
                     duplicateCodes.add(code)
                 }
                 showDuplicateDialog = true
+                return
             }
+
+            // New item
+            val nextOrdinal = ScanStorage.nextOrdinal(sharedPreferences)
+            val newPart = ScannedPart(
+                fullCode = code,
+                timestamp = System.currentTimeMillis(),
+                ordinal = nextOrdinal
+            )
+            scannedParts.add(SelectablePart(newPart))
+            ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
         }
 
         // Consume pending_scans queue, skipping any codes in `exclude` and ignoring duplicates in the queue
         fun consumePendingFromPrefs(exclude: Set<String>) {
-            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-            val json = prefs.getString("pending_scans", null)
-            if (!json.isNullOrBlank()) {
-                try {
-                    val arr = Gson().fromJson(json, Array<String>::class.java)
-                    val seen = mutableSetOf<String>()
-                    arr?.forEach { code ->
-                        // skip anything we already processed via savedStateHandle
-                        if (exclude.contains(code)) return@forEach
-                        // skip duplicates inside the queue itself
-                        if (!seen.add(code)) return@forEach
-                        try { addCodeIfNew(code) } catch (_: Exception) {}
-                    }
-                } catch (_: Exception) { /* ignore malformed */ }
-                // Clear the queue once consumed to prevent replays
-                prefs.edit { remove("pending_scans") }
+            val pendingUnique = ScanStorage.consumePendingQueue(sharedPreferences)
+            pendingUnique.forEach { code ->
+                if (!exclude.contains(code)) {
+                    try { addCodeIfNew(code) } catch (_: Exception) {}
+                }
             }
         }
 
@@ -208,37 +193,16 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = {
-                            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                            prefs.edit {
-                                val removedCodes =
-                                    scannedParts.filter { it.isSelected }.map { it.part.fullCode }
-                                // Remove per-item data for the selected items
-                                removedCodes.forEach { code ->
-                                    remove("${code}_imageUri")
-                                    remove("${code}_note")
-                                }
-                                // Also remove these codes from the pending_scans queue
-                                val pendingJson = prefs.getString("pending_scans", null)
-                                if (!pendingJson.isNullOrBlank()) {
-                                    try {
-                                        val arr = org.json.JSONArray(pendingJson)
-                                        val kept = org.json.JSONArray()
-                                        for (i in 0 until arr.length()) {
-                                            val v = arr.optString(i)
-                                            if (!removedCodes.contains(v)) kept.put(v)
-                                        }
-                                        putString(
-                                            "pending_scans",
-                                            if (kept.length() == 0) null else kept.toString()
-                                        )
-                                    } catch (_: Exception) { /* ignore */
-                                    }
-                                }
-                            }
+                            val removedCodes = scannedParts.filter { it.isSelected }.map { it.part.fullCode }
+
+                            // Clean up prefs (images, notes, pending queue) using helper
+                            ScanStorage.removePartsAndCleanup(sharedPreferences, removedCodes)
+
+                            // Update in-memory list and persist the new list
                             val updatedList = scannedParts.filterNot { it.isSelected }.toMutableList()
                             scannedParts.clear()
                             scannedParts.addAll(updatedList)
-                            saveParts(context, scannedParts.map { it.part })
+                            ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
                             selectionMode = false
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
@@ -459,17 +423,7 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 Button(onClick = {
                     showClearDialog = false
                     scannedParts.clear()
-                    val allKeys = sharedPreferences.all.keys
-                    sharedPreferences.edit {
-                        remove("items")
-                        putInt("lastOrdinal", 0)
-                        remove("pending_scans")
-                        allKeys.forEach { key ->
-                            if (key.endsWith("_imageUri") || key.endsWith("_note")) {
-                                remove(key)
-                            }
-                        }
-                    }
+                    ScanStorage.clearAll(sharedPreferences)
                 }) {
                     Text(stringResource(R.string.yes))
                 }
@@ -509,30 +463,10 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
             confirmButton = {
                 Button(onClick = {
                     scannedParts.removeAll { it.part == itemToDelete }
-                    saveParts(context, scannedParts.map { it.part })
+                    ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
                     val part = itemToDelete
                     if (part != null) {
-                        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                        prefs.edit {
-                            remove("${part.fullCode}_imageUri")
-                            remove("${part.fullCode}_note")
-                            val pendingJson = prefs.getString("pending_scans", null)
-                            if (!pendingJson.isNullOrBlank()) {
-                                try {
-                                    val arr = org.json.JSONArray(pendingJson)
-                                    val kept = org.json.JSONArray()
-                                    for (i in 0 until arr.length()) {
-                                        val v = arr.optString(i)
-                                        if (v != part.fullCode) kept.put(v)
-                                    }
-                                    putString(
-                                        "pending_scans",
-                                        if (kept.length() == 0) null else kept.toString()
-                                    )
-                                } catch (_: Exception) { /* ignore */
-                                }
-                            }
-                        }
+                        ScanStorage.removePartAndCleanup(sharedPreferences, part.fullCode)
                     }
                     itemToDelete = null
                 }) {
@@ -547,30 +481,17 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
         )
     }
 
-    // Duplicates found dialog (for already scanned codes)
-    if (showDuplicateDialog) {
-        val codesForDisplay = duplicateCodes.joinToString(separator = "\n") { code ->
-            val serial = parseScannedCode(code)?.serialNumber
-            if (serial.isNullOrBlank()) code else serial
-        }
 
-        AlertDialog(
-            onDismissRequest = {
-                showDuplicateDialog = false
-                duplicateCodes.clear()
-            },
-            title = { Text("Already scanned") },
-            text = { Text(codesForDisplay) },
-            confirmButton = {
-                Button(onClick = {
-                    showDuplicateDialog = false
-                    duplicateCodes.clear()
-                }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
+    DuplicateDialog(
+        show = showDuplicateDialog,
+        duplicateCodes = duplicateCodes,
+        onDismiss = {
+            showDuplicateDialog = false
+            duplicateCodes.clear()
+        },
+        scope = scope,
+        context = context
+    )
 
     PermissionRationaleDialog(
         show = showPermissionRationaleDialog,
@@ -622,12 +543,6 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
 }
 
 
-// Helper to save parts to SharedPreferences as JSON
-private fun saveParts(context: Context, parts: List<ScannedPart>) {
-    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-    val json = Gson().toJson(parts.toTypedArray())
-    prefs.edit { putString("items", json) }
-}
 
 // --- Data classes and helpers for scanned parts ---
 data class ScannedPart(
