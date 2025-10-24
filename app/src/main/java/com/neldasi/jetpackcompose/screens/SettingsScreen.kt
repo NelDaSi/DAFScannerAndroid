@@ -1,3 +1,4 @@
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.neldasi.jetpackcompose.screens
@@ -49,14 +50,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.core.content.edit
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
+import androidx.navigation.NavController
 import com.neldasi.jetpackcompose.R
+import com.neldasi.jetpackcompose.extras.ScanStorage
 import com.neldasi.jetpackcompose.extras.SettingsRepository
 
 
@@ -78,7 +80,7 @@ fun SettingsScreen(navController: NavController) {
     ) { padding ->
         val context = LocalContext.current
 
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        val prefs = remember { ScanStorage.prefs(context) }
         var vibrateEnabled by remember { mutableStateOf(false) }
         var screenAlwaysOn by remember { mutableStateOf(false) }
         var continuousScanEnabled by remember { mutableStateOf(false) }
@@ -96,6 +98,7 @@ fun SettingsScreen(navController: NavController) {
         )
         var showAddDialog by remember { mutableStateOf(false) }
         var newType by remember { mutableStateOf("") }
+        var showClearAllDialog by remember { mutableStateOf(false) }
 
         Column(
             modifier = Modifier
@@ -205,6 +208,35 @@ fun SettingsScreen(navController: NavController) {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showClearAllDialog = true }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_clear_all),
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_clear_all_desc),
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.menu_clear_all),
+                    tint = Color.Red
+                )
+            }
         }
 
         if (showAddDialog) {
@@ -234,6 +266,32 @@ fun SettingsScreen(navController: NavController) {
                 },
                 dismissButton = {
                     Button(onClick = { showAddDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showClearAllDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearAllDialog = false },
+                title = { Text(stringResource(R.string.clear_confirm_title)) },
+                text = { Text(stringResource(R.string.clear_confirm_text)) },
+                confirmButton = {
+                    Button(onClick = {
+                        ScanStorage.clearAll(prefs)
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.yes),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        showClearAllDialog = false
+                    }) {
+                        Text(stringResource(R.string.yes))
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showClearAllDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 }

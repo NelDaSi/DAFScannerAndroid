@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -27,22 +28,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -88,7 +86,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-data class SelectablePart(val part: ScannedPart, var isSelected: Boolean = false)
+data class SelectablePart(var part: ScannedPart, var isSelected: Boolean = false)
 
 @Composable
 fun MainScreen(navController: NavController, initialItems: List<SelectablePart>? = null) {
@@ -118,10 +116,19 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
 
     val scope = rememberCoroutineScope()
 
+    // Helper to reindex ordinals and persist list
+    fun reindexAndPersist() {
+        scannedParts.forEachIndexed { index, selectable ->
+            selectable.part = selectable.part.copy(ordinal = index + 1)
+        }
+        ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
+    }
+
     // Load data once on first composition
     if (initialItems == null) {
         LaunchedEffect(Unit) {
             ScanStorage.loadSavedParts(sharedPreferences, scannedParts)
+            reindexAndPersist()
         }
     }
 
@@ -140,15 +147,14 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 return
             }
 
-            // New item
-            val nextOrdinal = ScanStorage.nextOrdinal(sharedPreferences)
+            // New item (ordinal will be assigned in reindex)
             val newPart = ScannedPart(
                 fullCode = code,
                 timestamp = System.currentTimeMillis(),
-                ordinal = nextOrdinal
+                ordinal = 0
             )
             scannedParts.add(SelectablePart(newPart))
-            ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
+            reindexAndPersist()
         }
 
         // Consume pending_scans queue, skipping any codes in `exclude` and ignoring duplicates in the queue
@@ -180,9 +186,7 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
         }
     }
 
-    // State for menu and dialogs
-    var showMenu by remember { mutableStateOf(false) }
-    var showClearDialog by remember { mutableStateOf(false) }
+    // State for dialogs
     var showInfoDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -192,17 +196,21 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 title = { Text(stringResource(R.string.title_scanned_items)) },
                 actions = {
                     if (selectionMode) {
+                        // keep the delete / cancel actions in the top bar as an alternative path
                         IconButton(onClick = {
                             val removedCodes = scannedParts.filter { it.isSelected }.map { it.part.fullCode }
 
-                            // Clean up prefs (images, notes, pending queue) using helper
+                            // Clean up prefs (images, notes, pending queue)
                             ScanStorage.removePartsAndCleanup(sharedPreferences, removedCodes)
 
-                            // Update in-memory list and persist the new list
+                            // Update list
                             val updatedList = scannedParts.filterNot { it.isSelected }.toMutableList()
                             scannedParts.clear()
                             scannedParts.addAll(updatedList)
-                            ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
+
+                            // Reindex ordinals and persist
+                            reindexAndPersist()
+
                             selectionMode = false
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
@@ -216,56 +224,47 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                         }) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel_selection))
                         }
-                    } else {
-                        // 3-dot menu
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
-                        }
-                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.menu_settings)) },
-                                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    navController.navigate(AppDestinations.SETTINGS_SCREEN)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.menu_clear_all)) },
-                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    showClearDialog = true
-                                    selectionMode = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.menu_about)) },
-                                leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
-                                onClick = { showMenu = false; showInfoDialog = true }
-                            )
-                        }
                     }
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                when (cameraPermissionState.status) {
-                    PermissionStatus.Granted -> {
-                        navController.navigate(AppDestinations.CAMERA_SCREEN)
+        bottomBar = {
+            val hasItems = scannedParts.isNotEmpty()
+
+            BottomActionBar(
+                hasItems = hasItems,
+                selectionMode = selectionMode,
+                onTrashClick = {
+                    // Only enter selection mode. Actual delete happens via top bar actions.
+                    if (!selectionMode && hasItems) {
+                        selectionMode = true
+                        val updatedList = scannedParts.map { it.copy(isSelected = false) }
+                        scannedParts.clear()
+                        scannedParts.addAll(updatedList)
                     }
-                    is PermissionStatus.Denied -> {
-                        if (cameraPermissionState.status.shouldShowRationale) {
-                            showPermissionRationaleDialog = true
-                        } else {
-                            cameraPermissionState.launchPermissionRequest()
+                },
+                onScanClick = {
+                    if (!selectionMode) {
+                        when (cameraPermissionState.status) {
+                            PermissionStatus.Granted -> {
+                                navController.navigate(AppDestinations.CAMERA_SCREEN)
+                            }
+                            is PermissionStatus.Denied -> {
+                                if (cameraPermissionState.status.shouldShowRationale) {
+                                    showPermissionRationaleDialog = true
+                                } else {
+                                    cameraPermissionState.launchPermissionRequest()
+                                }
+                            }
                         }
                     }
+                },
+                onSettingsClick = {
+                    if (!selectionMode) {
+                        navController.navigate(AppDestinations.SETTINGS_SCREEN)
+                    }
                 }
-            }) {
-                Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.scan))
-            }
+            )
         }
     ) { paddingValues ->
         Column(
@@ -292,10 +291,43 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 }
             )
             if (scannedParts.isEmpty()) {
-                Text(stringResource(R.string.no_items_scanned), textAlign = TextAlign.Center)
-                if (!cameraPermissionState.status.isGranted) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Inbox,
+                        contentDescription = null,
+                        tint = Color(0xFF9E9E9E),
+                        modifier = Modifier.size(96.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.empty_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFCFCFCF),
+                        textAlign = TextAlign.Center
+                    )
                     Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.camera_permission_required), textAlign = TextAlign.Center)
+                    Text(
+                        text = stringResource(R.string.empty_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF9E9E9E),
+                        textAlign = TextAlign.Center
+                    )
+                    if (!cameraPermissionState.status.isGranted) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.camera_permission_required),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF9E9E9E),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             } else {
                 val visibleParts by remember(scannedParts, searchQuery) {
@@ -413,26 +445,6 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
             }
         }
     }
-    // Confirmation dialog for "Clear All"
-    if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text(stringResource(R.string.clear_confirm_title)) },
-            text = { Text(stringResource(R.string.clear_confirm_text)) },
-            confirmButton = {
-                Button(onClick = {
-                    showClearDialog = false
-                    scannedParts.clear()
-                    ScanStorage.clearAll(sharedPreferences)
-                }) {
-                    Text(stringResource(R.string.yes))
-                }
-            },
-            dismissButton = {
-                Button(onClick = { showClearDialog = false }) { Text(stringResource(R.string.cancel)) }
-            }
-        )
-    }
 
     // Info dialog
     if (showInfoDialog) {
@@ -463,11 +475,15 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
             confirmButton = {
                 Button(onClick = {
                     scannedParts.removeAll { it.part == itemToDelete }
-                    ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
+
                     val part = itemToDelete
                     if (part != null) {
                         ScanStorage.removePartAndCleanup(sharedPreferences, part.fullCode)
                     }
+
+                    // Reindex ordinals and persist
+                    reindexAndPersist()
+
                     itemToDelete = null
                 }) {
                     Text(stringResource(R.string.delete))
@@ -565,4 +581,69 @@ fun MainScreenPreview() {
         )
     }
     MainScreen(navController = mockNavController, initialItems = mockItems)
+}
+
+@Composable
+private fun BottomActionBar(
+    hasItems: Boolean,
+    selectionMode: Boolean,
+    onTrashClick: () -> Unit,
+    onScanClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    Surface(
+        tonalElevation = 6.dp,
+        shadowElevation = 12.dp,
+        color = Color.Black.copy(alpha = 0.9f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 32.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: trash can.
+            // Enabled if there are items AND we're not already in selection mode.
+            val trashEnabled = hasItems && !selectionMode
+            IconButton(
+                onClick = onTrashClick,
+                enabled = trashEnabled
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete_selected),
+                    tint = if (trashEnabled) Color.Red else Color.DarkGray,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            // Middle: scan button. Disabled during selection mode.
+            IconButton(
+                onClick = onScanClick,
+                enabled = !selectionMode
+            ) {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = stringResource(R.string.scan),
+                    tint = if (selectionMode) Color.DarkGray else Color(0xFF00C853),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Right: settings button. Disabled during selection mode.
+            IconButton(
+                onClick = onSettingsClick,
+                enabled = !selectionMode
+            ) {
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.menu_settings),
+                    tint = if (selectionMode) Color.DarkGray else Color(0xFF64B5F6),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+    }
 }
