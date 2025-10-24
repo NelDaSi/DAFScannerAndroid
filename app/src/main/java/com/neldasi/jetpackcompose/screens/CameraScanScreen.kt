@@ -2,7 +2,14 @@ package com.neldasi.jetpackcompose.screens
 
 import android.content.Context
 import android.util.Log
+import androidx.camera.core.AspectRatio
 import android.view.ViewGroup
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.MeteringPointFactory
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory
+import java.util.concurrent.TimeUnit
+import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -12,6 +19,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +27,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
@@ -53,14 +63,43 @@ import androidx.core.content.edit
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.jetpackcompose.extras.SettingsRepository
 import com.neldasi.jetpackcompose.R
 import com.neldasi.jetpackcompose.extras.processImageProxy
 import com.neldasi.jetpackcompose.navigation.NavKeys
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+
+// Helper to trigger autofocus at center of preview
+private fun requestCenterFocus(previewView: PreviewView, camera: Camera?) {
+    try {
+        if (camera == null) return
+
+        // Create a metering point at the center of the PreviewView
+        val factory: MeteringPointFactory = SurfaceOrientedMeteringPointFactory(
+            previewView.width.toFloat(),
+            previewView.height.toFloat()
+        )
+        val centerPoint = factory.createPoint(
+            previewView.width / 2f,
+            previewView.height / 2f
+        )
+
+        val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF)
+            .setAutoCancelDuration(2, TimeUnit.SECONDS) // let it refocus again later
+            .build()
+
+        camera.cameraControl.startFocusAndMetering(action)
+    } catch (_: Exception) {
+        // ignore focus errors from devices that don't support it
+    }
+}
 
 @Composable
 fun CameraScanScreen(navController: NavController) {
@@ -75,6 +114,7 @@ fun CameraScanScreen(navController: NavController) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
 
     val allowedTypes = remember {
         SettingsRepository.loadAllowedTypes(context)
@@ -147,16 +187,35 @@ fun CameraScanScreen(navController: NavController) {
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                 }
 
+                // keep a reference so we can refocus later from Compose scope
+                previewViewRef = previewView
+
                 cameraProviderFuture.addListener({
                     try {
                         val provider = cameraProviderFuture.get()
                         cameraProvider = provider
 
-                        val preview = Preview.Builder().build().also {
-                            it.surfaceProvider = previewView.surfaceProvider
-                        }
+                        val preview = Preview.Builder()
+                            .setResolutionSelector(
+                                ResolutionSelector.Builder()
+                                    .setAspectRatioStrategy(
+                                        AspectRatioStrategy(
+                                            AspectRatio.RATIO_16_9,
+                                            AspectRatioStrategy.FALLBACK_RULE_AUTO
+                                        )
+                                    )
+                                    .build()
+                            )
+                            .build()
+                            .also {
+                                it.surfaceProvider = previewView.surfaceProvider
+                            }
 
-                        val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
+                        val analyzer = buildImageAnalyzer(
+                            cameraExecutor,
+                            context,
+                            vibrateEnabled
+                        ) { scannedValue ->
                             val type = scannedValue.take(7)
                             if (type in allowedTypes) {
                                 if (scannedResult == null) {
@@ -173,8 +232,13 @@ fun CameraScanScreen(navController: NavController) {
                         val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
                         camera = boundCamera
                         try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
+                        try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
 
                         isCameraReady = true
+                        // Kick off an initial autofocus pass on the center of the preview
+                        requestCenterFocus(previewView, boundCamera)
+                        // also store latest ref (safety if ref changes)
+                        previewViewRef = previewView
                     } catch (exc: Exception) {
                         Log.e("CameraScanScreen", "Camera binding failed", exc)
                         cameraError = "Failed to open camera."
@@ -186,6 +250,18 @@ fun CameraScanScreen(navController: NavController) {
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        LaunchedEffect(isCameraReady, camera) {
+            if (!isCameraReady || camera == null) return@LaunchedEffect
+            // Continuous gentle refocus loop while the screen is active
+            while (isActive && isCameraReady && camera != null) {
+                val pv = previewViewRef
+                if (pv != null) {
+                    requestCenterFocus(pv, camera)
+                }
+                delay(2000)
+            }
+        }
 
         // Flash overlay
         Box(
@@ -201,6 +277,11 @@ fun CameraScanScreen(navController: NavController) {
                 val newState = !isTorchOn
                 isTorchOn = newState
                 camera?.cameraControl?.enableTorch(newState)
+                // After toggling torch, try to refocus in the center with the extra light
+                val pv = previewViewRef
+                if (pv != null && camera != null) {
+                    requestCenterFocus(pv, camera)
+                }
             },
             onClose = { navController.popBackStack() },
             modifier = Modifier
@@ -239,6 +320,20 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?) {
             )
         }
 
+        if (isCameraReady && errorMessage == null) {
+            // Subtle aiming box to help user center the code
+            Box(
+                modifier = Modifier
+                    .size(240.dp)
+                    .align(Alignment.Center)
+                    .border(
+                        width = 2.dp,
+                        color = Color.White.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            )
+        }
+
         errorMessage?.let {
             Text(
                 text = it,
@@ -271,7 +366,12 @@ private fun buildImageAnalyzer(
     vibrateEnabled: Boolean,
     onScannedValue: (String) -> Unit
 ): ImageAnalysis {
-    val barcodeScanner = BarcodeScanning.getClient()
+    // Configure ML Kit to look specifically for Data Matrix codes.
+    val options = BarcodeScannerOptions.Builder()
+        .setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX)
+        .build()
+    val barcodeScanner = BarcodeScanning.getClient(options)
+
     return ImageAnalysis.Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .build()

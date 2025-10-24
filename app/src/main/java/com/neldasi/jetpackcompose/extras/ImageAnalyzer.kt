@@ -11,6 +11,9 @@ import com.google.mlkit.vision.common.InputImage
 
 private const val VIBRATE_DURATION = 100L
 
+@Volatile
+private var frameSkipCounter = 0
+
 @OptIn(ExperimentalGetImage::class)
 fun processImageProxy(
     barcodeScanner: BarcodeScanner,
@@ -20,6 +23,13 @@ fun processImageProxy(
     onScannedValue: (String) -> Unit,
     onError: ((Throwable) -> Unit)? = null
 ) {
+    // Throttle analysis: only run on every other frame to help stability / focus
+    frameSkipCounter++
+    if (frameSkipCounter % 2 != 0) {
+        imageProxy.close()
+        return
+    }
+
     val mediaImage = imageProxy.image
     if (mediaImage == null) {
         Log.w("Scanner", "ImageProxy contained no image.")
