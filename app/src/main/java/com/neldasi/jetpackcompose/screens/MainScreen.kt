@@ -5,6 +5,8 @@ package com.neldasi.jetpackcompose.screens
 import android.Manifest
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.material3.TextField
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -108,6 +110,8 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
 
     var selectionMode by remember { mutableStateOf(false) }
 
+    var searchQuery by remember { mutableStateOf("") }
+
     // Load data once on first composition
     if (initialItems == null) {
         LaunchedEffect(Unit) {
@@ -131,45 +135,53 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
         fun addCodeIfNew(code: String) {
             if (code.isBlank()) return
             if (scannedParts.none { it.part.fullCode == code }) {
-                val newPart = ScannedPart(code, System.currentTimeMillis())
+                val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+                val lastOrdinal = prefs.getInt("lastOrdinal", 0)
+                val nextOrdinal = lastOrdinal + 1
+
+                val newPart = ScannedPart(code, System.currentTimeMillis(), ordinal = nextOrdinal)
                 scannedParts.add(SelectablePart(newPart))
                 saveParts(context, scannedParts.map { it.part })
+                prefs.edit { putInt("lastOrdinal", nextOrdinal) }
             } else {
                 Toast.makeText(context, context.getString(R.string.code_already_added), Toast.LENGTH_SHORT).show()
             }
         }
 
-        // 1) When Main becomes current again, consume any pending scans persisted by the scanner
-        fun consumePendingFromPrefs() {
+        // Consume pending_scans queue, skipping any codes in `exclude`
+        fun consumePendingFromPrefs(exclude: Set<String>) {
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
             val json = prefs.getString("pending_scans", null)
             if (!json.isNullOrBlank()) {
                 try {
                     val arr = Gson().fromJson(json, Array<String>::class.java)
                     arr?.forEach { code ->
-                        // Using try/catch to avoid blocking all on one bad entry
-                        try { addCodeIfNew(code) } catch (_: Exception) {}
+                        if (!exclude.contains(code)) {
+                            try { addCodeIfNew(code) } catch (_: Exception) {}
+                        }
                     }
                 } catch (_: Exception) { /* ignore malformed */ }
-                // Clear the queue once consumed
+                // Clear the queue once consumed to prevent replays
                 prefs.edit { remove("pending_scans") }
             }
         }
 
-        // Always consume any pending queue first
-        consumePendingFromPrefs()
-
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
+            val consumed = mutableSetOf<String>()
             // Single item
             backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)?.let { code ->
                 addCodeIfNew(code)
+                consumed.add(code)
             }
-            // Batch (if the scanner ever sends a list)
+            // Batch (if ever used)
             backStackEntry.savedStateHandle.remove<List<String>>("SCANNED_RESULTS")?.let { list ->
-                list.forEach { code -> addCodeIfNew(code) }
+                list.forEach { code ->
+                    addCodeIfNew(code)
+                    consumed.add(code)
+                }
             }
-            // Also attempt to consume any queued items that might have been appended while we were away
-            consumePendingFromPrefs()
+            // Now consume any queued items, skipping ones we just handled
+            consumePendingFromPrefs(consumed)
         }
     }
 
@@ -186,6 +198,33 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 actions = {
                     if (selectionMode) {
                         IconButton(onClick = {
+                            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+                            prefs.edit {
+                                val removedCodes =
+                                    scannedParts.filter { it.isSelected }.map { it.part.fullCode }
+                                // Remove per-item data for the selected items
+                                removedCodes.forEach { code ->
+                                    remove("${code}_imageUri")
+                                    remove("${code}_note")
+                                }
+                                // Also remove these codes from the pending_scans queue
+                                val pendingJson = prefs.getString("pending_scans", null)
+                                if (!pendingJson.isNullOrBlank()) {
+                                    try {
+                                        val arr = org.json.JSONArray(pendingJson)
+                                        val kept = org.json.JSONArray()
+                                        for (i in 0 until arr.length()) {
+                                            val v = arr.optString(i)
+                                            if (!removedCodes.contains(v)) kept.put(v)
+                                        }
+                                        putString(
+                                            "pending_scans",
+                                            if (kept.length() == 0) null else kept.toString()
+                                        )
+                                    } catch (_: Exception) { /* ignore */
+                                    }
+                                }
+                            }
                             val updatedList = scannedParts.filterNot { it.isSelected }.toMutableList()
                             scannedParts.clear()
                             scannedParts.addAll(updatedList)
@@ -262,6 +301,22 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            TextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search serial") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                singleLine = true,
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear search")
+                        }
+                    }
+                }
+            )
             if (scannedParts.isEmpty()) {
                 Text(stringResource(R.string.no_items_scanned), textAlign = TextAlign.Center)
                 if (!cameraPermissionState.status.isGranted) {
@@ -269,8 +324,11 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                     Text(stringResource(R.string.camera_permission_required), textAlign = TextAlign.Center)
                 }
             } else {
+                val visibleParts = if (searchQuery.isNotBlank()) {
+                    scannedParts.filter { it.part.fullCode.contains(searchQuery, ignoreCase = true) }
+                } else scannedParts
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(scannedParts.toList().sortedByDescending { it.part.timestamp }) { selectablePart ->
+                    items(visibleParts.sortedBy { it.part.timestamp }) { selectablePart ->
                         val part = selectablePart.part
                         val parsed = parseScannedCode(part.fullCode)
                         val formattedDate = remember(part.timestamp) {
@@ -314,6 +372,18 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Text(
+                                    text = selectablePart.part.ordinal.toString(),
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .background(
+                                            color = Color.Gray,
+                                            shape = CircleShape
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 if (part.imageUri != null) {
                                     Image(
                                         painter = rememberAsyncImagePainter(part.imageUri.toUri()),
@@ -367,7 +437,17 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 Button(onClick = {
                     showClearDialog = false
                     scannedParts.clear()
-                    sharedPreferences.edit { remove("items") }
+                    val allKeys = sharedPreferences.all.keys
+                    sharedPreferences.edit {
+                        remove("items")
+                        putInt("lastOrdinal", 0)
+                        remove("pending_scans")
+                        allKeys.forEach { key ->
+                            if (key.endsWith("_imageUri") || key.endsWith("_note")) {
+                                remove(key)
+                            }
+                        }
+                    }
                 }) {
                     Text(stringResource(R.string.yes))
                 }
@@ -408,6 +488,30 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 Button(onClick = {
                     scannedParts.removeAll { it.part == itemToDelete }
                     saveParts(context, scannedParts.map { it.part })
+                    val part = itemToDelete
+                    if (part != null) {
+                        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+                        prefs.edit {
+                            remove("${part.fullCode}_imageUri")
+                            remove("${part.fullCode}_note")
+                            val pendingJson = prefs.getString("pending_scans", null)
+                            if (!pendingJson.isNullOrBlank()) {
+                                try {
+                                    val arr = org.json.JSONArray(pendingJson)
+                                    val kept = org.json.JSONArray()
+                                    for (i in 0 until arr.length()) {
+                                        val v = arr.optString(i)
+                                        if (v != part.fullCode) kept.put(v)
+                                    }
+                                    putString(
+                                        "pending_scans",
+                                        if (kept.length() == 0) null else kept.toString()
+                                    )
+                                } catch (_: Exception) { /* ignore */
+                                }
+                            }
+                        }
+                    }
                     itemToDelete = null
                 }) {
                     Text(stringResource(R.string.delete))
@@ -483,7 +587,8 @@ data class ScannedPart(
     val fullCode: String,
     val timestamp: Long,
     val imageUri: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val ordinal: Int = 0
 )
 
 @Preview(showBackground = true)

@@ -118,7 +118,7 @@ fun SettingsScreen(navController: NavController) {
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Stay in scanner after each scan")
+                Text("Multi-Scan Mode")
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
                     checked = continuousScanEnabled,
