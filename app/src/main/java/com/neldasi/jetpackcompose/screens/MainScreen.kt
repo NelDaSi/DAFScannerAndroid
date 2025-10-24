@@ -113,6 +113,9 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
 
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
+    val duplicateCodes = remember { mutableStateListOf<String>() }
+    var showDuplicateDialog by remember { mutableStateOf(false) }
+
     // Load data once on first composition
     if (initialItems == null) {
         LaunchedEffect(Unit) {
@@ -145,21 +148,28 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                 saveParts(context, scannedParts.map { it.part })
                 prefs.edit { putInt("lastOrdinal", nextOrdinal) }
             } else {
-                Toast.makeText(context, context.getString(R.string.code_already_added), Toast.LENGTH_SHORT).show()
+                // Instead of showing many Toasts, collect duplicates and show once in a dialog
+                if (!duplicateCodes.contains(code)) {
+                    duplicateCodes.add(code)
+                }
+                showDuplicateDialog = true
             }
         }
 
-        // Consume pending_scans queue, skipping any codes in `exclude`
+        // Consume pending_scans queue, skipping any codes in `exclude` and ignoring duplicates in the queue
         fun consumePendingFromPrefs(exclude: Set<String>) {
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
             val json = prefs.getString("pending_scans", null)
             if (!json.isNullOrBlank()) {
                 try {
                     val arr = Gson().fromJson(json, Array<String>::class.java)
+                    val seen = mutableSetOf<String>()
                     arr?.forEach { code ->
-                        if (!exclude.contains(code)) {
-                            try { addCodeIfNew(code) } catch (_: Exception) {}
-                        }
+                        // skip anything we already processed via savedStateHandle
+                        if (exclude.contains(code)) return@forEach
+                        // skip duplicates inside the queue itself
+                        if (!seen.add(code)) return@forEach
+                        try { addCodeIfNew(code) } catch (_: Exception) {}
                     }
                 } catch (_: Exception) { /* ignore malformed */ }
                 // Clear the queue once consumed to prevent replays
@@ -533,6 +543,31 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
             dismissButton = {
                 Button(onClick = { itemToDelete = null }) {
                     Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // Duplicates found dialog (for already scanned codes)
+    if (showDuplicateDialog) {
+        val codesForDisplay = duplicateCodes.map { code ->
+            val serial = parseScannedCode(code)?.serialNumber
+            if (serial.isNullOrBlank()) code else serial
+        }.joinToString(separator = "\n")
+
+        AlertDialog(
+            onDismissRequest = {
+                showDuplicateDialog = false
+                duplicateCodes.clear()
+            },
+            title = { Text("Already scanned") },
+            text = { Text(codesForDisplay) },
+            confirmButton = {
+                Button(onClick = {
+                    showDuplicateDialog = false
+                    duplicateCodes.clear()
+                }) {
+                    Text("OK")
                 }
             }
         )
