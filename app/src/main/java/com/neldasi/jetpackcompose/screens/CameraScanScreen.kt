@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.neldasi.jetpackcompose.extras.SettingsRepository
+import com.neldasi.jetpackcompose.R
 import com.neldasi.jetpackcompose.extras.processImageProxy
 import com.neldasi.jetpackcompose.navigation.NavKeys
 import kotlinx.coroutines.launch
@@ -215,11 +217,11 @@ fun CameraScanScreen(navController: NavController) {
     if (showNotAllowedDialog) {
         AlertDialog(
             onDismissRequest = { showNotAllowedDialog = false },
-            title = { Text("Unsupported Code") },
-            text = { Text("The scanned code is not supported and will not be saved.") },
+            title = { Text(stringResource(R.string.unsupported_code_title)) },
+            text = { Text(stringResource(R.string.unsupported_code_text)) },
             confirmButton = {
                 Button(onClick = { showNotAllowedDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -309,11 +311,15 @@ private fun BottomScannerBar(
         ) {
             IconButton(onClick = onToggleTorch) {
                 val icon = if (isTorchOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff
-                Icon(icon, contentDescription = if (isTorchOn) "Turn flashlight off" else "Turn flashlight on", tint = Color.Yellow)
+                Icon(
+                    icon,
+                    contentDescription = if (isTorchOn) stringResource(R.string.flashlight_on_desc) else stringResource(R.string.flashlight_off_desc),
+                    tint = Color.Yellow
+                )
             }
             Spacer(Modifier.width(12.dp))
             Text(
-                text = serial ?: "Scanner",
+                text = serial ?: stringResource(R.string.scanner_default),
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 maxLines = 1,
@@ -326,7 +332,7 @@ private fun BottomScannerBar(
             )
             Spacer(Modifier.width(12.dp))
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close scanner", tint = Color(0xFFFF6B6B))
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close_scanner), tint = Color(0xFFFF6B6B))
             }
         }
     }

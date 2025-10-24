@@ -97,4 +97,10 @@
     <string name="select_image_source">Selecteer een afbeelding</string>
     <string name="manage_image">Afbeelding beheeren</string>
     <string name="code_already_added">Deze code is al toegevoegd</string>
+    <string name="search_serials_hint">Zoek series (spatie gescheiden)</string>
+    <string name="multi_scan_mode_label">Multi-scan modus</string>
+    <string name="scanner_default">Scanner</string>
+    <string name="close_scanner">Scanner sluiten</string>
+    <string name="flashlight_on_desc">Zaklamp aan</string>
+    <string name="flashlight_off_desc">Zaklamp uit</string>
 </resources>

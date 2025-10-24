@@ -118,7 +118,7 @@ fun SettingsScreen(navController: NavController) {
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Multi-Scan Mode")
+                Text(stringResource(R.string.multi_scan_mode_label))
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
                     checked = continuousScanEnabled,

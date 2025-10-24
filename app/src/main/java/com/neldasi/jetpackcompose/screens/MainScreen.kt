@@ -1,7 +1,8 @@
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
-
 package com.neldasi.jetpackcompose.screens
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.derivedStateOf
 import android.Manifest
 import android.content.Context
 import android.widget.Toast
@@ -110,7 +111,7 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
 
     var selectionMode by remember { mutableStateOf(false) }
 
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     // Load data once on first composition
     if (initialItems == null) {
@@ -304,7 +305,7 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Search serial") },
+                label = { Text(stringResource(R.string.search_serials_hint)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
@@ -324,11 +325,22 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                     Text(stringResource(R.string.camera_permission_required), textAlign = TextAlign.Center)
                 }
             } else {
-                val visibleParts = if (searchQuery.isNotBlank()) {
-                    scannedParts.filter { it.part.fullCode.contains(searchQuery, ignoreCase = true) }
-                } else scannedParts
+                val visibleParts by remember(scannedParts, searchQuery) {
+                    derivedStateOf {
+                        val tokens = searchQuery
+                            .split(',', ';', ' ', '\n', '\t')
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                        if (tokens.isNotEmpty()) {
+                            scannedParts.filter {
+                                val serial = parseScannedCode(it.part.fullCode)?.serialNumber ?: ""
+                                tokens.any { tok -> serial.contains(tok, ignoreCase = true) }
+                            }
+                        } else scannedParts
+                    }
+                }
                 LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(visibleParts.sortedBy { it.part.timestamp }) { selectablePart ->
+                    items(visibleParts.sortedByDescending { it.part.timestamp }) { selectablePart ->
                         val part = selectablePart.part
                         val parsed = parseScannedCode(part.fullCode)
                         val formattedDate = remember(part.timestamp) {
@@ -372,18 +384,6 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = selectablePart.part.ordinal.toString(),
-                                    modifier = Modifier
-                                        .padding(end = 8.dp)
-                                        .background(
-                                            color = Color.Gray,
-                                            shape = CircleShape
-                                        )
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
                                 if (part.imageUri != null) {
                                     Image(
                                         painter = rememberAsyncImagePainter(part.imageUri.toUri()),
@@ -420,6 +420,19 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
                                         )
                                     }
                                 }
+                                Spacer(Modifier.weight(1f))
+                                Text(
+                                    text = selectablePart.part.ordinal.toString(),
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .background(
+                                            color = Color.DarkGray,
+                                            shape = CircleShape
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
