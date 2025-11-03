@@ -9,7 +9,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.neldasi.jetpackcompose"
+        applicationId = "com.neldasi.dafscanner"
         minSdk = 27
         targetSdk = 35
         versionCode = 1
