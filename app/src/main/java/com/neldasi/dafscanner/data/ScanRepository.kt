@@ -26,4 +26,6 @@ class ScanRepository(private val scanDao: ScanDao) {
     suspend fun deleteAll() {
         scanDao.deleteAll()
     }
+
+    suspend fun getMaxOrdinal(): Int = scanDao.getMaxOrdinal() ?: 0
 }

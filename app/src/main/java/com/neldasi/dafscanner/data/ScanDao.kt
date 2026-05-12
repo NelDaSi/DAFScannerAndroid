@@ -30,4 +30,7 @@ interface ScanDao {
 
     @Query("DELETE FROM scanned_parts")
     suspend fun deleteAll()
+
+    @Query("SELECT MAX(ordinal) FROM scanned_parts")
+    suspend fun getMaxOrdinal(): Int?
 }
