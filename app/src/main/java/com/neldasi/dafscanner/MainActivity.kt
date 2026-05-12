@@ -1,13 +1,13 @@
-package com.neldasi.jetpackcompose
+package com.neldasi.dafscanner
 
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.neldasi.jetpackcompose.extras.SettingsRepository
-import com.neldasi.jetpackcompose.navigation.AppNavigation
-import com.neldasi.jetpackcompose.ui.theme.JetpackComposeTheme
+import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.navigation.AppNavigation
+import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

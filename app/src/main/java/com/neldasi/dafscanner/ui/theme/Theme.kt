@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.ui.theme
+package com.neldasi.dafscanner.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

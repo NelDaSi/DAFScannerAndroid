@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.screens
+package com.neldasi.dafscanner.screens
 
 import android.content.ClipData
 import android.content.Context
@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.ClipEntry
-import com.neldasi.jetpackcompose.extras.parseScannedCode
+import com.neldasi.dafscanner.extras.parseScannedCode
 
 @Composable
 fun DuplicateDialog(

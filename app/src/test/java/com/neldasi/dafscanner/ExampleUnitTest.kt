@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose
+package com.neldasi.dafscanner
 
 import org.junit.Test
 

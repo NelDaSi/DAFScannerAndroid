@@ -1,166 +1,127 @@
 
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
-package com.neldasi.jetpackcompose.screens
+package com.neldasi.dafscanner.screens
 
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Inbox
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.PermissionStatus
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
-import com.neldasi.jetpackcompose.R
-import com.neldasi.jetpackcompose.extras.ScanStorage
-import com.neldasi.jetpackcompose.extras.parseScannedCode
-import com.neldasi.jetpackcompose.navigation.AppDestinations
-import com.neldasi.jetpackcompose.navigation.NavKeys
+import com.google.accompanist.permissions.*
+import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.data.ScannedPart
+import com.neldasi.dafscanner.extras.ScanStorage
+import com.neldasi.dafscanner.extras.parseScannedCode
+import com.neldasi.dafscanner.navigation.CameraRoute
+import com.neldasi.dafscanner.navigation.DetailRoute
+import com.neldasi.dafscanner.navigation.NavKeys
+import com.neldasi.dafscanner.navigation.SettingsRoute
+import com.neldasi.dafscanner.viewmodels.MainViewModel
+import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-data class SelectablePart(var part: ScannedPart, var isSelected: Boolean = false)
-
 @Composable
-fun MainScreen(navController: NavController, initialItems: List<SelectablePart>? = null) {
-    val context = LocalContext.current
-    val sharedPreferences = remember {
-        ScanStorage.prefs(context)
-    }
+fun MainScreen(
+    navController: NavController,
+    viewModel: MainViewModel = viewModel()
+) {
+    val scannedParts by viewModel.filteredParts.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
-    val scannedParts = remember {
-        mutableStateListOf<SelectablePart>().also {
-            if (initialItems != null) it.addAll(initialItems)
-        }
-    }
+    MainScreenContent(
+        navController = navController,
+        scannedParts = scannedParts,
+        searchQuery = searchQuery,
+        onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        onAddPart = { viewModel.addPart(it) },
+        onDeleteSelected = { viewModel.deleteSelected(it) },
+        onDeletePart = { viewModel.deletePart(it) },
+        onExportToCsv = { viewModel.exportToCsv() }
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun MainScreenContent(
+    navController: NavController,
+    scannedParts: List<ScannedPart>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onAddPart: (String) -> Unit,
+    onDeleteSelected: (List<String>) -> Unit,
+    onDeletePart: (ScannedPart) -> Unit,
+    onExportToCsv: suspend () -> File?
+) {
+    val context = LocalContext.current
+    val sharedPreferences = remember { ScanStorage.prefs(context) }
+    val selectedCodes = remember { mutableStateListOf<String>() }
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
-
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(null) }
-
     var selectionMode by remember { mutableStateOf(false) }
-
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-
     val duplicateCodes = remember { mutableStateListOf<String>() }
     var showDuplicateDialog by remember { mutableStateOf(false) }
-
     val scope = rememberCoroutineScope()
 
-    // Helper to reindex ordinals and persist list
-    fun reindexAndPersist() {
-        scannedParts.forEachIndexed { index, selectable ->
-            selectable.part = selectable.part.copy(ordinal = index + 1)
-        }
-        ScanStorage.saveParts(sharedPreferences, scannedParts.map { it.part })
-    }
-
-    // Load data once on first composition
-    if (initialItems == null) {
-        LaunchedEffect(Unit) {
-            ScanStorage.loadSavedParts(sharedPreferences, scannedParts)
-            reindexAndPersist()
-        }
-    }
-
-    // Collect scanned results (single or batched) and also consume any pending queue from prefs
     LaunchedEffect(Unit) {
-        // Helper to add a code into the list and persist it
         fun addCodeIfNew(code: String) {
             if (code.isBlank()) return
-
-            // Already scanned?
-            if (scannedParts.any { it.part.fullCode == code }) {
-                if (!duplicateCodes.contains(code)) {
-                    duplicateCodes.add(code)
-                }
+            if (scannedParts.any { it.fullCode == code }) {
+                if (!duplicateCodes.contains(code)) duplicateCodes.add(code)
                 showDuplicateDialog = true
                 return
             }
-
-            // New item (ordinal will be assigned in reindex)
-            val newPart = ScannedPart(
-                fullCode = code,
-                timestamp = System.currentTimeMillis(),
-                ordinal = 0
-            )
-            scannedParts.add(SelectablePart(newPart))
-            reindexAndPersist()
+            onAddPart(code)
         }
 
-        // Consume pending_scans queue, skipping any codes in `exclude` and ignoring duplicates in the queue
         fun consumePendingFromPrefs(exclude: Set<String>) {
-            val pendingUnique = ScanStorage.consumePendingQueue(sharedPreferences)
-            pendingUnique.forEach { code ->
+            ScanStorage.consumePendingQueue(sharedPreferences).forEach { code ->
                 if (!exclude.contains(code)) {
                     try { addCodeIfNew(code) } catch (_: Exception) {}
                 }
@@ -169,342 +130,194 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
 
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
             val consumed = mutableSetOf<String>()
-            // Single item
-            backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)?.let { code ->
-                addCodeIfNew(code)
-                consumed.add(code)
+            backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)?.let {
+                addCodeIfNew(it)
+                consumed.add(it)
             }
-            // Batch (if ever used)
             backStackEntry.savedStateHandle.remove<List<String>>("SCANNED_RESULTS")?.let { list ->
-                list.forEach { code ->
-                    addCodeIfNew(code)
-                    consumed.add(code)
+                list.forEach {
+                    addCodeIfNew(it)
+                    consumed.add(it)
                 }
             }
-            // Now consume any queued items, skipping ones we just handled
             consumePendingFromPrefs(consumed)
         }
     }
 
-    // State for dialogs
-    var showInfoDialog by remember { mutableStateOf(false) }
-
     Scaffold(
-        modifier = Modifier.systemBarsPadding(),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.title_scanned_items)) },
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        stringResource(R.string.title_scanned_items),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                },
                 actions = {
-                    if (selectionMode) {
-                        // keep the delete / cancel actions in the top bar as an alternative path
-                        IconButton(onClick = {
-                            val removedCodes = scannedParts.filter { it.isSelected }.map { it.part.fullCode }
-
-                            // Clean up prefs (images, notes, pending queue)
-                            ScanStorage.removePartsAndCleanup(sharedPreferences, removedCodes)
-
-                            // Update list
-                            val updatedList = scannedParts.filterNot { it.isSelected }.toMutableList()
-                            scannedParts.clear()
-                            scannedParts.addAll(updatedList)
-
-                            // Reindex ordinals and persist
-                            reindexAndPersist()
-
-                            selectionMode = false
-                        }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete_selected))
-                        }
-                        IconButton(onClick = {
-                            // Deselect all items and exit selection mode
-                            val updatedList = scannedParts.map { it.copy(isSelected = false) }
-                            scannedParts.clear()
-                            scannedParts.addAll(updatedList)
-                            selectionMode = false
-                        }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel_selection))
+                    AnimatedVisibility(
+                        visible = selectionMode,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally()
+                    ) {
+                        Row {
+                            IconButton(onClick = {
+                                if (selectedCodes.size == scannedParts.size) selectedCodes.clear()
+                                else {
+                                    selectedCodes.clear()
+                                    selectedCodes.addAll(scannedParts.map { it.fullCode })
+                                }
+                            }) {
+                                Icon(Icons.Rounded.SelectAll, contentDescription = "Select All")
+                            }
+                            IconButton(onClick = {
+                                onDeleteSelected(selectedCodes.toList())
+                                selectedCodes.clear()
+                                selectionMode = false
+                            }) {
+                                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.delete_selected), tint = MaterialTheme.colorScheme.error)
+                            }
+                            IconButton(onClick = {
+                                selectedCodes.clear()
+                                selectionMode = false
+                            }) {
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel_selection))
+                            }
                         }
                     }
-                }
+                    if (!selectionMode) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                onExportToCsv()?.let { file ->
+                                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/csv"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Export CSV"))
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Rounded.IosShare, contentDescription = "Export CSV")
+                        }
+                    }
+                },
+                scrollBehavior = scrollBehavior
             )
         },
         bottomBar = {
-            val hasItems = scannedParts.isNotEmpty()
-
             BottomActionBar(
-                hasItems = hasItems,
+                hasItems = scannedParts.isNotEmpty(),
                 selectionMode = selectionMode,
                 onTrashClick = {
-                    // Only enter selection mode. Actual delete happens via top bar actions.
-                    if (!selectionMode && hasItems) {
+                    if (!selectionMode && scannedParts.isNotEmpty()) {
                         selectionMode = true
-                        val updatedList = scannedParts.map { it.copy(isSelected = false) }
-                        scannedParts.clear()
-                        scannedParts.addAll(updatedList)
+                        selectedCodes.clear()
                     }
                 },
                 onScanClick = {
                     if (!selectionMode) {
                         when (cameraPermissionState.status) {
-                            PermissionStatus.Granted -> {
-                                navController.navigate(AppDestinations.CAMERA_SCREEN)
-                            }
+                            PermissionStatus.Granted -> navController.navigate(CameraRoute)
                             is PermissionStatus.Denied -> {
-                                if (cameraPermissionState.status.shouldShowRationale) {
-                                    showPermissionRationaleDialog = true
-                                } else {
-                                    cameraPermissionState.launchPermissionRequest()
-                                }
+                                if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
+                                else cameraPermissionState.launchPermissionRequest()
                             }
                         }
                     }
                 },
-                onSettingsClick = {
-                    if (!selectionMode) {
-                        navController.navigate(AppDestinations.SETTINGS_SCREEN)
-                    }
-                }
+                onSettingsClick = { if (!selectionMode) navController.navigate(SettingsRoute) }
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text(stringResource(R.string.search_serials_hint)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                singleLine = true,
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear search")
-                        }
-                    }
-                }
-            )
-            if (scannedParts.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Inbox,
-                        contentDescription = null,
-                        tint = Color(0xFF9E9E9E),
-                        modifier = Modifier.size(96.dp)
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = stringResource(R.string.empty_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFCFCFCF),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.empty_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF9E9E9E),
-                        textAlign = TextAlign.Center
-                    )
-                    if (!cameraPermissionState.status.isGranted) {
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = stringResource(R.string.camera_permission_required),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF9E9E9E),
-                            textAlign = TextAlign.Center
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
+                stickyHeader {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchQueryChange,
+                            placeholder = { Text(stringResource(R.string.search_serials_hint)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { onSearchQueryChange("") }) {
+                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            )
                         )
                     }
                 }
-            } else {
-                val visibleParts by remember(scannedParts, searchQuery) {
-                    derivedStateOf {
-                        val tokens = searchQuery
-                            .split(',', ';', ' ', '\n', '\t')
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-                        if (tokens.isNotEmpty()) {
-                            scannedParts.filter {
-                                val serial = parseScannedCode(it.part.fullCode)?.serialNumber ?: ""
-                                tokens.any { tok -> serial.contains(tok, ignoreCase = true) }
-                            }
-                        } else scannedParts
+
+                if (scannedParts.isEmpty()) {
+                    item {
+                        EmptyState(isPermissionGranted = cameraPermissionState.status.isGranted)
                     }
-                }
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(visibleParts.sortedByDescending { it.part.timestamp }) { selectablePart ->
-                        val part = selectablePart.part
-                        val parsed = parseScannedCode(part.fullCode)
-                        val formattedDate = remember(part.timestamp) {
-                            SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-                                .format(Date(part.timestamp))
-                        }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (selectionMode) {
-                                                selectablePart.isSelected = !selectablePart.isSelected
-                                            } else {
-                                                navController.navigate("${AppDestinations.DETAIL_SCREEN}/${part.fullCode}/${part.timestamp}")
-                                            }
-                                        },
-                                        onLongClick = {
-                                            selectionMode = true
-                                            selectablePart.isSelected = true
-                                        }
-                                    )
-                                    .padding(12.dp)
-                                    .drawBehind {
-                                        if (selectablePart.isSelected) {
-                                            drawRect(
-                                                color = Color(0xFFBBDEFB)
-                                            )
-                                            drawRect(
-                                                color = Color(0xFF1976D2),
-                                                style = Stroke(width = 4f)
-                                            )
-                                        }
-                                    },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                if (part.imageUri != null) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(part.imageUri.toUri()),
-                                        contentDescription = stringResource(R.string.scanned_item),
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(80.dp)
-                                            .clip(CircleShape)
-                                    )
+                } else {
+                    items(scannedParts, key = { it.fullCode }) { part ->
+                        PartItem(
+                            part = part,
+                            isSelected = selectedCodes.contains(part.fullCode),
+                            selectionMode = selectionMode,
+                            onItemClick = {
+                                if (selectionMode) {
+                                    if (selectedCodes.contains(part.fullCode)) selectedCodes.remove(part.fullCode)
+                                    else selectedCodes.add(part.fullCode)
                                 } else {
-                                    Icon(
-                                        Icons.Default.Settings,
-                                        contentDescription = stringResource(R.string.scanned_item),
-                                        modifier = Modifier.size(80.dp)
-                                    )
+                                    navController.navigate(DetailRoute(part.fullCode, part.timestamp))
                                 }
-                                Column {
-                                    Text(
-                                        text = "${stringResource(R.string.type_label)}: ${parsed?.typeCode ?: stringResource(
-                                            R.string.unknown)}"
-                                    )
-                                    Text(
-                                        text = "${stringResource(R.string.serial_number_label)}: ${parsed?.serialNumber ?: stringResource(
-                                            R.string.unknown)}",
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "${stringResource(R.string.date_label)}: $formattedDate"
-                                    )
-                                    if (!part.note.isNullOrEmpty()) {
-                                        Text(
-                                            text = "${stringResource(R.string.note_label)}: ${part.note}",
-                                            fontStyle = FontStyle.Italic
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.weight(1f))
-                                Text(
-                                    text = selectablePart.part.ordinal.toString(),
-                                    modifier = Modifier
-                                        .padding(end = 8.dp)
-                                        .background(
-                                            color = Color.DarkGray,
-                                            shape = CircleShape
-                                        )
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            },
+                            onItemLongClick = {
+                                selectionMode = true
+                                selectedCodes.add(part.fullCode)
                             }
-                        }
+                        )
                     }
                 }
             }
         }
     }
 
-    // Info dialog
-    if (showInfoDialog) {
-        val appVersion = try {
-            context.packageManager
-                .getPackageInfo(context.packageName, 0)
-                .versionName
-                ?: "N/A"
-        } catch (_: PackageManager.NameNotFoundException) {
-            "N/A"
-        }
-        AlertDialog(
-            onDismissRequest = { showInfoDialog = false },
-            title = { Text(stringResource(R.string.about_title)) },
-            text = { Text(stringResource(R.string.about_text, appVersion)) },
-            confirmButton = {
-                Button(onClick = { showInfoDialog = false }) { Text(stringResource(R.string.ok)) }
-            }
-        )
-    }
-
-    // Delete item confirmation dialog
+    // Dialogs...
     if (itemToDelete != null) {
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
             title = { Text(stringResource(R.string.delete_item_title)) },
             text = { Text(stringResource(R.string.delete_item_text)) },
             confirmButton = {
-                Button(onClick = {
-                    scannedParts.removeAll { it.part == itemToDelete }
-
-                    val part = itemToDelete
-                    if (part != null) {
-                        ScanStorage.removePartAndCleanup(sharedPreferences, part.fullCode)
-                    }
-
-                    // Reindex ordinals and persist
-                    reindexAndPersist()
-
-                    itemToDelete = null
-                }) {
-                    Text(stringResource(R.string.delete))
+                TextButton(onClick = { onDeletePart(itemToDelete!!); itemToDelete = null }) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                Button(onClick = { itemToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
+                TextButton(onClick = { itemToDelete = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
 
-
     DuplicateDialog(
         show = showDuplicateDialog,
         duplicateCodes = duplicateCodes,
-        onDismiss = {
-            showDuplicateDialog = false
-            duplicateCodes.clear()
-        },
+        onDismiss = { showDuplicateDialog = false; duplicateCodes.clear() },
         scope = scope,
         context = context
     )
@@ -512,17 +325,226 @@ fun MainScreen(navController: NavController, initialItems: List<SelectablePart>?
     PermissionRationaleDialog(
         show = showPermissionRationaleDialog,
         onDismiss = { showPermissionRationaleDialog = false },
-        onConfirm = {
-            showPermissionRationaleDialog = false
-            cameraPermissionState.launchPermissionRequest()
-        }
+        onConfirm = { showPermissionRationaleDialog = false; cameraPermissionState.launchPermissionRequest() }
     )
 
-    PermissionSettingsDialog(
-        show = showSettingsDialog,
-        onDismiss = { showSettingsDialog = false },
-        context = context
-    )
+    PermissionSettingsDialog(show = showSettingsDialog, onDismiss = { showSettingsDialog = false }, context = context)
+}
+
+@Composable
+private fun EmptyState(isPermissionGranted: Boolean) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Inbox,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+            modifier = Modifier.size(120.dp)
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = stringResource(R.string.empty_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.empty_subtitle),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.outline,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+        if (!isPermissionGranted) {
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.camera_permission_required),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PartItem(
+    part: ScannedPart,
+    isSelected: Boolean,
+    selectionMode: Boolean,
+    onItemClick: () -> Unit,
+    onItemLongClick: () -> Unit
+) {
+    val parsed = remember(part.fullCode) { parseScannedCode(part.fullCode) }
+    val formattedDate = remember(part.timestamp) {
+        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(part.timestamp))
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        border = if (isSelected) strokeBorder(1.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onItemClick, onLongClick = onItemLongClick)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                if (part.imageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(part.imageUri.toUri()),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        Icons.Rounded.Inventory2,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.Center).size(32.dp)
+                    )
+                }
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.White)
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = parsed?.serialNumber ?: "Unknown Serial",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${parsed?.typeCode ?: "Unknown"} • $formattedDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (!part.note.isNullOrEmpty()) {
+                    Text(
+                        text = part.note,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = CircleShape
+            ) {
+                Text(
+                    text = "#${part.ordinal}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun strokeBorder(width: androidx.compose.ui.unit.Dp, color: Color) = androidx.compose.foundation.BorderStroke(width, color)
+
+@Composable
+private fun BottomActionBar(
+    hasItems: Boolean,
+    selectionMode: Boolean,
+    onTrashClick: () -> Unit,
+    onScanClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.9f).height(72.dp),
+            shape = RoundedCornerShape(36.dp),
+            color = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp),
+            tonalElevation = 8.dp,
+            shadowElevation = 12.dp
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onTrashClick,
+                    enabled = hasItems && !selectionMode
+                ) {
+                    Icon(
+                        if (selectionMode) Icons.Rounded.Delete else Icons.Rounded.DeleteOutline,
+                        contentDescription = null,
+                        tint = when {
+                            selectionMode -> MaterialTheme.colorScheme.primary
+                            hasItems -> MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> MaterialTheme.colorScheme.outline
+                        },
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                FloatingActionButton(
+                    onClick = onScanClick,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp),
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = null, modifier = Modifier.size(28.dp))
+                }
+
+                IconButton(onClick = onSettingsClick, enabled = !selectionMode) {
+                    Icon(
+                        Icons.Rounded.Settings,
+                        contentDescription = null,
+                        tint = if (selectionMode) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -558,92 +580,25 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
     }
 }
 
-
-
-// --- Data classes and helpers for scanned parts ---
-data class ScannedPart(
-    val fullCode: String,
-    val timestamp: Long,
-    val imageUri: String? = null,
-    val note: String? = null,
-    val ordinal: Int = 0
-)
-
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
     val mockNavController = rememberNavController()
-    val mockItems = remember {
-        mutableStateListOf(
-            SelectablePart(ScannedPart("TYPEA12345678", System.currentTimeMillis() - 100000, note = "This is a note for item 1.")),
-            SelectablePart(ScannedPart("TYPEB87654321", System.currentTimeMillis() - 200000, imageUri = "https://via.placeholder.com/150")),
-            SelectablePart(ScannedPart("TYPEC55555555", System.currentTimeMillis() - 300000, note = "Another note here.", imageUri = "https://via.placeholder.com/150"))
+    val mockItems = listOf(
+        ScannedPart("TYPEA12345678", System.currentTimeMillis() - 100000, note = "This is a note for item 1.", ordinal = 1),
+        ScannedPart("TYPEB87654321", System.currentTimeMillis() - 200000, imageUri = "https://via.placeholder.com/150", ordinal = 2),
+        ScannedPart("TYPEC55555555", System.currentTimeMillis() - 300000, note = "Another note here.", imageUri = "https://via.placeholder.com/150", ordinal = 3)
+    )
+    MaterialTheme {
+        MainScreenContent(
+            navController = mockNavController,
+            scannedParts = mockItems,
+            searchQuery = "",
+            onSearchQueryChange = {},
+            onAddPart = {},
+            onDeleteSelected = {},
+            onDeletePart = {},
+            onExportToCsv = { null }
         )
-    }
-    MainScreen(navController = mockNavController, initialItems = mockItems)
-}
-
-@Composable
-private fun BottomActionBar(
-    hasItems: Boolean,
-    selectionMode: Boolean,
-    onTrashClick: () -> Unit,
-    onScanClick: () -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    Surface(
-        tonalElevation = 6.dp,
-        shadowElevation = 12.dp,
-        color = Color.Black.copy(alpha = 0.9f)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 32.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left: trash can.
-            // Enabled if there are items AND we're not already in selection mode.
-            val trashEnabled = hasItems && !selectionMode
-            IconButton(
-                onClick = onTrashClick,
-                enabled = trashEnabled
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete_selected),
-                    tint = if (trashEnabled) Color.Red else Color.DarkGray,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-
-            // Middle: scan button. Disabled during selection mode.
-            IconButton(
-                onClick = onScanClick,
-                enabled = !selectionMode
-            ) {
-                Icon(
-                    Icons.Filled.Search,
-                    contentDescription = stringResource(R.string.scan),
-                    tint = if (selectionMode) Color.DarkGray else Color(0xFF00C853),
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            // Right: settings button. Disabled during selection mode.
-            IconButton(
-                onClick = onSettingsClick,
-                enabled = !selectionMode
-            ) {
-                Icon(
-                    Icons.Filled.Settings,
-                    contentDescription = stringResource(R.string.menu_settings),
-                    tint = if (selectionMode) Color.DarkGray else Color(0xFF64B5F6),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
     }
 }

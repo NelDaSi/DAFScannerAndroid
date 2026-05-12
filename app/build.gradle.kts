@@ -2,10 +2,12 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "com.neldasi.jetpackcompose"
+    namespace = "com.neldasi.dafscanner"
     compileSdk = 36
 
     defaultConfig {
@@ -61,6 +63,10 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation (libs.androidx.camera.camera2)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.scenecore)
     implementation(libs.androidx.runtime.livedata)

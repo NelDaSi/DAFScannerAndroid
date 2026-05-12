@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.neldasi.jetpackcompose.screens
+package com.neldasi.dafscanner.screens
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,40 +60,41 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.neldasi.jetpackcompose.R
-import com.neldasi.jetpackcompose.extras.parseScannedCode
+import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.extras.parseScannedCode
+import com.neldasi.dafscanner.viewmodels.DetailViewModel
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
 @SuppressLint("UseKtx")
 @Composable
 fun DetailScreen(
     navController: NavController,
     fullCode: String,
-    timestamp: Long
+    timestamp: Long,
+    viewModel: DetailViewModel = viewModel()
 ) {
+    LaunchedEffect(fullCode) {
+        viewModel.loadPart(fullCode)
+    }
+
+    val part by viewModel.part.collectAsStateWithLifecycle()
     val parsed = parseScannedCode(fullCode)
 
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
-    // Persisted note
-    var note by remember {
-        mutableStateOf(prefs.getString("${fullCode}_note", "") ?: "")
-    }
-    // Persisted image URI
-    var imageUri by remember {
-        mutableStateOf(
-            prefs.getString("${fullCode}_imageUri", null)
-                ?.toUri()
-        )
-    }
+    // Note and image from ViewModel
+    val note = part?.note ?: ""
+    val imageUri = part?.imageUri?.toUri()
+
     var imageFileUri by remember { mutableStateOf<Uri?>(null) }
 
     var showImageSourceDialog by remember { mutableStateOf(false) }
@@ -101,8 +103,7 @@ fun DetailScreen(
     fun deleteImageForCode() {
         val file = File(context.filesDir, "img_$fullCode.jpg")
         if (file.exists()) file.delete()
-        prefs.edit().remove("${fullCode}_imageUri").apply()
-        imageUri = null
+        viewModel.updateImage(null)
     }
 
     // Share launcher with formatted details
@@ -173,8 +174,7 @@ fun DetailScreen(
             ActivityResultContracts.TakePicture()
         ) { success ->
             if (success && imageFileUri != null) {
-                prefs.edit().putString("${fullCode}_imageUri", imageFileUri.toString()).apply()
-                imageUri = imageFileUri
+                viewModel.updateImage(imageFileUri.toString())
             }
         }
 
@@ -189,8 +189,7 @@ fun DetailScreen(
                         input.copyTo(output)
                     }
                     val savedUri = Uri.fromFile(file)
-                    prefs.edit().putString("${fullCode}_imageUri", savedUri.toString()).apply()
-                    imageUri = savedUri
+                    viewModel.updateImage(savedUri.toString())
                 }
             }
         }
@@ -306,8 +305,7 @@ fun DetailScreen(
                     OutlinedTextField(
                         value = note,
                         onValueChange = {
-                            note = it
-                            prefs.edit().putString("${fullCode}_note", it).apply()
+                            viewModel.updateNote(it)
                         },
                         label = { Text(stringResource(R.string.extra_note)) },
                         modifier = Modifier

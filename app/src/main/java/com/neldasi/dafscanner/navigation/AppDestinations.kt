@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.navigation
+package com.neldasi.dafscanner.navigation
 
 object AppDestinations {
     const val MAIN_SCREEN = "main"

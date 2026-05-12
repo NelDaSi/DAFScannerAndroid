@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.screens
+package com.neldasi.dafscanner.screens
 
 import android.content.Context
 import android.util.Log
@@ -20,6 +20,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,10 +68,10 @@ import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.neldasi.jetpackcompose.extras.SettingsRepository
-import com.neldasi.jetpackcompose.R
-import com.neldasi.jetpackcompose.extras.processImageProxy
-import com.neldasi.jetpackcompose.navigation.NavKeys
+import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.extras.processImageProxy
+import com.neldasi.dafscanner.navigation.NavKeys
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -131,6 +134,13 @@ fun CameraScanScreen(navController: NavController) {
     var camera: Camera? by remember { mutableStateOf(null) }
     var isTorchOn by remember { mutableStateOf(false) }
 
+    var zoomRatio by remember { mutableFloatStateOf(1f) }
+    val transformableState = rememberTransformableState { zoomChange, _, _ ->
+        val newZoom = (zoomRatio * zoomChange).coerceIn(1f, 10f)
+        zoomRatio = newZoom
+        camera?.cameraControl?.setZoomRatio(newZoom)
+    }
+
     val flashAlpha = remember { Animatable(0f) }
     val flashScope = rememberCoroutineScope()
 
@@ -175,7 +185,7 @@ fun CameraScanScreen(navController: NavController) {
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().transformable(state = transformableState)) {
         AndroidView(
             factory = { ctx ->
                 val previewView = PreviewView(ctx).apply {
@@ -216,6 +226,7 @@ fun CameraScanScreen(navController: NavController) {
                             context,
                             vibrateEnabled
                         ) { scannedValue ->
+                            Log.d("CameraScanScreen", "Scanned code: $scannedValue")
                             val type = scannedValue.take(7)
                             if (type in allowedTypes) {
                                 if (scannedResult == null) {

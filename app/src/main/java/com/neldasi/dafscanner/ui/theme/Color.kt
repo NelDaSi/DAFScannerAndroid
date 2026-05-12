@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.ui.theme
+package com.neldasi.dafscanner.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.extras
+package com.neldasi.dafscanner.extras
 
 data class ParsedPart(
     val typeCode: String,

@@ -1,4 +1,4 @@
-package com.neldasi.jetpackcompose.extras
+package com.neldasi.dafscanner.extras
 import android.content.Context
 import android.os.VibrationEffect
 import android.os.Vibrator

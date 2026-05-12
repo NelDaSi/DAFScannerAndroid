@@ -1,40 +1,32 @@
-package com.neldasi.jetpackcompose.navigation
+package com.neldasi.dafscanner.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.neldasi.jetpackcompose.screens.CameraScanScreen
-import com.neldasi.jetpackcompose.screens.DetailScreen
-import com.neldasi.jetpackcompose.screens.MainScreen
-import com.neldasi.jetpackcompose.screens.SettingsScreen
+import androidx.navigation.toRoute
+import com.neldasi.dafscanner.screens.CameraScanScreen
+import com.neldasi.dafscanner.screens.DetailScreen
+import com.neldasi.dafscanner.screens.MainScreen
+import com.neldasi.dafscanner.screens.SettingsScreen
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = AppDestinations.MAIN_SCREEN) {
-        composable(AppDestinations.MAIN_SCREEN) {
+    NavHost(navController = navController, startDestination = MainRoute) {
+        composable<MainRoute> {
             MainScreen(navController)
         }
-        composable(AppDestinations.CAMERA_SCREEN) {
+        composable<CameraRoute> {
             CameraScanScreen(navController)
         }
-        composable(AppDestinations.SETTINGS_SCREEN) {
+        composable<SettingsRoute> {
             SettingsScreen(navController)
         }
-        composable(
-            route = "${AppDestinations.DETAIL_SCREEN}/{fullCode}/{timestamp}",
-            arguments = listOf(
-                navArgument("fullCode") { type = NavType.StringType },
-                navArgument("timestamp") { type = NavType.LongType }
-            )
-        ) { backStackEntry ->
-            val fullCode = backStackEntry.arguments?.getString("fullCode") ?: return@composable
-            val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: return@composable
-            DetailScreen(navController, fullCode, timestamp)
+        composable<DetailRoute> { backStackEntry ->
+            val route: DetailRoute = backStackEntry.toRoute()
+            DetailScreen(navController, route.fullCode, route.timestamp)
         }
     }
 }
