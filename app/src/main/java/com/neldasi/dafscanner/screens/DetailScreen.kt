@@ -13,11 +13,9 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
@@ -61,7 +59,7 @@ fun DetailScreen(
     navController: NavController,
     fullCode: String,
     timestamp: Long,
-    viewModel: DetailViewModel = viewModel()
+    viewModel: DetailViewModel = viewModel(),
 ) {
     LaunchedEffect(fullCode) {
         viewModel.loadPart(fullCode)
@@ -78,8 +76,7 @@ fun DetailScreen(
         note = note,
         imageUri = imageUri,
         onNoteChange = { viewModel.updateNote(it) },
-        onImageUpdate = { viewModel.updateImage(it) }
-    )
+    ) { viewModel.updateImage(it) }
 }
 
 @Composable
@@ -90,18 +87,18 @@ fun DetailScreenContent(
     note: String,
     imageUri: Uri?,
     onNoteChange: (String) -> Unit,
-    onImageUpdate: (String?) -> Unit
+    onImageUpdate: (String?) -> Unit,
 ) {
     val context = LocalContext.current
     val parsed = remember(fullCode) { parseScannedCode(fullCode) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    var imageFileUri by remember { mutableStateOf<Uri?>(null) }
-    var showImageSourceDialog by remember { mutableStateOf(false) }
-    var showImagePreview by remember { mutableStateOf(false) }
+    var imageFileUri by remember { mutableStateOf<Uri?>(value = null) }
+    var showImageSourceDialog by remember { mutableStateOf(value = false) }
+    var showImagePreview by remember { mutableStateOf(value = false) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && imageFileUri != null) {
+        if (success && (imageFileUri != null)) {
             onImageUpdate(imageFileUri.toString())
         }
     }
@@ -116,34 +113,6 @@ fun DetailScreenContent(
                 }
                 onImageUpdate(Uri.fromFile(file).toString())
             }
-        }
-    }
-
-    val shareIntent = remember(fullCode, imageUri, note) {
-        Intent(Intent.ACTION_SEND).apply {
-            val parsedText = buildString {
-                appendLine(context.getString(R.string.share_title))
-                appendLine()
-                parsed?.let {
-                    appendLine(context.getString(R.string.share_type, it.typeCode))
-                    appendLine(context.getString(R.string.share_supplier, it.supplierCode))
-                    appendLine(context.getString(R.string.share_serial, it.serialNumber))
-                    appendLine(context.getString(R.string.share_batch, it.batchNumber))
-                    appendLine()
-                }
-                val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
-                appendLine(context.getString(R.string.share_scanned_at, formattedDate))
-                if (note.isNotBlank()) appendLine(context.getString(R.string.share_note, note))
-            }
-            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
-            putExtra(Intent.EXTRA_TEXT, parsedText)
-            imageUri?.let {
-                val file = File(context.filesDir, "img_$fullCode.jpg")
-                val sharedUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                putExtra(Intent.EXTRA_STREAM, sharedUri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                type = "image/jpeg"
-            } ?: run { type = "text/plain" }
         }
     }
 
@@ -339,7 +308,7 @@ fun DetailScreenContent(
         )
     }
 
-    if (showImagePreview && imageUri != null) {
+    if (showImagePreview && (imageUri != null)) {
         AlertDialog(
             onDismissRequest = { showImagePreview = false },
             confirmButton = {},
@@ -400,8 +369,7 @@ fun DetailScreenPreview() {
             note = "This is a sample note for the preview.",
             imageUri = null,
             onNoteChange = {},
-            onImageUpdate = {}
-        )
+        ) {}
     }
 }
 

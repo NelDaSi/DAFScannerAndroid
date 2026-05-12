@@ -25,8 +25,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -66,7 +64,7 @@ import java.util.Locale
 @Composable
 fun MainScreen(
     navController: NavController,
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = viewModel(),
 ) {
     val scannedParts by viewModel.filteredParts.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -79,8 +77,7 @@ fun MainScreen(
         onAddPart = { viewModel.addPart(it) },
         onDeleteSelected = { viewModel.deleteSelected(it) },
         onDeletePart = { viewModel.deletePart(it) },
-        onExportToCsv = { viewModel.exportToCsv() }
-    )
+    ) { viewModel.exportToCsv() }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -93,7 +90,7 @@ fun MainScreenContent(
     onAddPart: (String) -> Unit,
     onDeleteSelected: (List<String>) -> Unit,
     onDeletePart: (ScannedPart) -> Unit,
-    onExportToCsv: suspend () -> File?
+    onExportToCsv: suspend () -> File?,
 ) {
     val context = LocalContext.current
     val sharedPreferences = remember { ScanStorage.prefs(context) }
@@ -101,12 +98,12 @@ fun MainScreenContent(
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
-    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var itemToDelete by remember { mutableStateOf<ScannedPart?>(null) }
-    var selectionMode by remember { mutableStateOf(false) }
+    var showPermissionRationaleDialog by remember { mutableStateOf(value = false) }
+    var showSettingsDialog by remember { mutableStateOf(value = false) }
+    var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
+    var selectionMode by remember { mutableStateOf(value = false) }
     val duplicateCodes = remember { mutableStateListOf<String>() }
-    var showDuplicateDialog by remember { mutableStateOf(false) }
+    var showDuplicateDialog by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -293,7 +290,6 @@ fun MainScreenContent(
                         PartItem(
                             part = part,
                             isSelected = selectedCodes.contains(part.fullCode),
-                            selectionMode = selectionMode,
                             onItemClick = {
                                 if (selectionMode) {
                                     if (selectedCodes.contains(part.fullCode)) selectedCodes.remove(part.fullCode)
@@ -396,7 +392,6 @@ private fun EmptyState(isPermissionGranted: Boolean) {
 private fun PartItem(
     part: ScannedPart,
     isSelected: Boolean,
-    selectionMode: Boolean,
     onItemClick: () -> Unit,
     onItemLongClick: () -> Unit
 ) {
@@ -550,7 +545,6 @@ fun MainScreenPreview() {
             onAddPart = {},
             onDeleteSelected = {},
             onDeletePart = {},
-            onExportToCsv = { null }
-        )
+        ) { null }
     }
 }

@@ -37,7 +37,7 @@ fun DuplicateDialog(
     duplicateCodes: SnapshotStateList<String>,
     onDismiss: () -> Unit,
     scope: CoroutineScope,
-    context: Context
+    context: Context,
 ) {
     if (!show) return
 

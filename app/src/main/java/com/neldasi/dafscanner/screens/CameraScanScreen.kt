@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -74,11 +72,11 @@ private fun requestCenterFocus(previewView: PreviewView, camera: Camera?) {
 
         val factory: MeteringPointFactory = SurfaceOrientedMeteringPointFactory(
             previewView.width.toFloat(),
-            previewView.height.toFloat()
+            previewView.height.toFloat(),
         )
         val centerPoint = factory.createPoint(
             previewView.width / 2f,
-            previewView.height / 2f
+            previewView.height / 2f,
         )
 
         val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF)
@@ -102,15 +100,15 @@ fun CameraScanScreen(navController: NavController) {
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context) }
     
-    var showNotAllowedDialog by remember { mutableStateOf(false) }
-    var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(null) }
-    var scannedResult by remember { mutableStateOf<String?>(null) }
-    var cameraError by remember { mutableStateOf<String?>(null) }
-    var isCameraReady by remember { mutableStateOf(false) }
-    var lastSerial by remember { mutableStateOf<String?>(null) }
-    var lastFlashedCode by remember { mutableStateOf<String?>(null) }
-    var camera: Camera? by remember { mutableStateOf(null) }
-    var isTorchOn by remember { mutableStateOf(false) }
+    var showNotAllowedDialog by remember { mutableStateOf(value = false) }
+    var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(value = null) }
+    var scannedResult by remember { mutableStateOf<String?>(value = null) }
+    var cameraError by remember { mutableStateOf<String?>(value = null) }
+    var isCameraReady by remember { mutableStateOf(value = false) }
+    var lastSerial by remember { mutableStateOf<String?>(value = null) }
+    var lastFlashedCode by remember { mutableStateOf<String?>(value = null) }
+    var camera: Camera? by remember { mutableStateOf(value = null) }
+    var isTorchOn by remember { mutableStateOf(value = false) }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
     val transformableState = rememberTransformableState { zoomChange, _, _ ->
@@ -167,9 +165,9 @@ fun CameraScanScreen(navController: NavController) {
             camera?.cameraControl?.enableTorch(newState)
             previewViewRef?.let { requestCenterFocus(it, camera) }
         },
-        onClose = { navController.popBackStack() },
-        onAndroidViewFactory = { ctx ->
-            val previewView = PreviewView(ctx).apply {
+        onClose = { navController.popBackStack() }
+    ) { ctx ->
+        val previewView = PreviewView(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                 scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -207,11 +205,10 @@ fun CameraScanScreen(navController: NavController) {
             }, ContextCompat.getMainExecutor(ctx))
             previewView
         }
-    )
 
     LaunchedEffect(isCameraReady, camera) {
-        if (!isCameraReady || camera == null) return@LaunchedEffect
-        while (isActive && isCameraReady && camera != null) {
+        if (!isCameraReady || (camera == null)) return@LaunchedEffect
+        while (isActive && isCameraReady && (camera != null)) {
             previewViewRef?.let { requestCenterFocus(it, camera) }
             delay(2000)
         }
@@ -465,7 +462,6 @@ fun CameraScanScreenPreview() {
             transformableState = rememberTransformableState { _, _, _ -> },
             onToggleTorch = {},
             onClose = {},
-            onAndroidViewFactory = { android.view.View(it) }
-        )
+        ) { android.view.View(it) }
     }
 }

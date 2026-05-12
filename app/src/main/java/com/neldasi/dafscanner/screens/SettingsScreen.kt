@@ -22,9 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -93,14 +91,14 @@ import com.neldasi.dafscanner.viewmodels.SettingsViewModel
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val prefs = remember { ScanStorage.prefs(context) }
     
-    var vibrateEnabled by remember { mutableStateOf(false) }
-    var screenAlwaysOn by remember { mutableStateOf(false) }
-    var continuousScanEnabled by remember { mutableStateOf(false) }
+    var vibrateEnabled by remember { mutableStateOf(value = false) }
+    var screenAlwaysOn by remember { mutableStateOf(value = false) }
+    var continuousScanEnabled by remember { mutableStateOf(value = false) }
 
     LaunchedEffect(Unit) {
         vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
@@ -130,9 +128,8 @@ fun SettingsScreen(
         onContinuousScanChange = {
             continuousScanEnabled = it
             prefs.edit { putBoolean("continuousScanEnabled", it) }
-        },
-        onClearAllData = { viewModel.clearAllData() }
-    )
+        }
+    ) { viewModel.clearAllData() }
 }
 
 @Composable
@@ -152,9 +149,9 @@ fun SettingsScreenContent(
     val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(SettingsRepository.loadAllowedTypes(context)) } }
     val defaultAllowedTypes = setOf("2245293", "2245295", "2261325", "2150001", "2342199", "2342201", "2012566")
     
-    var showAddDialog by remember { mutableStateOf(false) }
-    var newType by remember { mutableStateOf("") }
-    var showClearAllDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(value = false) }
+    var newType by remember { mutableStateOf(value = "") }
+    var showClearAllDialog by remember { mutableStateOf(value = false) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

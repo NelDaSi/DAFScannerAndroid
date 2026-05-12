@@ -36,13 +36,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         allParts = repository.allParts.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = emptyList(),
         )
 
         // Fix existing items if they all have ordinal 1 (from previous bug)
         viewModelScope.launch {
             val parts = repository.allParts.first()
-            if (parts.size > 1 && parts.count { it.ordinal == 1 } > 1) {
+            if ((parts.size > 1) && (parts.count { it.ordinal == 1 } > 1)) {
                 parts.sortedBy { it.timestamp }.forEachIndexed { index, part ->
                     repository.update(part.copy(ordinal = index + 1))
                 }
@@ -54,8 +54,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 parts
             } else {
                 val tokens = query.split(',', ';', ' ', '\n', '\t')
+                    .asSequence()
                     .map { it.trim() }
                     .filter { it.isNotEmpty() }
+                    .toList()
                 if (tokens.isEmpty()) {
                     parts
                 } else {
