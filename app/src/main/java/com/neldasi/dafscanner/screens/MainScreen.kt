@@ -99,7 +99,7 @@ fun MainScreenContent(
     val sharedPreferences = remember { ScanStorage.prefs(context) }
     val selectedCodes = remember { mutableStateListOf<String>() }
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     var showPermissionRationaleDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -147,12 +147,12 @@ fun MainScreenContent(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
                         stringResource(R.string.title_scanned_items),
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineMedium
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 actions = {
@@ -343,7 +343,7 @@ private fun EmptyState(isPermissionGranted: Boolean) {
         Icon(
             imageVector = Icons.Outlined.Inbox,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+            tint = MaterialTheme.colorScheme.outline,
             modifier = Modifier.size(120.dp)
         )
         Spacer(Modifier.height(24.dp))
@@ -397,8 +397,8 @@ private fun PartItem(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
         border = if (isSelected) strokeBorder(1.dp, MaterialTheme.colorScheme.primary) else null
     ) {
@@ -407,7 +407,7 @@ private fun PartItem(
                 .fillMaxWidth()
                 .combinedClickable(onClick = onItemClick, onLongClick = onItemLongClick)
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
@@ -446,13 +446,14 @@ private fun PartItem(
                     text = parsed?.serialNumber ?: "Unknown Serial",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    // Allowing wrapping for accessibility (large fonts)
+                    softWrap = true
                 )
                 Text(
                     text = "${parsed?.typeCode ?: "Unknown"} • $formattedDate",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurface,
+                    softWrap = true
                 )
                 if (!part.note.isNullOrEmpty()) {
                     Text(
@@ -460,9 +461,8 @@ private fun PartItem(
                         style = MaterialTheme.typography.bodySmall,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = 4.dp),
+                        softWrap = true
                     )
                 }
             }

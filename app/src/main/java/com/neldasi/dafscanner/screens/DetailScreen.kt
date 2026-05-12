@@ -94,7 +94,7 @@ fun DetailScreenContent(
 ) {
     val context = LocalContext.current
     val parsed = remember(fullCode) { parseScannedCode(fullCode) }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     var imageFileUri by remember { mutableStateOf<Uri?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
@@ -150,7 +150,7 @@ fun DetailScreenContent(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = { Text(stringResource(R.string.part_details), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -159,9 +159,34 @@ fun DetailScreenContent(
                 },
                 actions = {
                     IconButton(onClick = {
-                        val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.share))
-                        chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        context.startActivity(chooserIntent)
+                        val chooserIntent = Intent(Intent.ACTION_SEND).apply {
+                            val parsedText = buildString {
+                                appendLine(context.getString(R.string.share_title))
+                                appendLine()
+                                parsed?.let {
+                                    appendLine(context.getString(R.string.share_type, it.typeCode))
+                                    appendLine(context.getString(R.string.share_supplier, it.supplierCode))
+                                    appendLine(context.getString(R.string.share_serial, it.serialNumber))
+                                    appendLine(context.getString(R.string.share_batch, it.batchNumber))
+                                    appendLine()
+                                }
+                                val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+                                appendLine(context.getString(R.string.share_scanned_at, formattedDate))
+                                if (note.isNotBlank()) appendLine(context.getString(R.string.share_note, note))
+                            }
+                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                            putExtra(Intent.EXTRA_TEXT, parsedText)
+                            imageUri?.let {
+                                val file = File(context.filesDir, "img_$fullCode.jpg")
+                                val sharedUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                putExtra(Intent.EXTRA_STREAM, sharedUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                type = "image/jpeg"
+                            } ?: run { type = "text/plain" }
+                        }
+                        val chooser = Intent.createChooser(chooserIntent, context.getString(R.string.share))
+                        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        context.startActivity(chooser)
                     }) {
                         Icon(Icons.Rounded.IosShare, contentDescription = stringResource(R.string.share))
                     }
@@ -178,7 +203,6 @@ fun DetailScreenContent(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -190,7 +214,7 @@ fun DetailScreenContent(
                         ),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -230,7 +254,7 @@ fun DetailScreenContent(
                 )
                 Card(
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     OutlinedTextField(
                         value = note,
@@ -257,7 +281,7 @@ fun DetailScreenContent(
                 )
                 Card(
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         val formattedDate = remember(timestamp) {
@@ -347,7 +371,7 @@ private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
             )
         }
         Column {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
             Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
     }

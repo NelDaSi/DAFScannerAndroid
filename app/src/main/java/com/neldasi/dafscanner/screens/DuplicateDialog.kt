@@ -75,7 +75,8 @@ fun DuplicateDialog(
                             Text(
                                 text = serial,
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
                             )
                             IconButton(
                                 onClick = {
