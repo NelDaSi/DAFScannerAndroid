@@ -3,7 +3,6 @@
 package com.neldasi.dafscanner.screens
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,50 +11,32 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -63,6 +44,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.parseScannedCode
@@ -86,30 +68,56 @@ fun DetailScreen(
     }
 
     val part by viewModel.part.collectAsStateWithLifecycle()
-    val parsed = parseScannedCode(fullCode)
-
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-
-    // Note and image from ViewModel
     val note = part?.note ?: ""
     val imageUri = part?.imageUri?.toUri()
 
-    var imageFileUri by remember { mutableStateOf<Uri?>(null) }
+    DetailScreenContent(
+        navController = navController,
+        fullCode = fullCode,
+        timestamp = timestamp,
+        note = note,
+        imageUri = imageUri,
+        onNoteChange = { viewModel.updateNote(it) },
+        onImageUpdate = { viewModel.updateImage(it) }
+    )
+}
 
+@Composable
+fun DetailScreenContent(
+    navController: NavController,
+    fullCode: String,
+    timestamp: Long,
+    note: String,
+    imageUri: Uri?,
+    onNoteChange: (String) -> Unit,
+    onImageUpdate: (String?) -> Unit
+) {
+    val context = LocalContext.current
+    val parsed = remember(fullCode) { parseScannedCode(fullCode) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    var imageFileUri by remember { mutableStateOf<Uri?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var showImagePreview by remember { mutableStateOf(false) }
 
-    fun deleteImageForCode() {
-        val file = File(context.filesDir, "img_$fullCode.jpg")
-        if (file.exists()) file.delete()
-        viewModel.updateImage(null)
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && imageFileUri != null) {
+            onImageUpdate(imageFileUri.toString())
+        }
     }
 
-    // Share launcher with formatted details
-    val shareLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { /* no-op */ }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { selectedUri ->
+            val file = File(context.filesDir, "img_$fullCode.jpg")
+            if (file.exists()) file.delete()
+            context.contentResolver.openInputStream(selectedUri)?.use { input ->
+                FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+                onImageUpdate(Uri.fromFile(file).toString())
+            }
+        }
+    }
 
     val shareIntent = remember(fullCode, imageUri, note) {
         Intent(Intent.ACTION_SEND).apply {
@@ -125,171 +133,88 @@ fun DetailScreen(
                 }
                 val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
                 appendLine(context.getString(R.string.share_scanned_at, formattedDate))
-                if (note.isNotBlank()) {
-                    appendLine(context.getString(R.string.share_note, note))
-                }
+                if (note.isNotBlank()) appendLine(context.getString(R.string.share_note, note))
             }
-
             putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
             putExtra(Intent.EXTRA_TEXT, parsedText)
-
             imageUri?.let {
                 val file = File(context.filesDir, "img_$fullCode.jpg")
                 val sharedUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                 putExtra(Intent.EXTRA_STREAM, sharedUri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 type = "image/jpeg"
-            } ?: run {
-                type = "text/plain"
-            }
+            } ?: run { type = "text/plain" }
         }
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.part_details)) },
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.part_details), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(
-                            R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.share))
-                        // Grant temporary read permission to the content URI for the chosen app
                         chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        shareLauncher.launch(chooserIntent)
+                        context.startActivity(chooserIntent)
                     }) {
-                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
+                        Icon(Icons.Rounded.IosShare, contentDescription = stringResource(R.string.share))
                     }
-                }
+                },
+                scrollBehavior = scrollBehavior
             )
         }
     ) { innerPadding ->
-
-        // Launchers
-        val cameraLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.TakePicture()
-        ) { success ->
-            if (success && imageFileUri != null) {
-                viewModel.updateImage(imageFileUri.toString())
-            }
-        }
-
-        val galleryLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.GetContent()
-        ) { uri ->
-            uri?.let { selectedUri ->
-                deleteImageForCode()
-                val file = File(context.filesDir, "img_$fullCode.jpg")
-                context.contentResolver.openInputStream(selectedUri)?.use { input ->
-                    FileOutputStream(file).use { output ->
-                        input.copyTo(output)
-                    }
-                    val savedUri = Uri.fromFile(file)
-                    viewModel.updateImage(savedUri.toString())
-                }
-            }
-        }
-
-        if (showImageSourceDialog) {
-            AlertDialog(
-                onDismissRequest = { showImageSourceDialog = false },
-                title = { Text(stringResource(R.string.select_image_source)) },
-                text = {
-                    Column {
-                        if (imageUri != null) {
-                            TextButton(onClick = {
-                                deleteImageForCode()
-                                showImageSourceDialog = false
-                            }) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.remove_image), modifier = Modifier.padding(end = 8.dp))
-                                    Text(stringResource(R.string.remove_image))
-                                }
-                            }
-                        } else {
-                            TextButton(onClick = {
-                                val file = File(context.filesDir, "img_$fullCode.jpg")
-                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                                imageFileUri = uri
-                                cameraLauncher.launch(uri)
-                                showImageSourceDialog = false
-                            }) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(
-                                        R.string.take_photo), modifier = Modifier.padding(end = 8.dp))
-                                    Text(stringResource(R.string.take_photo))
-                                }
-                            }
-                            TextButton(onClick = {
-                                galleryLauncher.launch("image/*")
-                                showImageSourceDialog = false
-                            }) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.PhotoLibrary, contentDescription = stringResource(
-                                        R.string.pick_gallery), modifier = Modifier.padding(end = 8.dp))
-                                    Text(stringResource(R.string.pick_gallery))
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {} // No confirm button needed as actions are direct
-            )
-        }
-
         LazyColumn(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.5f)
+                        .clip(RoundedCornerShape(24.dp))
+                        .combinedClickable(
+                            onClick = { showImageSourceDialog = true },
+                            onLongClick = { if (imageUri != null) showImagePreview = true }
+                        ),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
                 ) {
-                    // Image
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .combinedClickable(
-                                onClick = { showImageSourceDialog = true },
-                                onLongClick = { if (imageUri != null) showImagePreview = true }
-                            ),
-                        colors = CardDefaults.cardColors(containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().clipToBounds(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            when {
-                                imageUri != null -> Image(
-                                    painter = rememberAsyncImagePainter(imageUri),
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        if (imageUri != null) {
+                            Image(
+                                painter = rememberAsyncImagePainter(imageUri),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Rounded.AddAPhoto,
                                     contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(48.dp)
                                 )
-                                else -> Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.CameraAlt,
-                                        contentDescription = stringResource(R.string.tap_to_add_image),
-                                        tint = Color.Gray,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.tap_to_add_image),
-                                        color = Color.DarkGray
-                                    )
-                                }
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = stringResource(R.string.tap_to_add_image),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                )
                             }
                         }
                     }
@@ -297,78 +222,144 @@ fun DetailScreen(
             }
 
             item {
-                // 3) Note field
+                Text(
+                    stringResource(R.string.extra_note),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 ) {
                     OutlinedTextField(
                         value = note,
-                        onValueChange = {
-                            viewModel.updateNote(it)
-                        },
-                        label = { Text(stringResource(R.string.extra_note)) },
+                        onValueChange = onNoteChange,
+                        placeholder = { Text(stringResource(R.string.extra_note)) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
-
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Transparent
+                        )
                     )
                 }
             }
 
             item {
-                HorizontalDivider()
-            }
-
-            item {
-                // 4) Parsed info and scanned date
-                val formattedDate = remember(timestamp) {
-                    SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-                        .format(Date(timestamp))
-                }
+                Text(
+                    stringResource(R.string.title_scanned_items),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        parsed?.let {
-                            InfoRow(stringResource(R.string.type), it.typeCode)
-                            InfoRow(stringResource(R.string.supplier), it.supplierCode)
-                            InfoRow(stringResource(R.string.serial), it.serialNumber)
-                            InfoRow(stringResource(R.string.batch), it.batchNumber)
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        val formattedDate = remember(timestamp) {
+                            SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
                         }
-                        InfoRow(stringResource(R.string.scanned_at), formattedDate)
+                        parsed?.let {
+                            DetailRow(Icons.Rounded.Numbers, stringResource(R.string.type), it.typeCode)
+                            DetailRow(Icons.Rounded.Business, stringResource(R.string.supplier), it.supplierCode)
+                            DetailRow(Icons.Rounded.Tag, stringResource(R.string.serial), it.serialNumber)
+                            DetailRow(Icons.Rounded.Layers, stringResource(R.string.batch), it.batchNumber)
+                        }
+                        DetailRow(Icons.Rounded.Event, stringResource(R.string.scanned_at), formattedDate)
                     }
                 }
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }
+
+    if (showImageSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text(stringResource(R.string.select_image_source), fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (imageUri != null) {
+                        TextButton(onClick = {
+                            val file = File(context.filesDir, "img_$fullCode.jpg")
+                            if (file.exists()) file.delete()
+                            onImageUpdate(null)
+                            showImageSourceDialog = false
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Rounded.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.width(12.dp))
+                                Text(stringResource(R.string.remove_image), color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    } else {
+                        ImageSourceItem(Icons.Rounded.CameraAlt, stringResource(R.string.take_photo)) {
+                            val file = File(context.filesDir, "img_$fullCode.jpg")
+                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                            imageFileUri = uri
+                            cameraLauncher.launch(uri)
+                            showImageSourceDialog = false
+                        }
+                        ImageSourceItem(Icons.Rounded.PhotoLibrary, stringResource(R.string.pick_gallery)) {
+                            galleryLauncher.launch("image/*")
+                            showImageSourceDialog = false
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     if (showImagePreview && imageUri != null) {
         AlertDialog(
             onDismissRequest = { showImagePreview = false },
             confirmButton = {},
-            text = {
-                ZoomableImage(imageUri!!)
-            }
+            text = { ZoomableImage(imageUri) }
         )
     }
 }
+
 @Composable
-fun InfoRow(label: String, value: String) {
-    Card(
+private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Surface(
+            modifier = Modifier.size(40.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp
         ) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            Text(value, style = MaterialTheme.typography.bodyLarge)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(10.dp).size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Column {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ImageSourceItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Icon(icon, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Text(label)
         }
     }
 }
@@ -376,18 +367,18 @@ fun InfoRow(label: String, value: String) {
 @Preview(showBackground = true)
 @Composable
 fun DetailScreenPreview() {
-    // Mock NavController for preview purposes
-    val mockNavController = NavController(LocalContext.current)
-
-    // Sample data for preview
-    val sampleFullCode = "21500018842993A10000000000K6805"
-    val sampleTimestamp = System.currentTimeMillis()
-
-    DetailScreen(
-        navController = mockNavController,
-        fullCode = sampleFullCode,
-        timestamp = sampleTimestamp
-    )
+    val mockNavController = rememberNavController()
+    MaterialTheme {
+        DetailScreenContent(
+            navController = mockNavController,
+            fullCode = "21500018842993A10000000000K6805",
+            timestamp = System.currentTimeMillis(),
+            note = "This is a sample note for the preview.",
+            imageUri = null,
+            onNoteChange = {},
+            onImageUpdate = {}
+        )
+    }
 }
 
 @Composable
@@ -410,6 +401,7 @@ fun ZoomableImage(uri: Uri) {
                 translationY = offset.y
             )
             .transformable(state = state)
+            .clipToBounds()
     ) {
         Image(
             painter = rememberAsyncImagePainter(uri),
