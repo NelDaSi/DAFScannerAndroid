@@ -5,7 +5,7 @@ import android.content.Context
 object SettingsRepository {
 
     private val defaultAllowedTypes = setOf(
-        "2245293", "2245295", "2261325"
+        "2245293", "2245295", "2261325", "2150001", "2342199", "2342201", "2012566"
     )
 
     fun loadAllowedTypes(context: Context): Set<String> {
