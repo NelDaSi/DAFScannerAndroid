@@ -56,6 +56,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
 import kotlinx.coroutines.delay
@@ -448,10 +449,7 @@ private fun buildImageAnalyzer(
 }
 
 private fun extractSerial(fullCode: String): String {
-    val start = 12
-    val end = 18
-    return if (fullCode.length >= end) fullCode.substring(start, end)
-    else fullCode.drop(12).take(6)
+    return parseScannedCode(fullCode)?.serialNumber ?: (if (fullCode.length >= 18) fullCode.substring(12, 18) else fullCode.take(6))
 }
 
 @ComposePreview(showBackground = true)

@@ -150,7 +150,7 @@ fun SettingsScreenContent(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     
     val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(SettingsRepository.loadAllowedTypes(context)) } }
-    val defaultAllowedTypes = setOf("2245293", "2245295", "2261325")
+    val defaultAllowedTypes = setOf("2245293", "2245295", "2261325", "2598796")
     
     var showAddDialog by remember { mutableStateOf(false) }
     var newType by remember { mutableStateOf("") }
