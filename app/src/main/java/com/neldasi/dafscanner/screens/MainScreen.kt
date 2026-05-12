@@ -187,6 +187,24 @@ fun MainScreenContent(
                         }
                     }
                     if (!selectionMode) {
+                        IconButton(
+                            onClick = {
+                                if (scannedParts.isNotEmpty()) {
+                                    selectionMode = true
+                                    selectedCodes.clear()
+                                }
+                            },
+                            enabled = scannedParts.isNotEmpty()
+                        ) {
+                            Icon(
+                                Icons.Rounded.DeleteOutline,
+                                contentDescription = "Enter selection mode",
+                                tint = if (scannedParts.isNotEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        IconButton(onClick = { navController.navigate(SettingsRoute) }) {
+                            Icon(Icons.Rounded.Settings, contentDescription = "Settings")
+                        }
                         IconButton(onClick = {
                             scope.launch {
                                 onExportToCsv()?.let { file ->
@@ -209,18 +227,10 @@ fun MainScreenContent(
                 scrollBehavior = scrollBehavior
             )
         },
-        bottomBar = {
-            BottomActionBar(
-                hasItems = scannedParts.isNotEmpty(),
-                selectionMode = selectionMode,
-                onTrashClick = {
-                    if (!selectionMode && scannedParts.isNotEmpty()) {
-                        selectionMode = true
-                        selectedCodes.clear()
-                    }
-                },
-                onScanClick = {
-                    if (!selectionMode) {
+        floatingActionButton = {
+            if (!selectionMode) {
+                FloatingActionButton(
+                    onClick = {
                         when (cameraPermissionState.status) {
                             PermissionStatus.Granted -> navController.navigate(CameraRoute)
                             is PermissionStatus.Denied -> {
@@ -228,10 +238,14 @@ fun MainScreenContent(
                                 else cameraPermissionState.launchPermissionRequest()
                             }
                         }
-                    }
-                },
-                onSettingsClick = { if (!selectionMode) navController.navigate(SettingsRoute) }
-            )
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
+                }
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -484,70 +498,6 @@ private fun PartItem(
 
 @Composable
 private fun strokeBorder(width: androidx.compose.ui.unit.Dp, color: Color) = androidx.compose.foundation.BorderStroke(width, color)
-
-@Composable
-private fun BottomActionBar(
-    hasItems: Boolean,
-    selectionMode: Boolean,
-    onTrashClick: () -> Unit,
-    onScanClick: () -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.9f).height(72.dp),
-            shape = RoundedCornerShape(36.dp),
-            color = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp),
-            tonalElevation = 8.dp,
-            shadowElevation = 12.dp
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onTrashClick,
-                    enabled = hasItems && !selectionMode
-                ) {
-                    Icon(
-                        if (selectionMode) Icons.Rounded.Delete else Icons.Rounded.DeleteOutline,
-                        contentDescription = null,
-                        tint = when {
-                            selectionMode -> MaterialTheme.colorScheme.primary
-                            hasItems -> MaterialTheme.colorScheme.onSurfaceVariant
-                            else -> MaterialTheme.colorScheme.outline
-                        },
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                FloatingActionButton(
-                    onClick = onScanClick,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp),
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = null, modifier = Modifier.size(28.dp))
-                }
-
-                IconButton(onClick = onSettingsClick, enabled = !selectionMode) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = null,
-                        tint = if (selectionMode) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun PermissionRationaleDialog(show: Boolean, onDismiss: () -> Unit, onConfirm: () -> Unit) {
