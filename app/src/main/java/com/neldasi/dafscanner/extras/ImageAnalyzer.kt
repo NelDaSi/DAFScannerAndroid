@@ -34,7 +34,7 @@ private class ByteArrayLuminanceSource(
     left: Int,
     top: Int,
     width: Int,
-    height: Int
+    height: Int,
 ) : LuminanceSource(width, height) {
 
     private val rowStride = dataWidth
@@ -43,16 +43,16 @@ private class ByteArrayLuminanceSource(
 
     override fun getRow(y: Int, row: ByteArray?): ByteArray {
         val outRow = row ?: ByteArray(width)
-        val srcIndex = (y + topOffset) * rowStride + leftOffset
+        val srcIndex = ((y + topOffset) * rowStride) + leftOffset
         System.arraycopy(luma, srcIndex, outRow, 0, width)
         return outRow
     }
 
     override fun getMatrix(): ByteArray {
         val area = ByteArray(width * height)
-        var inputIndex = topOffset * rowStride + leftOffset
+        var inputIndex = (topOffset * rowStride) + leftOffset
         var outIndex = 0
-        (0 until height).forEach { y ->
+        repeat(height) {
             System.arraycopy(luma, inputIndex, area, outIndex, width)
             inputIndex += rowStride
             outIndex += width
@@ -70,7 +70,7 @@ private class ByteArrayLuminanceSource(
 @OptIn(ExperimentalGetImage::class)
 private fun extractLumaPlane(imageProxy: ImageProxy): Triple<ByteArray, Int, Int>? {
     val image = imageProxy.image ?: return null
-    if (image.format != ImageFormat.YUV_420_888 && imageProxy.format != ImageFormat.YUV_420_888) {
+    if ((image.format != ImageFormat.YUV_420_888) && (imageProxy.format != ImageFormat.YUV_420_888)) {
         return null
     }
 
@@ -119,7 +119,7 @@ private fun tryDecodeWithZXingCenterCrop(luma: ByteArray, width: Int, height: In
         left = left,
         top = top,
         width = cropWidth,
-        height = cropHeight
+        height = cropHeight,
     )
 
     // Binarize and decode with DataMatrix-only reader

@@ -14,5 +14,5 @@ object SettingsRoute
 @Serializable
 data class DetailRoute(
     val fullCode: String,
-    val timestamp: Long
+    val timestamp: Long,
 )

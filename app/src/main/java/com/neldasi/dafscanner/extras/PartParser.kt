@@ -4,7 +4,7 @@ data class ParsedPart(
     val typeCode: String,
     val supplierCode: String,
     val serialNumber: String,
-    val batchNumber: String
+    val batchNumber: String,
 )
 
 fun parseScannedCode(code: String): ParsedPart? {

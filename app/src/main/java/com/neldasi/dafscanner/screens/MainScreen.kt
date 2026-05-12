@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -149,7 +148,7 @@ fun MainScreenContent(
                     Text(
                         stringResource(R.string.title_scanned_items),
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 },
                 actions = {
@@ -159,26 +158,32 @@ fun MainScreenContent(
                         exit = fadeOut() + shrinkHorizontally()
                     ) {
                         Row {
-                            IconButton(onClick = {
+                            IconButton(
+                            onClick = {
                                 if (selectedCodes.size == scannedParts.size) selectedCodes.clear()
                                 else {
                                     selectedCodes.clear()
                                     selectedCodes.addAll(scannedParts.map { it.fullCode })
                                 }
-                            }) {
+                            },
+                        ) {
                                 Icon(Icons.Rounded.SelectAll, contentDescription = "Select All")
                             }
-                            IconButton(onClick = {
-                                onDeleteSelected(selectedCodes.toList())
-                                selectedCodes.clear()
-                                selectionMode = false
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    onDeleteSelected(selectedCodes.toList())
+                                    selectedCodes.clear()
+                                    selectionMode = false
+                                },
+                            ) {
                                 Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.delete_selected), tint = MaterialTheme.colorScheme.error)
                             }
-                            IconButton(onClick = {
-                                selectedCodes.clear()
-                                selectionMode = false
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    selectedCodes.clear()
+                                    selectionMode = false
+                                },
+                            ) {
                                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel_selection))
                             }
                         }
@@ -199,24 +204,28 @@ fun MainScreenContent(
                                 tint = if (scannedParts.isNotEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
                             )
                         }
-                        IconButton(onClick = { navController.navigate(SettingsRoute) }) {
+                        IconButton(
+                            onClick = { navController.navigate(SettingsRoute) },
+                        ) {
                             Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                         }
-                        IconButton(onClick = {
-                            scope.launch {
-                                onExportToCsv()?.let { file ->
-                                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/csv"
-                                        putExtra(Intent.EXTRA_STREAM, uri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    onExportToCsv()?.let { file ->
+                                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/csv"
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        val chooser = Intent.createChooser(intent, "Export CSV")
+                                        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        context.startActivity(chooser)
                                     }
-                                    val chooser = Intent.createChooser(intent, "Export CSV")
-                                    chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    context.startActivity(chooser)
                                 }
-                            }
-                        }) {
+                            },
+                        ) {
                             Icon(Icons.Rounded.IosShare, contentDescription = "Export CSV")
                         }
                     }
@@ -297,12 +306,11 @@ fun MainScreenContent(
                                 } else {
                                     navController.navigate(DetailRoute(part.fullCode, part.timestamp))
                                 }
-                            },
-                            onItemLongClick = {
-                                selectionMode = true
-                                selectedCodes.add(part.fullCode)
                             }
-                        )
+                        ) {
+                            selectionMode = true
+                            selectedCodes.add(part.fullCode)
+                        }
                     }
                 }
             }
