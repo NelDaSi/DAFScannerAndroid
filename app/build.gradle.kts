@@ -40,6 +40,14 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        resources {
+            excludes += "/dump_syms/**"
+        }
+    }
 }
 
 dependencies {
@@ -67,7 +75,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.scenecore)
     implementation(libs.androidx.runtime.livedata)
     testImplementation(libs.junit)
