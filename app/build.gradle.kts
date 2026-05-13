@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.neldasi.dafscanner"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.neldasi.dafscanner"
