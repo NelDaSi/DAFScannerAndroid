@@ -10,26 +10,37 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class SearchItem(
+    val typeCode: String,
+    val serialNumber: String,
+    val decSerial: String,
+    val scanTimestamp: Long? = null
+)
+
 data class ScanMatchResult(
     val serial: String,
     val isMatch: Boolean,
 )
 
 class SearchListViewModel : ViewModel() {
-    private val _serialNumbers = MutableStateFlow<List<String>>(emptyList())
-    val serialNumbers = _serialNumbers.asStateFlow()
-
-    private val _scannedSerials = MutableStateFlow<Set<String>>(emptySet())
-    val scannedSerials = _scannedSerials.asStateFlow()
+    private val _searchItems = MutableStateFlow<List<SearchItem>>(emptyList())
+    val searchItems = _searchItems.asStateFlow()
 
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
     val lastScannedResult = _lastScannedResult.asStateFlow()
+
+    private fun hexToDec(hex: String): String {
+        return try {
+            hex.toLong(16).toString()
+        } catch (_: Exception) {
+            "N/A"
+        }
+    }
 
     fun loadCsv(context: Context, uri: Uri) {
         Log.d("SearchListVM", "Loading CSV: $uri")
         viewModelScope.launch {
             try {
-                _scannedSerials.value = emptySet()
                 val input = context.contentResolver.openInputStream(uri) ?: return@launch
                 val allText = input.bufferedReader().use { it.readText() }
                 if (allText.isBlank()) return@launch
@@ -103,15 +114,31 @@ class SearchListViewModel : ViewModel() {
                     }
                 }
 
-                val results = mutableListOf<String>()
+                val results = mutableListOf<SearchItem>()
                 if (headerRowIndex != -1) {
                     // Extract data from all rows after the header row
                     for (rowIdx in (headerRowIndex + 1) until rows.size) {
                         val row = rows[rowIdx]
                         if (row.size > productIdIndex) {
                             val productId = row[productIdIndex]
-                            if (productId.isNotBlank()) {
-                                results.add(productId.takeLast(6))
+                            if (productId.length >= 13) {
+                                val hex = productId.takeLast(6)
+                                results.add(
+                                    SearchItem(
+                                        typeCode = productId.take(7),
+                                        serialNumber = hex,
+                                        decSerial = hexToDec(hex)
+                                    )
+                                )
+                            } else if (productId.isNotBlank()) {
+                                val hex = productId.takeLast(6)
+                                results.add(
+                                    SearchItem(
+                                        typeCode = "UNKNOWN",
+                                        serialNumber = hex,
+                                        decSerial = hexToDec(hex)
+                                    )
+                                )
                             }
                         }
                     }
@@ -121,14 +148,30 @@ class SearchListViewModel : ViewModel() {
                         val row = rows[rowIdx]
                         if (row.isNotEmpty()) {
                             val productId = row[0]
-                            if (productId.isNotBlank()) {
-                                results.add(productId.takeLast(6))
+                            if (productId.length >= 13) {
+                                val hex = productId.takeLast(6)
+                                results.add(
+                                    SearchItem(
+                                        typeCode = productId.take(7),
+                                        serialNumber = hex,
+                                        decSerial = hexToDec(hex)
+                                    )
+                                )
+                            } else if (productId.isNotBlank()) {
+                                val hex = productId.takeLast(6)
+                                results.add(
+                                    SearchItem(
+                                        typeCode = "UNKNOWN",
+                                        serialNumber = hex,
+                                        decSerial = hexToDec(hex)
+                                    )
+                                )
                             }
                         }
                     }
                 }
-                _serialNumbers.value = results.asSequence().filter { it.length >= 6 }.distinct().toList()
-                Log.d("SearchListVM", "Loaded ${_serialNumbers.value.size} serial numbers")
+                _searchItems.value = results.distinctBy { it.serialNumber }
+                Log.d("SearchListVM", "Loaded ${_searchItems.value.size} serial numbers")
             } catch (e: Exception) {
                 Log.e("SearchListVM", "Error loading CSV", e)
             }
@@ -143,10 +186,20 @@ class SearchListViewModel : ViewModel() {
 
     fun forceMarkAsScanned(serial: String) {
         Log.d("SearchListVM", "forceMarkAsScanned: $serial")
-        val isMatch = _serialNumbers.value.contains(serial)
+        val currentItems = _searchItems.value
+        val itemIndex = currentItems.indexOfFirst { it.serialNumber == serial }
+        
+        val isMatch = itemIndex != -1
         if (isMatch) {
-            _scannedSerials.value = _scannedSerials.value + serial
-            Log.d("SearchListVM", "Match found! Total scanned: ${_scannedSerials.value.size}")
+            val updatedItems = currentItems.toMutableList()
+            val item = updatedItems[itemIndex]
+            if (item.scanTimestamp == null) {
+                updatedItems[itemIndex] = item.copy(scanTimestamp = System.currentTimeMillis())
+                _searchItems.value = updatedItems
+                Log.d("SearchListVM", "Match found and timestamp updated!")
+            } else {
+                Log.d("SearchListVM", "Match found but already scanned at ${item.scanTimestamp}")
+            }
         } else {
             Log.d("SearchListVM", "No match for $serial")
         }
@@ -158,8 +211,7 @@ class SearchListViewModel : ViewModel() {
     }
 
     fun clearList() {
-        _serialNumbers.value = emptyList()
-        _scannedSerials.value = emptySet()
+        _searchItems.value = emptyList()
         _lastScannedResult.value = null
     }
 }

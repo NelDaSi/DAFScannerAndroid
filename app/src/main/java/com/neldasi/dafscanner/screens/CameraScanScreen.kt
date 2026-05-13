@@ -159,8 +159,9 @@ fun CameraScanScreen(
                 val serial = extractSerial(value)
                 
                 if (searchViewModel != null) {
-                    val isMatch = searchViewModel.serialNumbers.value.contains(serial)
-                    val alreadyScanned = searchViewModel.scannedSerials.value.contains(serial)
+                    val currentItems = searchViewModel.searchItems.value
+                    val isMatch = currentItems.any { it.serialNumber == serial }
+                    val alreadyScanned = currentItems.any { it.serialNumber == serial && it.scanTimestamp != null }
                     searchViewModel.checkScannedCode(value)
                     verifyResult = Triple(serial, isMatch, alreadyScanned)
                 } else {
@@ -384,10 +385,17 @@ fun CameraScanScreenContent(
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center
                     )
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = serial,
+                        text = "HEX: $serial",
                         color = Color.White,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "DEC: ${try { serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
+                        color = Color.White.copy(alpha = 0.9f),
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     

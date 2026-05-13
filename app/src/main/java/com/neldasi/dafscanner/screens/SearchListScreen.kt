@@ -20,12 +20,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.tooling.preview.Preview
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
+import com.neldasi.dafscanner.viewmodels.SearchItem
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 
 @Composable
@@ -34,10 +38,9 @@ fun SearchListScreen(
     viewModel: SearchListViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val serialNumbers by viewModel.serialNumbers.collectAsStateWithLifecycle()
-    val scannedSerials by viewModel.scannedSerials.collectAsStateWithLifecycle()
+    val searchItems by viewModel.searchItems.collectAsStateWithLifecycle()
 
-    Log.d("SearchListScreen", "UI Update: Scanned ${scannedSerials.size} / ${serialNumbers.size}")
+    Log.d("SearchListScreen", "UI Update: ${searchItems.count { it.scanTimestamp != null }} / ${searchItems.size}")
 
     val csvPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -45,10 +48,10 @@ fun SearchListScreen(
         uri?.let { viewModel.loadCsv(context, it) }
     }
 
-    LaunchedEffect(serialNumbers, scannedSerials) {
-        // Keeping this for non-shared VM cases or as backup, but shared VM is primary
-        navController.currentBackStackEntry?.savedStateHandle?.set("SERIAL_LIST", serialNumbers)
-        navController.currentBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", scannedSerials.toList())
+    LaunchedEffect(searchItems) {
+        // Keeping this for non-shared VM cases or as backup
+        navController.currentBackStackEntry?.savedStateHandle?.set("SERIAL_LIST", searchItems.map { it.serialNumber })
+        navController.currentBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", searchItems.filter { it.scanTimestamp != null }.map { it.serialNumber })
     }
 
     DisposableEffect(Unit) {
@@ -58,8 +61,7 @@ fun SearchListScreen(
     }
 
     SearchListContent(
-        serialNumbers = serialNumbers,
-        scannedSerials = scannedSerials,
+        searchItems = searchItems,
         onBackClick = { navController.popBackStack() },
         onClearListClick = { viewModel.clearList() },
         onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
@@ -70,14 +72,14 @@ fun SearchListScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchListContent(
-    serialNumbers: List<String>,
-    scannedSerials: Set<String>,
+    searchItems: List<SearchItem>,
     onBackClick: () -> Unit,
     onClearListClick: () -> Unit,
     onScanClick: () -> Unit,
     onImportCsvClick: () -> Unit
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
     if (showDeleteConfirmation) {
         AlertDialog(
@@ -109,9 +111,9 @@ fun SearchListContent(
                 title = { 
                     Column {
                         Text("Verify Serie Numbers")
-                        if (serialNumbers.isNotEmpty()) {
+                        if (searchItems.isNotEmpty()) {
                             Text(
-                                "Scanned ${scannedSerials.size} / ${serialNumbers.size}",
+                                "Scanned ${searchItems.count { it.scanTimestamp != null }} / ${searchItems.size}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.secondary
                             )
@@ -124,7 +126,7 @@ fun SearchListContent(
                     }
                 },
                 actions = {
-                    if (serialNumbers.isNotEmpty()) {
+                    if (searchItems.isNotEmpty()) {
                         IconButton(onClick = { showDeleteConfirmation = true }) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Clear List")
                         }
@@ -133,7 +135,7 @@ fun SearchListContent(
             )
         },
         floatingActionButton = {
-            if (serialNumbers.isNotEmpty()) {
+            if (searchItems.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = onScanClick,
                     containerColor = MaterialTheme.colorScheme.primary
@@ -148,7 +150,7 @@ fun SearchListContent(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (serialNumbers.isEmpty()) {
+            if (searchItems.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -191,8 +193,8 @@ fun SearchListContent(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(serialNumbers) { serial ->
-                            val isScanned = scannedSerials.contains(serial)
+                        items(searchItems) { item ->
+                            val isScanned = item.scanTimestamp != null
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -209,23 +211,74 @@ fun SearchListContent(
                                     Icon(
                                         if (isScanned) Icons.Rounded.CheckCircle else Icons.Rounded.Tag,
                                         contentDescription = null,
-                                        tint = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
+                                        tint = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(28.dp)
                                     )
                                     Spacer(Modifier.width(12.dp))
-                                    Text(
-                                        text = serial,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
-                                    )
-                                    if (isScanned) {
-                                        Spacer(Modifier.weight(1f))
-                                        Text(
-                                            "FOUND",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFD32F2F)
-                                        )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "HEX: ",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.7f) else Color(0xFF1976D2)
+                                            )
+                                            Text(
+                                                text = item.serialNumber,
+                                                style = MaterialTheme.typography.titleLarge,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "DEC: ",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.7f) else Color(0xFF388E3C)
+                                            )
+                                            Text(
+                                                text = item.decSerial,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
+                                            )
+                                        }
+                                    }
+                                    
+                                    Column(
+                                        horizontalAlignment = Alignment.End,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Surface(
+                                            color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                text = item.typeCode,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        
+                                        if (isScanned) {
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                "FOUND",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFFD32F2F)
+                                            )
+                                            if (item.scanTimestamp != null) {
+                                                Text(
+                                                    text = timeFormatter.format(Date(item.scanTimestamp)),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color(0xFFD32F2F).copy(alpha = 0.6f)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -242,8 +295,7 @@ fun SearchListContent(
 fun SearchListEmptyPreview() {
     JetpackComposeTheme {
         SearchListContent(
-            serialNumbers = emptyList(),
-            scannedSerials = emptySet(),
+            searchItems = emptyList(),
             onBackClick = {},
             onClearListClick = {},
             onScanClick = {},
@@ -257,8 +309,11 @@ fun SearchListEmptyPreview() {
 fun SearchListWithDataPreview() {
     JetpackComposeTheme {
         SearchListContent(
-            serialNumbers = listOf("123456", "234567", "345678", "456789"),
-            scannedSerials = setOf("123456", "345678"),
+            searchItems = listOf(
+                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis()),
+                SearchItem("TYPE456", "01C822", "116770"),
+                SearchItem("TYPE789", "01C823", "116771", System.currentTimeMillis())
+            ),
             onBackClick = {},
             onClearListClick = {},
             onScanClick = {},
