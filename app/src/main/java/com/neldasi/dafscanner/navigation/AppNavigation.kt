@@ -8,6 +8,7 @@ import androidx.navigation.toRoute
 import com.neldasi.dafscanner.screens.CameraScanScreen
 import com.neldasi.dafscanner.screens.DetailScreen
 import com.neldasi.dafscanner.screens.MainScreen
+import com.neldasi.dafscanner.screens.SearchListScreen
 import com.neldasi.dafscanner.screens.SettingsScreen
 
 @Composable
@@ -23,6 +24,9 @@ fun AppNavigation() {
         }
         composable<SettingsRoute> {
             SettingsScreen(navController)
+        }
+        composable<SearchListRoute> {
+            SearchListScreen(navController)
         }
         composable<DetailRoute> { backStackEntry ->
             val route: DetailRoute = backStackEntry.toRoute()

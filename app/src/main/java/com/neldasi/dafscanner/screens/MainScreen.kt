@@ -102,6 +102,7 @@ import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.navigation.DetailRoute
 import com.neldasi.dafscanner.navigation.NavKeys
+import com.neldasi.dafscanner.navigation.SearchListRoute
 import com.neldasi.dafscanner.navigation.SettingsRoute
 import com.neldasi.dafscanner.viewmodels.MainViewModel
 import kotlinx.coroutines.launch
@@ -260,23 +261,9 @@ fun MainScreenContent(
                             Icon(Icons.Rounded.Settings, contentDescription = "Settings")
                         }
                         IconButton(
-                            onClick = {
-                                scope.launch {
-                                    onExportToCsv()?.let { file ->
-                                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                                        val intent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/csv"
-                                            putExtra(Intent.EXTRA_STREAM, uri)
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-                                        val chooser = Intent.createChooser(intent, "Export CSV")
-                                        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        context.startActivity(chooser)
-                                    }
-                                }
-                            },
+                            onClick = { navController.navigate(SearchListRoute) },
                         ) {
-                            Icon(Icons.Rounded.IosShare, contentDescription = "Export CSV")
+                            Icon(Icons.Rounded.Search, contentDescription = "Verify List")
                         }
                     }
                 },

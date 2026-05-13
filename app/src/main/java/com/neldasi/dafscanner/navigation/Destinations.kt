@@ -12,6 +12,9 @@ object CameraRoute
 object SettingsRoute
 
 @Serializable
+object SearchListRoute
+
+@Serializable
 data class DetailRoute(
     val fullCode: String,
     val timestamp: Long,
