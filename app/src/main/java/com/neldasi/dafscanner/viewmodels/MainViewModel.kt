@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,16 +37,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList(),
         )
-
-        // Fix existing items if they all have ordinal 1 (from previous bug)
-        viewModelScope.launch {
-            val parts = repository.allParts.first()
-            if ((parts.size > 1) && (parts.count { it.ordinal == 1 } > 1)) {
-                parts.sortedBy { it.timestamp }.forEachIndexed { index, part ->
-                    repository.update(part.copy(ordinal = index + 1))
-                }
-            }
-        }
 
         filteredParts = combine(allParts, _searchQuery) { parts, query ->
             if (query.isBlank()) {
@@ -83,12 +72,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (code.isBlank()) return@launch
             val existing = repository.getPartByCode(code)
             if (existing == null) {
-                // Get the current max ordinal to assign the next one
-                val maxOrdinal = repository.getMaxOrdinal()
                 val newPart = ScannedPart(
                     fullCode = code,
                     timestamp = System.currentTimeMillis(),
-                    ordinal = maxOrdinal + 1
                 )
                 repository.insert(newPart)
             }
@@ -113,12 +99,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val file = File(getApplication<Application>().cacheDir, "scanned_parts.csv")
         file.bufferedWriter().use { out ->
-            out.write("Ordinal,TypeCode,SupplierCode,SerialNumber,BatchNumber,Timestamp,Note,FullCode\n")
+            out.write("TypeCode,SupplierCode,SerialNumber,BatchNumber,Timestamp,Note,FullCode\n")
             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             parts.forEach { part ->
                 val parsed = parseScannedCode(part.fullCode)
                 val date = dateFormat.format(Date(part.timestamp))
-                out.write("${part.ordinal},${parsed?.typeCode ?: ""},${parsed?.supplierCode ?: ""},${parsed?.serialNumber ?: ""},${parsed?.batchNumber ?: ""},$date,${part.note ?: ""},${part.fullCode}\n")
+                out.write("${parsed?.typeCode ?: ""},${parsed?.supplierCode ?: ""},${parsed?.serialNumber ?: ""},${parsed?.batchNumber ?: ""},$date,${part.note ?: ""},${part.fullCode}\n")
             }
         }
         file

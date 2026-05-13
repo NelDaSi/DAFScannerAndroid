@@ -532,18 +532,6 @@ private fun PartItem(
                     )
                 }
             }
-
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = CircleShape
-            ) {
-                Text(
-                    text = "#${part.ordinal}",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
         }
     }
 }
@@ -589,9 +577,9 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
 fun MainScreenPreview() {
     val mockNavController = rememberNavController()
     val mockItems = listOf(
-        ScannedPart("TYPEA12345678", System.currentTimeMillis() - 100000, note = "This is a note for item 1.", ordinal = 1),
-        ScannedPart("TYPEB87654321", System.currentTimeMillis() - 200000, imageUri = "https://via.placeholder.com/150", ordinal = 2),
-        ScannedPart("TYPEC55555555", System.currentTimeMillis() - 300000, note = "Another note here.", imageUri = "https://via.placeholder.com/150", ordinal = 3)
+        ScannedPart("TYPEA12345678", System.currentTimeMillis() - 100000, note = "This is a note for item 1."),
+        ScannedPart("TYPEB87654321", System.currentTimeMillis() - 200000, imageUri = "https://via.placeholder.com/150"),
+        ScannedPart("TYPEC55555555", System.currentTimeMillis() - 300000, note = "Another note here.", imageUri = "https://via.placeholder.com/150")
     )
     MaterialTheme {
         MainScreenContent(

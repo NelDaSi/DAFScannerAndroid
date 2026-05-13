@@ -11,5 +11,4 @@ data class ScannedPart(
     val timestamp: Long,
     val imageUri: String? = null,
     val note: String? = null,
-    val ordinal: Int = 0,
 )
