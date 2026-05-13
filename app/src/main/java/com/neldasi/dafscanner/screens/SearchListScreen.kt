@@ -23,10 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.tooling.preview.Preview
 import com.neldasi.dafscanner.navigation.CameraRoute
+import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchListScreen(
     navController: NavController,
@@ -57,6 +58,26 @@ fun SearchListScreen(
         }
     }
 
+    SearchListContent(
+        serialNumbers = serialNumbers,
+        scannedSerials = scannedSerials,
+        onBackClick = { navController.popBackStack() },
+        onClearListClick = { viewModel.clearList() },
+        onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
+        onImportCsvClick = { csvPickerLauncher.launch("text/comma-separated-values") }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchListContent(
+    serialNumbers: List<String>,
+    scannedSerials: Set<String>,
+    onBackClick: () -> Unit,
+    onClearListClick: () -> Unit,
+    onScanClick: () -> Unit,
+    onImportCsvClick: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -73,13 +94,13 @@ fun SearchListScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     if (serialNumbers.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.clearList() }) {
+                        IconButton(onClick = onClearListClick) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Clear List")
                         }
                     }
@@ -89,7 +110,7 @@ fun SearchListScreen(
         floatingActionButton = {
             if (serialNumbers.isNotEmpty()) {
                 FloatingActionButton(
-                    onClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
+                    onClick = onScanClick,
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
@@ -130,7 +151,7 @@ fun SearchListScreen(
                     )
                     Spacer(Modifier.height(24.dp))
                     Button(
-                        onClick = { csvPickerLauncher.launch("text/comma-separated-values") },
+                        onClick = onImportCsvClick,
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Rounded.FileOpen, contentDescription = null)
@@ -187,63 +208,36 @@ fun SearchListScreen(
                     }
                 }
             }
-
-            if (lastResult != null) {
-                val result = lastResult!!
-                AlertDialog(
-                    onDismissRequest = { viewModel.clearResult() },
-                    properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-                    modifier = Modifier.padding(24.dp),
-                    confirmButton = {
-                        TextButton(
-                            onClick = { viewModel.clearResult() },
-                            colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
-                        ) {
-                            Text("DISMISS", fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    containerColor = if (result.isMatch) Color(0xFFD32F2F) else Color(0xFF388E3C),
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                if (result.isMatch) Icons.Rounded.Warning else Icons.Rounded.CheckCircle,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = if (result.isMatch) "MATCH FOUND" else "NO MATCH",
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    },
-                    text = {
-                        Column {
-                            Text(
-                                text = "Serial Number:",
-                                color = Color.White.copy(alpha = 0.8f),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            Text(
-                                text = result.serial,
-                                color = Color.White,
-                                style = MaterialTheme.typography.displaySmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = if (result.isMatch) 
-                                    "This serial number IS present in the list." 
-                                    else "This serial number is NOT in the list.",
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                )
-            }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SearchListEmptyPreview() {
+    JetpackComposeTheme {
+        SearchListContent(
+            serialNumbers = emptyList(),
+            scannedSerials = emptySet(),
+            onBackClick = {},
+            onClearListClick = {},
+            onScanClick = {},
+            onImportCsvClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SearchListWithDataPreview() {
+    JetpackComposeTheme {
+        SearchListContent(
+            serialNumbers = listOf("123456", "234567", "345678", "456789"),
+            scannedSerials = setOf("123456", "345678"),
+            onBackClick = {},
+            onClearListClick = {},
+            onScanClick = {},
+            onImportCsvClick = {}
+        )
     }
 }
