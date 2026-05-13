@@ -36,7 +36,6 @@ fun SearchListScreen(
     val context = LocalContext.current
     val serialNumbers by viewModel.serialNumbers.collectAsStateWithLifecycle()
     val scannedSerials by viewModel.scannedSerials.collectAsStateWithLifecycle()
-    val lastResult by viewModel.lastScannedResult.collectAsStateWithLifecycle()
 
     Log.d("SearchListScreen", "UI Update: Scanned ${scannedSerials.size} / ${serialNumbers.size}")
 
@@ -78,6 +77,32 @@ fun SearchListContent(
     onScanClick: () -> Unit,
     onImportCsvClick: () -> Unit
 ) {
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Clear List?") },
+            text = { Text("This will remove all imported serial numbers and reset your progress. This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onClearListClick()
+                        showDeleteConfirmation = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Clear List")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -100,7 +125,7 @@ fun SearchListContent(
                 },
                 actions = {
                     if (serialNumbers.isNotEmpty()) {
-                        IconButton(onClick = onClearListClick) {
+                        IconButton(onClick = { showDeleteConfirmation = true }) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Clear List")
                         }
                     }
