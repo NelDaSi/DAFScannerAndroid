@@ -1,6 +1,7 @@
 package com.neldasi.dafscanner.screens
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -23,7 +24,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.neldasi.dafscanner.navigation.CameraRoute
-import com.neldasi.dafscanner.navigation.NavKeys
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +34,10 @@ fun SearchListScreen(
 ) {
     val context = LocalContext.current
     val serialNumbers by viewModel.serialNumbers.collectAsStateWithLifecycle()
+    val scannedSerials by viewModel.scannedSerials.collectAsStateWithLifecycle()
     val lastResult by viewModel.lastScannedResult.collectAsStateWithLifecycle()
+
+    Log.d("SearchListScreen", "UI Update: Scanned ${scannedSerials.size} / ${serialNumbers.size}")
 
     val csvPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -42,18 +45,33 @@ fun SearchListScreen(
         uri?.let { viewModel.loadCsv(context, it) }
     }
 
-    LaunchedEffect(Unit) {
-        navController.currentBackStackEntryFlow.collect { backStackEntry ->
-            backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)?.let {
-                viewModel.checkScannedCode(it)
-            }
+    LaunchedEffect(serialNumbers, scannedSerials) {
+        // Keeping this for non-shared VM cases or as backup, but shared VM is primary
+        navController.currentBackStackEntry?.savedStateHandle?.set("SERIAL_LIST", serialNumbers)
+        navController.currentBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", scannedSerials.toList())
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearResult()
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Verify Serie Numbers") },
+                title = { 
+                    Column {
+                        Text("Verify Serie Numbers")
+                        if (serialNumbers.isNotEmpty()) {
+                            Text(
+                                "Scanned ${scannedSerials.size} / ${serialNumbers.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -71,7 +89,7 @@ fun SearchListScreen(
         floatingActionButton = {
             if (serialNumbers.isNotEmpty()) {
                 FloatingActionButton(
-                    onClick = { navController.navigate(CameraRoute) },
+                    onClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
@@ -122,39 +140,47 @@ fun SearchListScreen(
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        tonalElevation = 2.dp
-                    ) {
-                        Text(
-                            text = "${serialNumbers.size} serial numbers loaded",
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(serialNumbers) { serial ->
+                            val isScanned = scannedSerials.contains(serial)
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.1f) 
+                                                     else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFD32F2F)) else null
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Rounded.Tag, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(
+                                        if (isScanned) Icons.Rounded.CheckCircle else Icons.Rounded.Tag,
+                                        contentDescription = null,
+                                        tint = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
+                                    )
                                     Spacer(Modifier.width(12.dp))
                                     Text(
                                         text = serial,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
                                     )
+                                    if (isScanned) {
+                                        Spacer(Modifier.weight(1f))
+                                        Text(
+                                            "FOUND",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFD32F2F)
+                                        )
+                                    }
                                 }
                             }
                         }

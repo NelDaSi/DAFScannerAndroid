@@ -2,6 +2,7 @@ package com.neldasi.dafscanner.viewmodels
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.neldasi.dafscanner.extras.parseScannedCode
@@ -18,12 +19,17 @@ class SearchListViewModel : ViewModel() {
     private val _serialNumbers = MutableStateFlow<List<String>>(emptyList())
     val serialNumbers = _serialNumbers.asStateFlow()
 
+    private val _scannedSerials = MutableStateFlow<Set<String>>(emptySet())
+    val scannedSerials = _scannedSerials.asStateFlow()
+
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
     val lastScannedResult = _lastScannedResult.asStateFlow()
 
     fun loadCsv(context: Context, uri: Uri) {
+        Log.d("SearchListVM", "Loading CSV: $uri")
         viewModelScope.launch {
             try {
+                _scannedSerials.value = emptySet()
                 val input = context.contentResolver.openInputStream(uri) ?: return@launch
                 val allText = input.bufferedReader().use { it.readText() }
                 if (allText.isBlank()) return@launch
@@ -122,8 +128,9 @@ class SearchListViewModel : ViewModel() {
                     }
                 }
                 _serialNumbers.value = results.asSequence().filter { it.length >= 6 }.distinct().toList()
+                Log.d("SearchListVM", "Loaded ${_serialNumbers.value.size} serial numbers")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("SearchListVM", "Error loading CSV", e)
             }
         }
     }
@@ -131,7 +138,18 @@ class SearchListViewModel : ViewModel() {
     fun checkScannedCode(fullCode: String) {
         val parsed = parseScannedCode(fullCode)
         val serial = parsed?.serialNumber ?: (if (fullCode.length >= 6) fullCode.takeLast(6) else fullCode)
+        forceMarkAsScanned(serial)
+    }
+
+    fun forceMarkAsScanned(serial: String) {
+        Log.d("SearchListVM", "forceMarkAsScanned: $serial")
         val isMatch = _serialNumbers.value.contains(serial)
+        if (isMatch) {
+            _scannedSerials.value = _scannedSerials.value + serial
+            Log.d("SearchListVM", "Match found! Total scanned: ${_scannedSerials.value.size}")
+        } else {
+            Log.d("SearchListVM", "No match for $serial")
+        }
         _lastScannedResult.value = ScanMatchResult(serial, isMatch)
     }
 
@@ -141,6 +159,7 @@ class SearchListViewModel : ViewModel() {
 
     fun clearList() {
         _serialNumbers.value = emptyList()
+        _scannedSerials.value = emptySet()
         _lastScannedResult.value = null
     }
 }

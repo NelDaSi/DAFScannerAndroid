@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 object MainRoute
 
 @Serializable
-object CameraRoute
+data class CameraRoute(
+    val isVerifyMode: Boolean = false
+)
 
 @Serializable
 object SettingsRoute

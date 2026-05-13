@@ -1,6 +1,8 @@
 package com.neldasi.dafscanner.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -10,6 +12,7 @@ import com.neldasi.dafscanner.screens.DetailScreen
 import com.neldasi.dafscanner.screens.MainScreen
 import com.neldasi.dafscanner.screens.SearchListScreen
 import com.neldasi.dafscanner.screens.SettingsScreen
+import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 
 @Composable
 fun AppNavigation() {
@@ -19,14 +22,23 @@ fun AppNavigation() {
         composable<MainRoute> {
             MainScreen(navController)
         }
-        composable<CameraRoute> {
-            CameraScanScreen(navController)
+        composable<CameraRoute> { backStackEntry ->
+            val route: CameraRoute = backStackEntry.toRoute()
+            
+            // Try to find SearchList screen in backstack to share ViewModel
+            val searchBackStackEntry = remember(backStackEntry) {
+                navController.getBackStackEntry<SearchListRoute>()
+            }
+            val searchViewModel: SearchListViewModel = viewModel(searchBackStackEntry)
+            
+            CameraScanScreen(navController, route.isVerifyMode, searchViewModel)
         }
         composable<SettingsRoute> {
             SettingsScreen(navController)
         }
-        composable<SearchListRoute> {
-            SearchListScreen(navController)
+        composable<SearchListRoute> { backStackEntry ->
+            val searchViewModel: SearchListViewModel = viewModel(backStackEntry)
+            SearchListScreen(navController, searchViewModel)
         }
         composable<DetailRoute> { backStackEntry ->
             val route: DetailRoute = backStackEntry.toRoute()

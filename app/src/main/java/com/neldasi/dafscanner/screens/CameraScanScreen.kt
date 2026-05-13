@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import androidx.compose.ui.unit.dp
@@ -59,6 +60,7 @@ import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
+import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -90,7 +92,11 @@ private fun requestCenterFocus(previewView: PreviewView, camera: Camera?) {
 }
 
 @Composable
-fun CameraScanScreen(navController: NavController) {
+fun CameraScanScreen(
+    navController: NavController,
+    isVerifyMode: Boolean = false,
+    searchViewModel: SearchListViewModel? = null
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("prefs", Context.MODE_PRIVATE) }
     val vibrateEnabled = remember { prefs.getBoolean("vibrateEnabled", false) }
@@ -111,6 +117,11 @@ fun CameraScanScreen(navController: NavController) {
     var lastFlashedCode by remember { mutableStateOf<String?>(value = null) }
     var camera: Camera? by remember { mutableStateOf(value = null) }
     var isTorchOn by remember { mutableStateOf(value = false) }
+
+    // State for Verify Mode Feedback
+    var verifyResult by remember { mutableStateOf<Triple<String, Boolean, Boolean>?>(null) } // Serial, IsMatch, AlreadyScanned
+    val verifyScope = rememberCoroutineScope()
+    var isPaused by remember { mutableStateOf(false) }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
     val transformableState = rememberTransformableState { zoomChange, _, _ ->
@@ -142,7 +153,41 @@ fun CameraScanScreen(navController: NavController) {
                     } catch (_: Exception) {}
                 }
             }
-            if (continuousScanEnabled) {
+
+            if (isVerifyMode) {
+                // In Verify mode, we show overlay and stay on screen
+                val serial = extractSerial(value)
+                
+                if (searchViewModel != null) {
+                    val isMatch = searchViewModel.serialNumbers.value.contains(serial)
+                    val alreadyScanned = searchViewModel.scannedSerials.value.contains(serial)
+                    searchViewModel.checkScannedCode(value)
+                    verifyResult = Triple(serial, isMatch, alreadyScanned)
+                } else {
+                    val serialList = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SERIAL_LIST") ?: emptyList()
+                    val scannedSerials = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SCANNED_SERIALS") ?: emptyList()
+                    val isMatch = serialList.contains(serial)
+                    val alreadyScanned = scannedSerials.contains(serial)
+                    verifyResult = Triple(serial, isMatch, alreadyScanned)
+                    if (isMatch && !alreadyScanned) {
+                        val updatedScanned = scannedSerials + serial
+                        navController.previousBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", updatedScanned)
+                    }
+                }
+
+                isPaused = true
+                
+                // Keep passing result for general listeners if any
+                navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
+                verifyScope.launch {
+                    delay(3000)
+                    if (verifyResult?.first == serial) {
+                        verifyResult = null
+                        isPaused = false
+                        scannedResult = null
+                    }
+                }
+            } else if (continuousScanEnabled) {
                 lastSerial = extractSerial(value)
                 navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
                 appendPendingScan(context, value)
@@ -161,16 +206,27 @@ fun CameraScanScreen(navController: NavController) {
         isTorchOn = isTorchOn,
         flashAlpha = flashAlpha.value,
         transformableState = transformableState,
+        verifyResult = verifyResult,
         onToggleTorch = {
             val newState = !isTorchOn
             isTorchOn = newState
             camera?.cameraControl?.enableTorch(newState)
             previewViewRef?.let { requestCenterFocus(it, camera) }
         },
-        onClose = { navController.popBackStack() },
+        onClose = {
+            searchViewModel?.clearResult()
+            navController.popBackStack()
+        },
+        onDismissVerify = {
+            verifyResult = null
+            isPaused = false
+            scannedResult = null
+        },
         onSimulateScan = {
-            val simulatedCode = "215000188429${(100000..999999).random()}"
-            scannedResult = simulatedCode
+            if (!isPaused) {
+                val simulatedCode = "215000188429${(100000..999999).random()}"
+                scannedResult = simulatedCode
+            }
         }
     ) { ctx ->
         if (isRunningOnEmulator()) {
@@ -196,10 +252,12 @@ fun CameraScanScreen(navController: NavController) {
                         .build().also { it.surfaceProvider = previewView.surfaceProvider }
 
                     val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
-                        if (scannedValue.take(7) in allowedTypes) {
-                            if (scannedResult == null) scannedResult = scannedValue
-                        } else {
-                            showNotAllowedDialog = true
+                        if (!isPaused) {
+                            if (scannedValue.take(7) in allowedTypes) {
+                                if (scannedResult == null) scannedResult = scannedValue
+                            } else {
+                                showNotAllowedDialog = true
+                            }
                         }
                     }
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -253,8 +311,10 @@ fun CameraScanScreenContent(
     isTorchOn: Boolean,
     flashAlpha: Float,
     transformableState: androidx.compose.foundation.gestures.TransformableState,
+    verifyResult: Triple<String, Boolean, Boolean>? = null,
     onToggleTorch: () -> Unit,
     onClose: () -> Unit,
+    onDismissVerify: () -> Unit = {},
     onSimulateScan: () -> Unit = {},
     onAndroidViewFactory: (Context) -> android.view.View,
 ) {
@@ -270,6 +330,80 @@ fun CameraScanScreenContent(
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = flashAlpha)))
 
         CameraOverlay(isCameraReady = isCameraReady, errorMessage = cameraError)
+
+        if (verifyResult != null) {
+            val (serial, isMatch, alreadyScanned) = verifyResult
+            val backgroundColor = when {
+                isMatch -> Color(0xFFD32F2F) // Red for Match
+                else -> Color(0xFF388E3C) // Green for No Match
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor.copy(alpha = 0.9f))
+                    .clickable { onDismissVerify() },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Icon(
+                        when {
+                            alreadyScanned -> Icons.Rounded.History
+                            isMatch -> Icons.Rounded.Warning
+                            else -> Icons.Rounded.CheckCircle
+                        },
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(100.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    
+                    if (alreadyScanned) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Text(
+                                "ALREADY SCANNED",
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = if (isMatch) "MATCH FOUND" else "NO MATCH",
+                        color = Color.White,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = serial,
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(Modifier.height(48.dp))
+                    
+                    Button(
+                        onClick = onDismissVerify,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = backgroundColor),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                    ) {
+                        Text("DISMISS", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                    }
+                }
+            }
+        }
 
         if (isRunningOnEmulator()) {
             Surface(
