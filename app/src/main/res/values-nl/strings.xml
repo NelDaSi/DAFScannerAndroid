@@ -108,6 +108,13 @@
     <string name="settings_clear_all">Alle gescande items wissen</string>
     <string name="settings_clear_all_desc">Verwijder alle opgeslagen scans van het apparaat</string>
 
+    <string name="check_for_updates">Controleer op updates</string>
+    <string name="checking_for_updates">Controleren op updates&#8230;</string>
+    <string name="update_available_title">Update beschikbaar</string>
+    <string name="update_available_message">Een nieuwe versie (%1$s) is beschikbaar. Wilt u deze downloaden en installeren?</string>
+    <string name="download_and_install">Downloaden &amp; Installeren</string>
+    <string name="no_update_available">U gebruikt de nieuwste versie.</string>
+
     <string name="theme_setting_title">App thema</string>
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>

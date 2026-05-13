@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.ScreenLockRotation
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -66,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -74,7 +76,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -91,11 +95,24 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { ScanStorage.prefs(context) }
-    
+
+    val packageInfo = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    val currentVersionCode = packageInfo?.let {
+        @Suppress("DEPRECATION")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) it.longVersionCode.toInt() else it.versionCode
+    } ?: 1
+
     var vibrateEnabled by remember { mutableStateOf(value = false) }
     var screenAlwaysOn by remember { mutableStateOf(value = false) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
     var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
+    val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
@@ -131,8 +148,31 @@ fun SettingsScreen(
             currentTheme = it
             SettingsRepository.setTheme(context, it)
         },
+        isCheckingUpdates = viewModel.isCheckingUpdates,
+        onCheckForUpdates = { viewModel.checkForUpdates(currentVersionCode) },
         onClearAllData = { viewModel.clearAllData() }
     )
+
+    updateInfo?.let { info ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissUpdate() },
+            title = { Text(stringResource(R.string.update_available_title)) },
+            text = { Text(stringResource(R.string.update_available_message, info.latestVersionName)) },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.downloadAndInstallApk(context, info.apkUrl)
+                    viewModel.dismissUpdate()
+                }) {
+                    Text(stringResource(R.string.download_and_install))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissUpdate() }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -146,7 +186,9 @@ fun SettingsScreenContent(
     onContinuousScanChange: (Boolean) -> Unit,
     currentTheme: String,
     onThemeChange: (String) -> Unit,
-    onClearAllData: () -> Unit
+    isCheckingUpdates: Boolean,
+    onCheckForUpdates: () -> Unit,
+    onClearAllData: () -> Unit,
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -222,6 +264,13 @@ fun SettingsScreenContent(
                             title = stringResource(R.string.screen_always_on_label),
                             checked = screenAlwaysOn,
                             onCheckedChange = onScreenAlwaysOnChange
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.SystemUpdate,
+                            title = if (isCheckingUpdates) stringResource(R.string.checking_for_updates) else stringResource(R.string.check_for_updates),
+                            subtitle = if (isCheckingUpdates) "" else stringResource(R.string.no_update_available),
+                            onClick = onCheckForUpdates,
+                            enabled = !isCheckingUpdates
                         )
                     }
                 }
@@ -465,13 +514,14 @@ private fun SettingsClickableItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
+            .clickable(enabled = enabled) { onClick() }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -485,19 +535,22 @@ private fun SettingsClickableItem(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.padding(8.dp).size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            }
         }
     }
 }
@@ -608,6 +661,8 @@ fun SettingsScreenPreview() {
             onContinuousScanChange = {},
             currentTheme = "SYSTEM",
             onThemeChange = {},
+            isCheckingUpdates = false,
+            onCheckForUpdates = {},
             onClearAllData = {}
         )
     }

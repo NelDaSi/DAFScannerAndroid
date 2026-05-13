@@ -105,6 +105,13 @@
     <string name="settings_clear_all">Clear all scanned items</string>
     <string name="settings_clear_all_desc">Remove all saved scans from the device</string>
 
+    <string name="check_for_updates">Check for updates</string>
+    <string name="checking_for_updates">Checking for updates...</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">A new version (%1$s) is available. Would you like to download and install it?</string>
+    <string name="download_and_install">Download &amp; Install</string>
+    <string name="no_update_available">You are on the latest version.</string>
+
     <string name="theme_setting_title">App theme</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
