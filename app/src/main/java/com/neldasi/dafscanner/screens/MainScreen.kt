@@ -97,6 +97,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.data.ScannedPart
 import com.neldasi.dafscanner.extras.ScanStorage
+import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.navigation.DetailRoute
@@ -154,17 +155,17 @@ fun MainScreenContent(
     var showDuplicateDialog by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        fun addCodeIfNew(code: String) {
-            if (code.isBlank()) return
-            if (scannedParts.any { it.fullCode == code }) {
-                if (!duplicateCodes.contains(code)) duplicateCodes.add(code)
-                showDuplicateDialog = true
-                return
-            }
-            onAddPart(code)
+    fun addCodeIfNew(code: String) {
+        if (code.isBlank()) return
+        if (scannedParts.any { it.fullCode == code }) {
+            if (!duplicateCodes.contains(code)) duplicateCodes.add(code)
+            showDuplicateDialog = true
+            return
         }
+        onAddPart(code)
+    }
 
+    LaunchedEffect(Unit) {
         fun consumePendingFromPrefs(exclude: Set<String>) {
             ScanStorage.consumePendingQueue(sharedPreferences).forEach { code ->
                 if (!exclude.contains(code)) {
@@ -286,11 +287,17 @@ fun MainScreenContent(
             if (!selectionMode) {
                 FloatingActionButton(
                     onClick = {
-                        when (cameraPermissionState.status) {
-                            PermissionStatus.Granted -> navController.navigate(CameraRoute)
-                            is PermissionStatus.Denied -> {
-                                if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
-                                else cameraPermissionState.launchPermissionRequest()
+                        if (isRunningOnEmulator()) {
+                            // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
+                            val simulatedCode = "215000188429${(100000..999999).random()}"
+                            addCodeIfNew(simulatedCode)
+                        } else {
+                            when (cameraPermissionState.status) {
+                                PermissionStatus.Granted -> navController.navigate(CameraRoute)
+                                is PermissionStatus.Denied -> {
+                                    if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
+                                    else cameraPermissionState.launchPermissionRequest()
+                                }
                             }
                         }
                     },

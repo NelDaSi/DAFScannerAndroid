@@ -17,6 +17,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -54,6 +55,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
@@ -165,9 +167,19 @@ fun CameraScanScreen(navController: NavController) {
             camera?.cameraControl?.enableTorch(newState)
             previewViewRef?.let { requestCenterFocus(it, camera) }
         },
-        onClose = { navController.popBackStack() }
+        onClose = { navController.popBackStack() },
+        onSimulateScan = {
+            val simulatedCode = "215000188429${(100000..999999).random()}"
+            scannedResult = simulatedCode
+        }
     ) { ctx ->
-        val previewView = PreviewView(ctx).apply {
+        if (isRunningOnEmulator()) {
+            // In emulator, we don't start CameraX to avoid errors/black screen
+            // or we could let it start if it works, but usually it's just a black screen.
+            // Let's just provide a dummy view.
+            android.view.View(ctx)
+        } else {
+            val previewView = PreviewView(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                 scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -205,6 +217,11 @@ fun CameraScanScreen(navController: NavController) {
             }, ContextCompat.getMainExecutor(ctx))
             previewView
         }
+    }
+
+    if (isRunningOnEmulator()) {
+        isCameraReady = true
+    }
 
     LaunchedEffect(isCameraReady, camera) {
         if (!isCameraReady || (camera == null)) return@LaunchedEffect
@@ -238,15 +255,35 @@ fun CameraScanScreenContent(
     transformableState: androidx.compose.foundation.gestures.TransformableState,
     onToggleTorch: () -> Unit,
     onClose: () -> Unit,
-    onAndroidViewFactory: (Context) -> android.view.View
+    onSimulateScan: () -> Unit = {},
+    onAndroidViewFactory: (Context) -> android.view.View,
 ) {
-    Box(Modifier.fillMaxSize().transformable(state = transformableState)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .transformable(state = transformableState)
+            .then(if (isRunningOnEmulator()) Modifier.clickable(onClick = onSimulateScan) else Modifier)
+    ) {
         AndroidView(factory = onAndroidViewFactory, modifier = Modifier.fillMaxSize())
 
         // Flash overlay
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = flashAlpha)))
 
         CameraOverlay(isCameraReady = isCameraReady, errorMessage = cameraError)
+
+        if (isRunningOnEmulator()) {
+            Surface(
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 100.dp),
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    "Emulator Mode: Click screen to simulate scan",
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
 
         BottomScannerBar(
             serial = lastSerial,
@@ -462,6 +499,7 @@ fun CameraScanScreenPreview() {
             transformableState = rememberTransformableState { _, _, _ -> },
             onToggleTorch = {},
             onClose = {},
+            onSimulateScan = {},
         ) { android.view.View(it) }
     }
 }
