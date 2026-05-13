@@ -71,6 +71,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -228,7 +229,7 @@ fun SettingsScreenContent(
 
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                var expanded by remember { mutableStateOf(true) }
+                var expanded by remember { mutableStateOf(false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -318,6 +319,28 @@ fun SettingsScreenContent(
 //                }
 //                Spacer(modifier = Modifier.height(40.dp))
 //            }
+            item {
+                val packageInfo = remember {
+                    try {
+                        context.packageManager.getPackageInfo(context.packageName, 0)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                val versionText = packageInfo?.let {
+                    "v${it.versionName} (${it.versionCode})"
+                } ?: "v1.0 (1)"
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = versionText,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
 
         if (showAddDialog) {
