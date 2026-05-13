@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -265,12 +266,31 @@ fun SearchListContent(
                                         
                                         if (isScanned) {
                                             Spacer(Modifier.height(4.dp))
-                                            Text(
-                                                "FOUND",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = Color(0xFFD32F2F)
-                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (item.scanOrder != null) {
+                                                    Surface(
+                                                        color = Color(0xFFD32F2F),
+                                                        shape = CircleShape,
+                                                        modifier = Modifier.size(18.dp)
+                                                    ) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                            Text(
+                                                                text = item.scanOrder.toString(),
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = Color.White
+                                                            )
+                                                        }
+                                                    }
+                                                    Spacer(Modifier.width(4.dp))
+                                                }
+                                                Text(
+                                                    "FOUND",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = Color(0xFFD32F2F)
+                                                )
+                                            }
                                             if (item.scanTimestamp != null) {
                                                 Text(
                                                     text = timeFormatter.format(Date(item.scanTimestamp)),
@@ -310,9 +330,9 @@ fun SearchListWithDataPreview() {
     JetpackComposeTheme {
         SearchListContent(
             searchItems = listOf(
-                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis()),
+                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis(), 1),
                 SearchItem("TYPE456", "01C822", "116770"),
-                SearchItem("TYPE789", "01C823", "116771", System.currentTimeMillis())
+                SearchItem("TYPE789", "01C823", "116771", System.currentTimeMillis(), 2)
             ),
             onBackClick = {},
             onClearListClick = {},

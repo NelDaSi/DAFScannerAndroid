@@ -14,7 +14,8 @@ data class SearchItem(
     val typeCode: String,
     val serialNumber: String,
     val decSerial: String,
-    val scanTimestamp: Long? = null
+    val scanTimestamp: Long? = null,
+    val scanOrder: Int? = null
 )
 
 data class ScanMatchResult(
@@ -194,9 +195,13 @@ class SearchListViewModel : ViewModel() {
             val updatedItems = currentItems.toMutableList()
             val item = updatedItems[itemIndex]
             if (item.scanTimestamp == null) {
-                updatedItems[itemIndex] = item.copy(scanTimestamp = System.currentTimeMillis())
+                val nextOrder = (currentItems.maxOfOrNull { it.scanOrder ?: 0 } ?: 0) + 1
+                updatedItems[itemIndex] = item.copy(
+                    scanTimestamp = System.currentTimeMillis(),
+                    scanOrder = nextOrder
+                )
                 _searchItems.value = updatedItems
-                Log.d("SearchListVM", "Match found and timestamp updated!")
+                Log.d("SearchListVM", "Match found! Scan order: $nextOrder")
             } else {
                 Log.d("SearchListVM", "Match found but already scanned at ${item.scanTimestamp}")
             }
