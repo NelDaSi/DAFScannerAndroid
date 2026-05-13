@@ -104,4 +104,9 @@
     <string name="empty_subtitle">Press the scan button to start</string>
     <string name="settings_clear_all">Clear all scanned items</string>
     <string name="settings_clear_all_desc">Remove all saved scans from the device</string>
+
+    <string name="theme_setting_title">App theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">System default</string>
 </resources>

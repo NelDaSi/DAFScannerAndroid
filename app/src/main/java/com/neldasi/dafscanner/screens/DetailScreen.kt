@@ -93,6 +93,16 @@ fun DetailScreenContent(
     val parsed = remember(fullCode) { parseScannedCode(fullCode) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
+    val shareTitle = stringResource(R.string.share_title)
+    val shareTypeLabel = stringResource(R.string.share_type)
+    val shareSupplierLabel = stringResource(R.string.share_supplier)
+    val shareSerialLabel = stringResource(R.string.share_serial)
+    val shareBatchLabel = stringResource(R.string.share_batch)
+    val shareScannedAtLabel = stringResource(R.string.share_scanned_at)
+    val shareNoteLabel = stringResource(R.string.share_note)
+    val shareSubject = stringResource(R.string.share_subject)
+    val shareLabel = stringResource(R.string.share)
+
     var imageFileUri by remember { mutableStateOf<Uri?>(value = null) }
     var showImageSourceDialog by remember { mutableStateOf(value = false) }
     var showImagePreview by remember { mutableStateOf(value = false) }
@@ -130,20 +140,20 @@ fun DetailScreenContent(
                     IconButton(onClick = {
                         val chooserIntent = Intent(Intent.ACTION_SEND).apply {
                             val parsedText = buildString {
-                                appendLine(context.getString(R.string.share_title))
+                                appendLine(shareTitle)
                                 appendLine()
                                 parsed?.let {
-                                    appendLine(context.getString(R.string.share_type, it.typeCode))
-                                    appendLine(context.getString(R.string.share_supplier, it.supplierCode))
-                                    appendLine(context.getString(R.string.share_serial, it.serialNumber))
-                                    appendLine(context.getString(R.string.share_batch, it.batchNumber))
+                                    appendLine(shareTypeLabel.format(it.typeCode))
+                                    appendLine(shareSupplierLabel.format(it.supplierCode))
+                                    appendLine(shareSerialLabel.format(it.serialNumber))
+                                    appendLine(shareBatchLabel.format(it.batchNumber))
                                     appendLine()
                                 }
                                 val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
-                                appendLine(context.getString(R.string.share_scanned_at, formattedDate))
-                                if (note.isNotBlank()) appendLine(context.getString(R.string.share_note, note))
+                                appendLine(shareScannedAtLabel.format(formattedDate))
+                                if (note.isNotBlank()) appendLine(shareNoteLabel.format(note))
                             }
-                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject))
+                            putExtra(Intent.EXTRA_SUBJECT, shareSubject)
                             putExtra(Intent.EXTRA_TEXT, parsedText)
                             imageUri?.let {
                                 val file = File(context.filesDir, "img_$fullCode.jpg")
@@ -153,7 +163,7 @@ fun DetailScreenContent(
                                 type = "image/jpeg"
                             } ?: run { type = "text/plain" }
                         }
-                        val chooser = Intent.createChooser(chooserIntent, context.getString(R.string.share))
+                        val chooser = Intent.createChooser(chooserIntent, shareLabel)
                         chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         context.startActivity(chooser)
                     }) {

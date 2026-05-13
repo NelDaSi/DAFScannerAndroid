@@ -28,14 +28,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.ScreenLockRotation
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.AlertDialog
@@ -48,9 +45,9 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -69,7 +66,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -77,7 +73,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -99,6 +94,7 @@ fun SettingsScreen(
     var vibrateEnabled by remember { mutableStateOf(value = false) }
     var screenAlwaysOn by remember { mutableStateOf(value = false) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
+    var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
 
     LaunchedEffect(Unit) {
         vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
@@ -128,8 +124,14 @@ fun SettingsScreen(
         onContinuousScanChange = {
             continuousScanEnabled = it
             prefs.edit { putBoolean("continuousScanEnabled", it) }
-        }
-    ) { viewModel.clearAllData() }
+        },
+        currentTheme = currentTheme,
+        onThemeChange = {
+            currentTheme = it
+            SettingsRepository.setTheme(context, it)
+        },
+        onClearAllData = { viewModel.clearAllData() }
+    )
 }
 
 @Composable
@@ -141,6 +143,8 @@ fun SettingsScreenContent(
     onScreenAlwaysOnChange: (Boolean) -> Unit,
     continuousScanEnabled: Boolean,
     onContinuousScanChange: (Boolean) -> Unit,
+    currentTheme: String,
+    onThemeChange: (String) -> Unit,
     onClearAllData: () -> Unit
 ) {
     val context = LocalContext.current
@@ -152,6 +156,7 @@ fun SettingsScreenContent(
     var showAddDialog by remember { mutableStateOf(value = false) }
     var newType by remember { mutableStateOf(value = "") }
     var showClearAllDialog by remember { mutableStateOf(value = false) }
+    var showThemeDialog by remember { mutableStateOf(value = false) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -189,6 +194,16 @@ fun SettingsScreenContent(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     Column(modifier = Modifier.padding(8.dp)) {
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.Palette,
+                            title = stringResource(R.string.theme_setting_title),
+                            subtitle = when (currentTheme) {
+                                "LIGHT" -> stringResource(R.string.theme_light)
+                                "DARK" -> stringResource(R.string.theme_dark)
+                                else -> stringResource(R.string.theme_system)
+                            },
+                            onClick = { showThemeDialog = true }
+                        )
                         SettingsSwitchItem(
                             icon = Icons.Rounded.NotificationsActive,
                             title = stringResource(R.string.vibrate_on_scan_label),
@@ -327,7 +342,7 @@ fun SettingsScreenContent(
                                 newType = ""
                                 showAddDialog = false
                             } else {
-                                Toast.makeText(context, context.getString(R.string.type_not_empty_message), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, R.string.type_not_empty_message, Toast.LENGTH_SHORT).show()
                             }
                         },
                         shape = RoundedCornerShape(12.dp)
@@ -352,7 +367,7 @@ fun SettingsScreenContent(
                     Button(
                         onClick = {
                             onClearAllData()
-                            Toast.makeText(context, context.getString(R.string.yes), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, R.string.yes, Toast.LENGTH_SHORT).show()
                             showClearAllDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -366,6 +381,99 @@ fun SettingsScreenContent(
                         Text(stringResource(R.string.cancel))
                     }
                 }
+            )
+        }
+
+        if (showThemeDialog) {
+            AlertDialog(
+                onDismissRequest = { showThemeDialog = false },
+                title = { Text(stringResource(R.string.theme_setting_title), fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ThemeOption(
+                            title = stringResource(R.string.theme_system),
+                            selected = currentTheme == "SYSTEM",
+                            onClick = { onThemeChange("SYSTEM"); showThemeDialog = false }
+                        )
+                        ThemeOption(
+                            title = stringResource(R.string.theme_light),
+                            selected = currentTheme == "LIGHT",
+                            onClick = { onThemeChange("LIGHT"); showThemeDialog = false }
+                        )
+                        ThemeOption(
+                            title = stringResource(R.string.theme_dark),
+                            selected = currentTheme == "DARK",
+                            onClick = { onThemeChange("DARK"); showThemeDialog = false }
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showThemeDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun SettingsClickableItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            modifier = Modifier.size(40.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(8.dp).size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -475,6 +583,8 @@ fun SettingsScreenPreview() {
             onScreenAlwaysOnChange = {},
             continuousScanEnabled = true,
             onContinuousScanChange = {},
+            currentTheme = "SYSTEM",
+            onThemeChange = {},
             onClearAllData = {}
         )
     }

@@ -1,6 +1,7 @@
 package com.neldasi.dafscanner.extras
 
 import android.content.Context
+import androidx.core.content.edit
 
 object SettingsRepository {
 
@@ -15,5 +16,15 @@ object SettingsRepository {
     fun shouldKeepScreenOn(context: Context): Boolean {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         return prefs.getBoolean("screenAlwaysOn", false)
+    }
+
+    fun getTheme(context: Context): String {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        return prefs.getString("appTheme", "SYSTEM") ?: "SYSTEM"
+    }
+
+    fun setTheme(context: Context, theme: String) {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        prefs.edit { putString("appTheme", theme) }
     }
 }

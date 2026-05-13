@@ -107,4 +107,9 @@
     <string name="empty_subtitle">Druk op de scan-knop om te beginnen</string>
     <string name="settings_clear_all">Alle gescande items wissen</string>
     <string name="settings_clear_all_desc">Verwijder alle opgeslagen scans van het apparaat</string>
+
+    <string name="theme_setting_title">App thema</string>
+    <string name="theme_light">Licht</string>
+    <string name="theme_dark">Donker</string>
+    <string name="theme_system">Systeemstandaard</string>
 </resources>
