@@ -19,8 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -230,18 +233,7 @@ fun SearchListContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
-                    Column {
-                        Text("Verify Serie Numbers")
-                        if (searchItems.isNotEmpty()) {
-                            Text(
-                                "Scanned ${searchItems.count { it.scanTimestamp != null }} / ${searchItems.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
-                },
+                title = { Text("Verify Serie Numbers") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
@@ -324,8 +316,7 @@ fun SearchListContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.1f) 
-                                                     else MaterialTheme.colorScheme.surfaceVariant
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFD32F2F)) else null
                             ) {
@@ -346,13 +337,13 @@ fun SearchListContent(
                                                 "HEX: ",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.7f) else Color(0xFF1976D2)
+                                                color = Color(0xFF1976D2)
                                             )
                                             Text(
                                                 text = item.serialNumber,
                                                 style = MaterialTheme.typography.titleLarge,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -360,13 +351,13 @@ fun SearchListContent(
                                                 "DEC: ",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.7f) else Color(0xFF388E3C)
+                                                color = Color(0xFF388E3C)
                                             )
                                             Text(
                                                 text = item.decSerial,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
+                                                color = MaterialTheme.colorScheme.secondary
                                             )
                                         }
                                     }
@@ -376,7 +367,7 @@ fun SearchListContent(
                                         verticalArrangement = Arrangement.Center
                                     ) {
                                         Surface(
-                                            color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                             shape = RoundedCornerShape(4.dp)
                                         ) {
                                             Text(
@@ -384,7 +375,7 @@ fun SearchListContent(
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                         
@@ -427,6 +418,50 @@ fun SearchListContent(
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            if (searchItems.isNotEmpty()) {
+                val foundCount = searchItems.count { it.scanTimestamp != null }
+                val totalCount = searchItems.size
+                val scannedColor = if (foundCount == totalCount) Color(0xFF388E3C) else Color(0xFFD32F2F)
+
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.BarChart,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(style = SpanStyle(color = Color.Gray, fontWeight = FontWeight.Normal)) {
+                                    append("Progress: ")
+                                }
+                                withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
+                                    append("$foundCount")
+                                }
+                                withStyle(style = SpanStyle(color = Color.Black, fontWeight = FontWeight.Bold)) {
+                                    append(" / $totalCount")
+                                }
+                            },
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
             }
