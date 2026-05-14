@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.ScreenLockRotation
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -158,6 +160,7 @@ fun SettingsScreenContent(
     var newType by remember { mutableStateOf(value = "") }
     var showClearAllDialog by remember { mutableStateOf(value = false) }
     var showThemeDialog by remember { mutableStateOf(value = false) }
+    var showConverterDialog by remember { mutableStateOf(value = false) }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -222,6 +225,12 @@ fun SettingsScreenContent(
                             title = stringResource(R.string.screen_always_on_label),
                             checked = screenAlwaysOn,
                             onCheckedChange = onScreenAlwaysOnChange
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.Calculate,
+                            title = "HEX <-> DEC Converter",
+                            subtitle = "Tool to convert serial numbers",
+                            onClick = { showConverterDialog = true }
                         )
                     }
                 }
@@ -433,6 +442,65 @@ fun SettingsScreenContent(
                 confirmButton = {
                     TextButton(onClick = { showThemeDialog = false }) {
                         Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showConverterDialog) {
+            var hexVal by remember { mutableStateOf("") }
+            var decVal by remember { mutableStateOf("") }
+
+            AlertDialog(
+                onDismissRequest = { showConverterDialog = false },
+                title = { Text("HEX <-> DEC Converter", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        OutlinedTextField(
+                            value = hexVal,
+                            onValueChange = { input ->
+                                hexVal = input.uppercase().filter { it in "0123456789ABCDEF" }
+                                decVal = try {
+                                    if (hexVal.isEmpty()) "" else hexVal.toLong(16).toString()
+                                } catch (_: Exception) {
+                                    "Error"
+                                }
+                            },
+                            label = { Text("HEX Value") },
+                            placeholder = { Text("e.g. 01C821") },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        
+                        Icon(
+                            Icons.Rounded.SwapVert,
+                            contentDescription = null,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+
+                        OutlinedTextField(
+                            value = decVal,
+                            onValueChange = { input ->
+                                decVal = input.filter { it.isDigit() }
+                                hexVal = try {
+                                    if (decVal.isEmpty()) "" else decVal.toLong().toString(16).uppercase()
+                                } catch (_: Exception) {
+                                    "Error"
+                                }
+                            },
+                            label = { Text("DEC Value") },
+                            placeholder = { Text("e.g. 116769") },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showConverterDialog = false }) {
+                        Text("Close")
                     }
                 }
             )
