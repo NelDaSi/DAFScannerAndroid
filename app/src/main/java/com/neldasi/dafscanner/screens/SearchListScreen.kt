@@ -235,11 +235,13 @@ fun SearchListContent(
                         Spacer(Modifier.width(8.dp))
                         Text("CSV (Excel Format)")
                     }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onShowShareOptionsChange(false) }) {
-                    Text("Cancel")
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(
+                        onClick = { onShowShareOptionsChange(false) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
+                    }
                 }
             }
         )
