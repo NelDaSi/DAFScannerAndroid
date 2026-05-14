@@ -37,6 +37,7 @@ import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchItem
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
+import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import java.io.File
 
 @Composable
@@ -78,7 +79,13 @@ fun SearchListScreen(
         onBackClick = { navController.popBackStack() },
         onClearListClick = { viewModel.clearList(context) },
         onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
-        onImportCsvClick = { csvPickerLauncher.launch("text/comma-separated-values") },
+        onImportCsvClick = {
+            if (isRunningOnEmulator()) {
+                viewModel.loadMockData(context)
+            } else {
+                csvPickerLauncher.launch("text/comma-separated-values")
+            }
+        },
         onShareCsv = {
             if (searchItems.isEmpty()) return@SearchListContent
             
@@ -317,9 +324,10 @@ fun SearchListContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
-                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) else null
+                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) 
+                                         else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
@@ -328,7 +336,7 @@ fun SearchListContent(
                                     Icon(
                                         if (isScanned) Icons.Rounded.CheckCircle else Icons.Rounded.Tag,
                                         contentDescription = null,
-                                        tint = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                                        tint = MaterialTheme.colorScheme.secondary,
                                         modifier = Modifier.size(28.dp)
                                     )
                                     Spacer(Modifier.width(12.dp))

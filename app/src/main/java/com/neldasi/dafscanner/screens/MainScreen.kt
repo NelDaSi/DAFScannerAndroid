@@ -458,9 +458,10 @@ private fun PartItem(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) strokeBorder(1.dp, MaterialTheme.colorScheme.primary) else null
+        border = if (isSelected) strokeBorder(2.dp, MaterialTheme.colorScheme.primary) 
+                 else strokeBorder(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier
@@ -487,7 +488,7 @@ private fun PartItem(
                     Icon(
                         Icons.Rounded.Inventory2,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.align(Alignment.Center).size(32.dp)
                     )
                 }

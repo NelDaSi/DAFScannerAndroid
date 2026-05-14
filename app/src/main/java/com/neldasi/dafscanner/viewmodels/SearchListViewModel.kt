@@ -65,6 +65,34 @@ class SearchListViewModel : ViewModel() {
         }
     }
 
+    fun loadMockData(context: Context) {
+        val results = mutableListOf<SearchItem>()
+        for (i in 1..25) {
+            val hex = String.format("%06X", (0x1000..0xFFFFFF).random())
+            results.add(SearchItem(
+                typeCode = "2245295",
+                serialNumber = hex,
+                decSerial = hexToDec(hex)
+            ))
+        }
+        _searchItems.value = results
+        
+        // Randomly mark 5 items as scanned
+        val toScan = results.shuffled().take(5)
+        toScan.forEachIndexed { index, item ->
+            val itemIndex = _searchItems.value.indexOfFirst { it.serialNumber == item.serialNumber }
+            if (itemIndex != -1) {
+                val updatedItems = _searchItems.value.toMutableList()
+                updatedItems[itemIndex] = updatedItems[itemIndex].copy(
+                    scanTimestamp = System.currentTimeMillis() - (index * 100000),
+                    scanOrder = index + 1
+                )
+                _searchItems.value = updatedItems
+            }
+        }
+        saveToStorage(context)
+    }
+
     fun loadCsv(context: Context, uri: Uri) {
         Log.d("SearchListVM", "Loading CSV: $uri")
         viewModelScope.launch {
