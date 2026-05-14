@@ -39,8 +39,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.IosShare
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
@@ -157,7 +155,6 @@ fun MainScreenContent(
     var showSettingsDialog by remember { mutableStateOf(value = false) }
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
-    var showMenu by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
 
     fun addCodeIfNew(code: String) {
@@ -247,41 +244,22 @@ fun MainScreenContent(
                         }
                     }
                     if (!selectionMode) {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = "Menu")
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
+                        IconButton(
+                            onClick = {
+                                if (scannedParts.isNotEmpty()) {
+                                    selectionMode = true
+                                    selectedCodes.clear()
+                                }
+                            },
+                            enabled = scannedParts.isNotEmpty()
                         ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.delete_selected)) },
-                                leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    if (scannedParts.isNotEmpty()) {
-                                        selectionMode = true
-                                        selectedCodes.clear()
-                                    }
-                                },
-                                enabled = scannedParts.isNotEmpty()
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.verify_serials_title)) },
-                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    navController.navigate(SearchListRoute)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.settings_screen_title)) },
-                                leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                                onClick = {
-                                    showMenu = false
-                                    navController.navigate(SettingsRoute)
-                                }
-                            )
+                            Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.delete_selected))
+                        }
+                        IconButton(onClick = { navController.navigate(SearchListRoute) }) {
+                            Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.verify_serials_title))
+                        }
+                        IconButton(onClick = { navController.navigate(SettingsRoute) }) {
+                            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_screen_title))
                         }
                     }
                 },
