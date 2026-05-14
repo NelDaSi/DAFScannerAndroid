@@ -105,6 +105,7 @@ import com.neldasi.dafscanner.navigation.DetailRoute
 import com.neldasi.dafscanner.navigation.NavKeys
 import com.neldasi.dafscanner.navigation.SearchListRoute
 import com.neldasi.dafscanner.navigation.SettingsRoute
+import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.MainViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -643,7 +644,7 @@ fun MainScreenPreview() {
         ScannedPart("TYPEB87654321", System.currentTimeMillis() - 200000, imageUri = "https://via.placeholder.com/150"),
         ScannedPart("TYPEC55555555", System.currentTimeMillis() - 300000, note = "Another note here.", imageUri = "https://via.placeholder.com/150")
     )
-    MaterialTheme {
+    JetpackComposeTheme {
         MainScreenContent(
             navController = mockNavController,
             scannedParts = mockItems,

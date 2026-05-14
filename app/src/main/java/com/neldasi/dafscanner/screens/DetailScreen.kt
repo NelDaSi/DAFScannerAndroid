@@ -46,6 +46,7 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.parseScannedCode
+import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.DetailViewModel
 import java.io.File
 import java.io.FileOutputStream
@@ -379,7 +380,7 @@ private fun ImageSourceItem(icon: androidx.compose.ui.graphics.vector.ImageVecto
 @Composable
 fun DetailScreenPreview() {
     val mockNavController = rememberNavController()
-    MaterialTheme {
+    JetpackComposeTheme {
         DetailScreenContent(
             navController = mockNavController,
             fullCode = "21500018842993A10000000000K6805",

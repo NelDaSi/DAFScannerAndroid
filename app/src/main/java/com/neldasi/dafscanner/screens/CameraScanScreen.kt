@@ -60,6 +60,7 @@ import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
+import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -631,7 +632,7 @@ private fun extractSerial(fullCode: String): String {
 @ComposePreview(showBackground = true)
 @Composable
 fun CameraScanScreenPreview() {
-    MaterialTheme {
+    JetpackComposeTheme {
         CameraScanScreenContent(
             isCameraReady = true,
             cameraError = null,

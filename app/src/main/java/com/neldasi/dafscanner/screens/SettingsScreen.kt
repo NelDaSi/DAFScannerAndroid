@@ -83,6 +83,7 @@ import androidx.navigation.compose.rememberNavController
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SettingsViewModel
 
 
@@ -678,7 +679,7 @@ fun saveAllowedTypes(context: Context, types: List<String>) {
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {
-    MaterialTheme {
+    JetpackComposeTheme {
         SettingsScreenContent(
             navController = rememberNavController(),
             vibrateEnabled = true,
