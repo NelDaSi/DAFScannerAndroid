@@ -47,6 +47,8 @@ fun SearchListScreen(
 ) {
     val context = LocalContext.current
     val searchItems by viewModel.searchItems.collectAsStateWithLifecycle()
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showShareOptions by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.initStorage(context)
@@ -72,10 +74,12 @@ fun SearchListScreen(
         }
     }
 
-    val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
-
     SearchListContent(
         searchItems = searchItems,
+        showDeleteConfirmation = showDeleteConfirmation,
+        onShowDeleteConfirmationChange = { showDeleteConfirmation = it },
+        showShareOptions = showShareOptions,
+        onShowShareOptionsChange = { showShareOptions = it },
         onBackClick = { navController.popBackStack() },
         onClearListClick = { viewModel.clearList(context) },
         onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
@@ -92,6 +96,7 @@ fun SearchListScreen(
             val sb = StringBuilder()
             sb.append("Order;Status;HEX;DEC;Type;Scan Time\n")
             
+            val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             searchItems.forEach { item ->
                 val isFound = item.scanTimestamp != null
                 val status = if (isFound) "FOUND" else "MISSING"
@@ -127,6 +132,7 @@ fun SearchListScreen(
             val missingItems = searchItems.filter { it.scanTimestamp == null }
             
             val sb = StringBuilder()
+            val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             sb.append("DAF Scanner - Verification Summary\n")
             sb.append("Progress: ${foundItems.size}/$total\n\n")
             
@@ -160,6 +166,10 @@ fun SearchListScreen(
 @Composable
 fun SearchListContent(
     searchItems: List<SearchItem>,
+    showDeleteConfirmation: Boolean,
+    onShowDeleteConfirmationChange: (Boolean) -> Unit,
+    showShareOptions: Boolean,
+    onShowShareOptionsChange: (Boolean) -> Unit,
     onBackClick: () -> Unit,
     onClearListClick: () -> Unit,
     onScanClick: () -> Unit,
@@ -167,20 +177,18 @@ fun SearchListContent(
     onShareCsv: () -> Unit,
     onShareSummary: () -> Unit
 ) {
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    var showShareOptions by remember { mutableStateOf(false) }
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
     if (showDeleteConfirmation) {
         AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
+            onDismissRequest = { onShowDeleteConfirmationChange(false) },
             title = { Text("Clear List?") },
             text = { Text("This will remove all imported serial numbers and reset your progress. This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
                         onClearListClick()
-                        showDeleteConfirmation = false
+                        onShowDeleteConfirmationChange(false)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -188,7 +196,7 @@ fun SearchListContent(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
+                TextButton(onClick = { onShowDeleteConfirmationChange(false) }) {
                     Text("Cancel")
                 }
             }
@@ -197,7 +205,7 @@ fun SearchListContent(
 
     if (showShareOptions) {
         AlertDialog(
-            onDismissRequest = { showShareOptions = false },
+            onDismissRequest = { onShowShareOptionsChange(false) },
             title = { Text("Share Results") },
             text = { Text("Choose how you would like to share the verification data.") },
             confirmButton = {
@@ -205,7 +213,7 @@ fun SearchListContent(
                     Button(
                         onClick = {
                             onShareSummary()
-                            showShareOptions = false
+                            onShowShareOptionsChange(false)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
@@ -217,7 +225,7 @@ fun SearchListContent(
                     Button(
                         onClick = {
                             onShareCsv()
-                            showShareOptions = false
+                            onShowShareOptionsChange(false)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -230,7 +238,7 @@ fun SearchListContent(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showShareOptions = false }) {
+                TextButton(onClick = { onShowShareOptionsChange(false) }) {
                     Text("Cancel")
                 }
             }
@@ -248,10 +256,10 @@ fun SearchListContent(
                 },
                 actions = {
                     if (searchItems.isNotEmpty()) {
-                        IconButton(onClick = { showShareOptions = true }) {
+                        IconButton(onClick = { onShowShareOptionsChange(true) }) {
                             Icon(Icons.Rounded.Share, contentDescription = "Share Results")
                         }
-                        IconButton(onClick = { showDeleteConfirmation = true }) {
+                        IconButton(onClick = { onShowDeleteConfirmationChange(true) }) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Clear List")
                         }
                     }
@@ -484,6 +492,10 @@ fun SearchListEmptyPreview() {
     JetpackComposeTheme {
         SearchListContent(
             searchItems = emptyList(),
+            showDeleteConfirmation = false,
+            onShowDeleteConfirmationChange = {},
+            showShareOptions = false,
+            onShowShareOptionsChange = {},
             onBackClick = {},
             onClearListClick = {},
             onScanClick = {},
@@ -504,6 +516,56 @@ fun SearchListWithDataPreview() {
                 SearchItem("TYPE456", "01C822", "116770"),
                 SearchItem("TYPE789", "01C823", "116771", System.currentTimeMillis(), 2)
             ),
+            showDeleteConfirmation = false,
+            onShowDeleteConfirmationChange = {},
+            showShareOptions = false,
+            onShowShareOptionsChange = {},
+            onBackClick = {},
+            onClearListClick = {},
+            onScanClick = {},
+            onImportCsvClick = {},
+            onShareCsv = {},
+            onShareSummary = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SearchListDeleteConfirmationPreview() {
+    JetpackComposeTheme {
+        SearchListContent(
+            searchItems = listOf(
+                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis(), 1),
+                SearchItem("TYPE456", "01C822", "116770")
+            ),
+            showDeleteConfirmation = true,
+            onShowDeleteConfirmationChange = {},
+            showShareOptions = false,
+            onShowShareOptionsChange = {},
+            onBackClick = {},
+            onClearListClick = {},
+            onScanClick = {},
+            onImportCsvClick = {},
+            onShareCsv = {},
+            onShareSummary = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SearchListShareOptionsPreview() {
+    JetpackComposeTheme {
+        SearchListContent(
+            searchItems = listOf(
+                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis(), 1),
+                SearchItem("TYPE456", "01C822", "116770")
+            ),
+            showDeleteConfirmation = false,
+            onShowDeleteConfirmationChange = {},
+            showShareOptions = true,
+            onShowShareOptionsChange = {},
             onBackClick = {},
             onClearListClick = {},
             onScanClick = {},
