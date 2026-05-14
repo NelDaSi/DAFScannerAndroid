@@ -1,7 +1,9 @@
 package com.neldasi.dafscanner.screens
 
+import android.app.Activity
 import android.content.Context
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -14,6 +16,7 @@ import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -55,6 +58,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
@@ -110,14 +114,27 @@ fun CameraScanScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("prefs", Context.MODE_PRIVATE) }
-    val vibrateEnabled = remember { prefs.getBoolean("vibrateEnabled", false) }
-    val continuousScanEnabled = remember { prefs.getBoolean("continuousScanEnabled", false) }
+    
+    var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean("vibrateEnabled", false)) }
+    var continuousScanEnabled by remember { mutableStateOf(prefs.getBoolean("continuousScanEnabled", false)) }
+    var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean("screenAlwaysOn", false)) }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context) }
+
+    // Keep screen on logic
+    LaunchedEffect(screenAlwaysOn) {
+        val activity = context as? Activity
+        if (screenAlwaysOn) {
+            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
     
     var showNotAllowedDialog by remember { mutableStateOf(value = false) }
     var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(value = null) }
@@ -275,6 +292,21 @@ fun CameraScanScreen(
         verifyResult = verifyResult,
         countdown = countdown,
         isVerifyMode = isVerifyMode,
+        vibrateEnabled = vibrateEnabled,
+        continuousScanEnabled = continuousScanEnabled,
+        screenAlwaysOn = screenAlwaysOn,
+        onToggleVibrate = {
+            vibrateEnabled = !vibrateEnabled
+            prefs.edit { putBoolean("vibrateEnabled", vibrateEnabled) }
+        },
+        onToggleContinuous = {
+            continuousScanEnabled = !continuousScanEnabled
+            prefs.edit { putBoolean("continuousScanEnabled", continuousScanEnabled) }
+        },
+        onToggleScreenOn = {
+            screenAlwaysOn = !screenAlwaysOn
+            prefs.edit { putBoolean("screenAlwaysOn", screenAlwaysOn) }
+        },
         onToggleTorch = {
             val newState = !isTorchOn
             isTorchOn = newState
@@ -382,6 +414,12 @@ fun CameraScanScreenContent(
     verifyResult: ScanFeedback? = null,
     countdown: Int = 0,
     isVerifyMode: Boolean = false,
+    vibrateEnabled: Boolean = false,
+    continuousScanEnabled: Boolean = false,
+    screenAlwaysOn: Boolean = false,
+    onToggleVibrate: () -> Unit = {},
+    onToggleContinuous: () -> Unit = {},
+    onToggleScreenOn: () -> Unit = {},
     onToggleTorch: () -> Unit,
     onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
@@ -400,6 +438,11 @@ fun CameraScanScreenContent(
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = flashAlpha)))
 
         CameraOverlay(isCameraReady = isCameraReady, errorMessage = cameraError)
+
+        TopScannerBar(
+            serial = lastSerial,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 24.dp, end = 24.dp)
+        )
 
         if (verifyResult != null) {
             val backgroundColor = when {
@@ -518,12 +561,59 @@ fun CameraScanScreenContent(
         }
 
         BottomScannerBar(
-            serial = lastSerial,
             isTorchOn = isTorchOn,
             onToggleTorch = onToggleTorch,
+            vibrateEnabled = vibrateEnabled,
+            onToggleVibrate = onToggleVibrate,
+            continuousScanEnabled = continuousScanEnabled,
+            onToggleContinuous = onToggleContinuous,
+            screenAlwaysOn = screenAlwaysOn,
+            onToggleScreenOn = onToggleScreenOn,
             onClose = onClose,
             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
         )
+    }
+}
+
+@Composable
+private fun TopScannerBar(
+    serial: String?,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = serial != null,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+        modifier = modifier
+    ) {
+        Surface(
+            tonalElevation = 8.dp,
+            shadowElevation = 12.dp,
+            shape = RoundedCornerShape(24.dp),
+            color = Color.Black.copy(alpha = 0.8f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Rounded.QrCodeScanner,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = serial ?: "",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 
@@ -628,9 +718,14 @@ private fun ScannerFrame(modifier: Modifier = Modifier) {
 
 @Composable
 private fun BottomScannerBar(
-    serial: String?,
     isTorchOn: Boolean,
     onToggleTorch: () -> Unit,
+    vibrateEnabled: Boolean,
+    onToggleVibrate: () -> Unit,
+    continuousScanEnabled: Boolean,
+    onToggleContinuous: () -> Unit,
+    screenAlwaysOn: Boolean,
+    onToggleScreenOn: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -644,47 +739,75 @@ private fun BottomScannerBar(
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(
-                onClick = onToggleTorch,
-                modifier = Modifier.size(52.dp).background(if (isTorchOn) Color.Yellow.copy(alpha = 0.2f) else Color.Transparent, CircleShape)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = if (isTorchOn) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
-                    contentDescription = null,
-                    tint = if (isTorchOn) Color.Yellow else Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(24.dp)
+                // Torch
+                ScannerOptionButton(
+                    icon = if (isTorchOn) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                    isActive = isTorchOn,
+                    activeColor = Color.Yellow,
+                    onClick = onToggleTorch
                 )
-            }
-            
-            Column(
-                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = serial ?: stringResource(R.string.scanner_default),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    softWrap = true
+                
+                // Continuous Scan
+                ScannerOptionButton(
+                    icon = Icons.Rounded.SystemUpdateAlt,
+                    isActive = continuousScanEnabled,
+                    activeColor = MaterialTheme.colorScheme.primary,
+                    onClick = onToggleContinuous
                 )
-                if (serial != null) {
-                    Text(
-                        text = "Last Scanned",
-                        color = Color.White.copy(alpha = 0.5f),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
+
+                // Vibrate
+                ScannerOptionButton(
+                    icon = Icons.Rounded.NotificationsActive,
+                    isActive = vibrateEnabled,
+                    activeColor = MaterialTheme.colorScheme.primary,
+                    onClick = onToggleVibrate
+                )
+
+                // Screen Always On
+                ScannerOptionButton(
+                    icon = Icons.Rounded.ScreenLockRotation,
+                    isActive = screenAlwaysOn,
+                    activeColor = MaterialTheme.colorScheme.primary,
+                    onClick = onToggleScreenOn
+                )
             }
 
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.1f), CircleShape)
+                modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.1f), CircleShape)
             ) {
                 Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun ScannerOptionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isActive: Boolean,
+    activeColor: Color,
+    onClick: () -> Unit
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(48.dp)
+            .background(if (isActive) activeColor.copy(alpha = 0.2f) else Color.Transparent, CircleShape)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isActive) activeColor else Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 
