@@ -94,7 +94,7 @@
     <string name="select_image_source">Select an image</string>
     <string name="manage_image">Manage image</string>
     <string name="code_already_added">This code is already added</string>
-    <string name="search_serials_hint">Search serials (space separated)</string>
+    <string name="search_serials_hint">Search</string>
     <string name="multi_scan_mode_label">Multi-scan mode</string>
     <string name="scanner_default">Scanner</string>
     <string name="close_scanner">Close scanner</string>

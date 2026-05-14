@@ -253,6 +253,13 @@ fun SearchListContent(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.verify_serials_title)) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -336,10 +343,10 @@ fun SearchListContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.1f) 
+                                    containerColor = if (isScanned) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                                                      else MaterialTheme.colorScheme.surface
                                 ),
-                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFD32F2F)) 
+                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) 
                                          else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             ) {
                                 Row(
@@ -348,7 +355,7 @@ fun SearchListContent(
                                 ) {
                                     if (isScanned && item.scanOrder != null) {
                                         Surface(
-                                            color = Color(0xFFD32F2F),
+                                            color = MaterialTheme.colorScheme.secondary,
                                             shape = CircleShape,
                                             modifier = Modifier.size(32.dp)
                                         ) {
@@ -378,7 +385,7 @@ fun SearchListContent(
                                                 "HEX: ",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F) else Color(0xFF1976D2)
+                                                color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
                                             )
                                             Text(
                                                 text = item.serialNumber,
@@ -392,7 +399,7 @@ fun SearchListContent(
                                                 "DEC: ",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.7f) else Color(0xFF388E3C)
+                                                color = if (isScanned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) else Color(0xFF388E3C)
                                             )
                                             Text(
                                                 text = item.decSerial,
@@ -408,7 +415,7 @@ fun SearchListContent(
                                         verticalArrangement = Arrangement.Center
                                     ) {
                                         Surface(
-                                            color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.1f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            color = if (isScanned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
                                             shape = RoundedCornerShape(4.dp)
                                         ) {
                                             Text(
@@ -416,7 +423,7 @@ fun SearchListContent(
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
+                                                color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
                                             )
                                         }
 
@@ -426,7 +433,7 @@ fun SearchListContent(
                                                 text = timeFormatter.format(Date(item.scanTimestamp)),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFFD32F2F).copy(alpha = 0.8f)
+                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
                                             )
                                         }
                                     }

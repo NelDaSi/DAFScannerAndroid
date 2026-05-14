@@ -50,6 +50,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -202,6 +203,13 @@ fun MainScreenContent(
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
                 actions = {
                     AnimatedVisibility(
                         visible = selectionMode,
@@ -269,32 +277,6 @@ fun MainScreenContent(
                 },
                 scrollBehavior = scrollBehavior
             )
-        },
-        floatingActionButton = {
-            if (!selectionMode) {
-                FloatingActionButton(
-                    onClick = {
-                        if (isRunningOnEmulator()) {
-                            // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
-                            val simulatedCode = "215000188429${(100000..999999).random()}"
-                            addCodeIfNew(simulatedCode)
-                        } else {
-                            when (cameraPermissionState.status) {
-                                PermissionStatus.Granted -> navController.navigate(CameraRoute)
-                                is PermissionStatus.Denied -> {
-                                    if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
-                                    else cameraPermissionState.launchPermissionRequest()
-                                }
-                            }
-                        }
-                    },
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
-                }
-            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -302,37 +284,6 @@ fun MainScreenContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
-                stickyHeader {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 2.dp
-                    ) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = onSearchQueryChange,
-                            placeholder = { Text(stringResource(R.string.search_serials_hint)) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { onSearchQueryChange("") }) {
-                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search")
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                            )
-                        )
-                    }
-                }
-
                 if (scannedParts.isEmpty()) {
                     item {
                         EmptyState(isPermissionGranted = cameraPermissionState.status.isGranted)
@@ -353,6 +304,83 @@ fun MainScreenContent(
                         ) {
                             selectionMode = true
                             selectedCodes.add(part.fullCode)
+                        }
+                    }
+                }
+            }
+
+            // Floating Search and Scan Bar
+            if (!selectionMode) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(32.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchQueryChange,
+                            placeholder = { 
+                                Text(
+                                    stringResource(R.string.search_serials_hint),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                ) 
+                            },
+                            modifier = Modifier
+                                .weight(1f),
+                            shape = RoundedCornerShape(24.dp),
+                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { onSearchQueryChange("") }) {
+                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+
+                        FloatingActionButton(
+                            onClick = {
+                                if (isRunningOnEmulator()) {
+                                    // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
+                                    val simulatedCode = "215000188429${(100000..999999).random()}"
+                                    addCodeIfNew(simulatedCode)
+                                } else {
+                                    when (cameraPermissionState.status) {
+                                        PermissionStatus.Granted -> navController.navigate(CameraRoute)
+                                        is PermissionStatus.Denied -> {
+                                            if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
+                                            else cameraPermissionState.launchPermissionRequest()
+                                        }
+                                    }
+                                }
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                            shape = CircleShape,
+                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                        ) {
+                            Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
                         }
                     }
                 }
@@ -508,7 +536,7 @@ private fun PartItem(
                         "HEX: ",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1976D2)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = parsed?.serialNumber ?: "Unknown",
