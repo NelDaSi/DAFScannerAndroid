@@ -383,7 +383,7 @@ fun MainScreenContent(
                                     addCodeIfNew(simulatedCode)
                                 } else {
                                     when (cameraPermissionState.status) {
-                                        PermissionStatus.Granted -> navController.navigate(CameraRoute)
+                                        PermissionStatus.Granted -> navController.navigate(CameraRoute(isVerifyMode = false))
                                         is PermissionStatus.Denied -> {
                                             if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
                                             else cameraPermissionState.launchPermissionRequest()

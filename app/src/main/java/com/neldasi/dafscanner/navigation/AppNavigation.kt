@@ -23,13 +23,17 @@ fun AppNavigation() {
             MainScreen(navController)
         }
         composable<CameraRoute> { backStackEntry ->
-            val route: CameraRoute = backStackEntry.toRoute()
+            val route = backStackEntry.toRoute<CameraRoute>()
             
-            // Try to find SearchList screen in backstack to share ViewModel
             val searchBackStackEntry = remember(backStackEntry) {
-                navController.getBackStackEntry<SearchListRoute>()
+                try {
+                    navController.getBackStackEntry<SearchListRoute>()
+                } catch (e: Exception) {
+                    null
+                }
             }
-            val searchViewModel: SearchListViewModel = viewModel(searchBackStackEntry)
+            
+            val searchViewModel: SearchListViewModel? = searchBackStackEntry?.let { viewModel(it) }
             
             CameraScanScreen(navController, route.isVerifyMode, searchViewModel)
         }
