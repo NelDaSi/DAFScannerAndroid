@@ -5,7 +5,14 @@ data class ParsedPart(
     val supplierCode: String,
     val serialNumber: String,
     val batchNumber: String,
-)
+) {
+    val decSerial: String
+        get() = try {
+            serialNumber.toLong(16).toString()
+        } catch (_: Exception) {
+            "N/A"
+        }
+}
 
 fun parseScannedCode(code: String): ParsedPart? {
     return try {

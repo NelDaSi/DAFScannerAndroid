@@ -269,7 +269,8 @@ fun DetailScreenContent(
                         parsed?.let {
                             DetailRow(Icons.Rounded.Numbers, stringResource(R.string.type), it.typeCode)
                             DetailRow(Icons.Rounded.Business, stringResource(R.string.supplier), it.supplierCode)
-                            DetailRow(Icons.Rounded.Tag, stringResource(R.string.serial), it.serialNumber)
+                            DetailRow(Icons.Rounded.Tag, "Serial (HEX)", it.serialNumber)
+                            DetailRow(Icons.Rounded.Tag, "Serial (DEC)", it.decSerial)
                             DetailRow(Icons.Rounded.Layers, stringResource(R.string.batch), it.batchNumber)
                         }
                         DetailRow(Icons.Rounded.Event, stringResource(R.string.scanned_at), formattedDate)
