@@ -276,7 +276,7 @@ fun DetailScreenContent(
                                 Icon(
                                     Icons.AutoMirrored.Rounded.Notes,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(Modifier.width(12.dp))
@@ -401,7 +401,7 @@ private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.padding(10.dp).size(20.dp),
-                tint = MaterialTheme.colorScheme.secondary
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         Column {
