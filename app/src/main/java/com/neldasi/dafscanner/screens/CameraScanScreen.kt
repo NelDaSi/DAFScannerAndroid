@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -491,7 +490,11 @@ fun CameraScanScreenContent(
                             }
                             
                             verifyResult.scanTimestamp?.let { ts ->
-                                val dateStr = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()).format(Date(ts))
+                                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                                val locale = configuration.locales[0] ?: Locale.getDefault()
+                                val dateStr = remember(ts, locale) {
+                                    SimpleDateFormat("dd MMM, HH:mm", locale).format(Date(ts))
+                                }
                                 Text(
                                     text = "First seen: $dateStr",
                                     color = Color.White.copy(alpha = 0.8f),
@@ -841,7 +844,7 @@ private fun extractSerial(fullCode: String): String {
     return parseScannedCode(fullCode)?.serialNumber ?: (if (fullCode.length >= 18) fullCode.substring(12, 18) else fullCode.take(6))
 }
 
-@ComposePreview(showBackground = true, name = "Normal Scan")
+@ComposePreview(showBackground = true, name = "Normal Scan", apiLevel = 34)
 @Composable
 fun CameraScanScreenPreview() {
     JetpackComposeTheme {
@@ -860,7 +863,7 @@ fun CameraScanScreenPreview() {
     }
 }
 
-@ComposePreview(showBackground = true, name = "Duplicate Warning")
+@ComposePreview(showBackground = true, name = "Duplicate Scan", apiLevel = 34)
 @Composable
 fun CameraScanScreenDuplicatePreview() {
     JetpackComposeTheme {
