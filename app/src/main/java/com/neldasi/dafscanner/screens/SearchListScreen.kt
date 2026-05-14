@@ -33,11 +33,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.FileProvider
+import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchItem
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
-import com.neldasi.dafscanner.extras.isRunningOnEmulator
+import androidx.compose.ui.res.stringResource
+import com.neldasi.dafscanner.R
 import java.io.File
 
 @Composable
@@ -119,7 +121,7 @@ fun SearchListScreen(
                     putExtra(Intent.EXTRA_STREAM, contentUri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(shareIntent, "Share CSV File"))
+                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_csv_chooser)))
             } catch (e: Exception) {
                 Log.e("SearchListScreen", "Error sharing CSV file", e)
             }
@@ -133,8 +135,8 @@ fun SearchListScreen(
             
             val sb = StringBuilder()
             val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            sb.append("DAF Scanner - Verification Summary\n")
-            sb.append("Progress: ${foundItems.size}/$total\n\n")
+            sb.append(context.getString(R.string.verification_summary_title) + "\n")
+            sb.append(context.getString(R.string.scanned_progress, foundItems.size, total) + "\n\n")
             
             if (foundItems.isNotEmpty()) {
                 sb.append("✅ FOUND (${foundItems.size})\n")
@@ -154,10 +156,10 @@ fun SearchListScreen(
             
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Verification Summary - ${foundItems.size}/${total}")
+                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.verification_summary_subject, foundItems.size, total))
                 putExtra(Intent.EXTRA_TEXT, sb.toString())
             }
-            context.startActivity(Intent.createChooser(shareIntent, "Share Summary"))
+            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_summary_chooser)))
         }
     )
 }
@@ -182,8 +184,8 @@ fun SearchListContent(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { onShowDeleteConfirmationChange(false) },
-            title = { Text("Clear List?") },
-            text = { Text("This will remove all imported serial numbers and reset your progress. This action cannot be undone.") },
+            title = { Text(stringResource(R.string.clear_list_title)) },
+            text = { Text(stringResource(R.string.clear_list_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -192,12 +194,12 @@ fun SearchListContent(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Clear List")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { onShowDeleteConfirmationChange(false) }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -206,8 +208,8 @@ fun SearchListContent(
     if (showShareOptions) {
         AlertDialog(
             onDismissRequest = { onShowShareOptionsChange(false) },
-            title = { Text("Share Results") },
-            text = { Text("Choose how you would like to share the verification data.") },
+            title = { Text(stringResource(R.string.share_results_title)) },
+            text = { Text(stringResource(R.string.share_results_text)) },
             confirmButton = {
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
@@ -220,7 +222,7 @@ fun SearchListContent(
                     ) {
                         Icon(Icons.Rounded.Description, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Summary Report")
+                        Text(stringResource(R.string.summary_report))
                     }
                     Button(
                         onClick = {
@@ -233,14 +235,14 @@ fun SearchListContent(
                     ) {
                         Icon(Icons.Rounded.TableChart, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("CSV (Excel Format)")
+                        Text(stringResource(R.string.csv_excel_format))
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     TextButton(
                         onClick = { onShowShareOptionsChange(false) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             }
@@ -250,19 +252,19 @@ fun SearchListContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Verify Serie Numbers") },
+                title = { Text(stringResource(R.string.verify_serials_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     if (searchItems.isNotEmpty()) {
                         IconButton(onClick = { onShowShareOptionsChange(true) }) {
-                            Icon(Icons.Rounded.Share, contentDescription = "Share Results")
+                            Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share))
                         }
                         IconButton(onClick = { onShowDeleteConfirmationChange(true) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "Clear List")
+                            Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.delete))
                         }
                     }
                 }
@@ -301,12 +303,12 @@ fun SearchListContent(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "No list loaded",
+                        stringResource(R.string.no_list_loaded),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Import a CSV file with \"Product ID\" column to start verifying serial numbers.",
+                        stringResource(R.string.import_csv_instruction),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(top = 8.dp)
@@ -318,7 +320,7 @@ fun SearchListContent(
                     ) {
                         Icon(Icons.Rounded.FileOpen, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Import CSV")
+                        Text(stringResource(R.string.import_csv))
                     }
                 }
             } else {
@@ -334,35 +336,55 @@ fun SearchListContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.1f) 
+                                                     else MaterialTheme.colorScheme.surface
                                 ),
-                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) 
+                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFD32F2F)) 
                                          else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        if (isScanned) Icons.Rounded.CheckCircle else Icons.Rounded.Tag,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
+                                    if (isScanned && item.scanOrder != null) {
+                                        Surface(
+                                            color = Color(0xFFD32F2F),
+                                            shape = CircleShape,
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = item.scanOrder.toString(),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Icon(
+                                            Icons.Rounded.Tag,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    
                                     Spacer(Modifier.width(12.dp))
+                                    
                                     Column(modifier = Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "HEX: ",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF1976D2)
+                                                color = if (isScanned) Color(0xFFD32F2F) else Color(0xFF1976D2)
                                             )
                                             Text(
                                                 text = item.serialNumber,
                                                 style = MaterialTheme.typography.titleLarge,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -370,13 +392,13 @@ fun SearchListContent(
                                                 "DEC: ",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF388E3C)
+                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.7f) else Color(0xFF388E3C)
                                             )
                                             Text(
                                                 text = item.decSerial,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.secondary
+                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
                                             )
                                         }
                                     }
@@ -386,52 +408,26 @@ fun SearchListContent(
                                         verticalArrangement = Arrangement.Center
                                     ) {
                                         Surface(
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.1f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                             shape = RoundedCornerShape(4.dp)
                                         ) {
                                             Text(
                                                 text = item.typeCode,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary
                                             )
                                         }
-                                        
-                                        if (isScanned) {
+
+                                        if (isScanned && item.scanTimestamp != null) {
                                             Spacer(Modifier.height(4.dp))
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                if (item.scanOrder != null) {
-                                                    Surface(
-                                                        color = MaterialTheme.colorScheme.secondary,
-                                                        shape = CircleShape,
-                                                        modifier = Modifier.size(18.dp)
-                                                    ) {
-                                                        Box(contentAlignment = Alignment.Center) {
-                                                            Text(
-                                                                text = item.scanOrder.toString(),
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = MaterialTheme.colorScheme.onSecondary
-                                                            )
-                                                        }
-                                                    }
-                                                    Spacer(Modifier.width(4.dp))
-                                                }
-                                                Text(
-                                                    "FOUND",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    color = MaterialTheme.colorScheme.secondary
-                                                )
-                                            }
-                                            if (item.scanTimestamp != null) {
-                                                Text(
-                                                    text = timeFormatter.format(Date(item.scanTimestamp)),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-                                                )
-                                            }
+                                            Text(
+                                                text = timeFormatter.format(Date(item.scanTimestamp)),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFD32F2F).copy(alpha = 0.8f)
+                                            )
                                         }
                                     }
                                 }
@@ -470,7 +466,7 @@ fun SearchListContent(
                         Text(
                             text = buildAnnotatedString {
                                 withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Normal)) {
-                                    append("Progress: ")
+                                    append(stringResource(R.string.progress_label))
                                 }
                                 withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
                                     append("$foundCount")

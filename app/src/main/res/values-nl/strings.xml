@@ -16,10 +16,8 @@
     <string name="remove_image">Afbeelding verwijderen</string>
     <string name="remove_image_title">Afbeelding verwijderen?</string>
     <string name="remove_image_confirm">Weet je zeker dat je deze afbeelding wilt verwijderen?</string>
-<!--    <string name="delete">Delete</string>-->
-<!--    <string name="cancel">Cancel</string>-->
 
-    <string name="tap_to_add_image">Tik hier om a foto toe te voegen</string>
+    <string name="tap_to_add_image">Tik hier om een foto toe te voegen</string>
     <string name="share">Delen</string>
     <string name="take_photo">Foto maken</string>
     <string name="pick_gallery">Kies uit galerij</string>
@@ -70,7 +68,7 @@
 
     <!-- Permission settings dialog -->
     <string name="permission_required_title">Machtiging vereist</string>
-    <string name="permission_required_text">Camera machtiging is permanent geweigerd. Schakel deze in in de instellingen.</string>
+    <string name="permission_required_text">Camera machtiging is permanent geweigerd. Schakel deze in de instellingen.</string>
     <string name="open_settings">Open instellingen</string>
 
     <!-- Settings Screen Strings -->
@@ -86,7 +84,6 @@
     <string name="type_code_label">Typecode</string>
     <string name="type_not_empty_message">Type mag niet leeg zijn</string>
     <string name="add">Toevoegen</string>
-
 
     <string name="unsupported_code_title">Onondersteunde code</string>
     <string name="unsupported_code_text">De gescande code wordt niet ondersteund en wordt niet opgeslagen.</string>
@@ -112,4 +109,22 @@
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
     <string name="theme_system">Systeemstandaard</string>
+
+    <!-- SearchListScreen Strings -->
+    <string name="verify_serials_title">Serienummers verifiëren</string>
+    <string name="scanned_progress">Gescand %1$d / %2$d</string>
+    <string name="clear_list_title">Lijst wissen?</string>
+    <string name="clear_list_text">Dit verwijdert alle geïmporteerde serienummers en reset je voortgang. Dit kan niet ongedaan worden gemaakt.</string>
+    <string name="share_results_title">Resultaten delen</string>
+    <string name="share_results_text">Kies hoe je de verificatiegegevens wilt delen.</string>
+    <string name="summary_report">Samenvattingsrapport</string>
+    <string name="csv_excel_format">CSV (Excel-formaat)</string>
+    <string name="no_list_loaded">Geen lijst geladen</string>
+    <string name="import_csv_instruction">Importeer een CSV-bestand met een \"Product ID\"-kolom om serienummers te verifiëren.</string>
+    <string name="import_csv">CSV importeren</string>
+    <string name="progress_label">Voortgang: </string>
+    <string name="share_csv_chooser">CSV-bestand delen</string>
+    <string name="share_summary_chooser">Samenvatting delen</string>
+    <string name="verification_summary_title">DAF Scanner - Verificatieoverzicht</string>
+    <string name="verification_summary_subject">Verificatieoverzicht - %1$d/%2$d</string>
 </resources>
