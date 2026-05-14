@@ -288,8 +288,8 @@ fun MainScreenContent(
                             }
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
                     shape = CircleShape
                 ) {
                     Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")

@@ -255,7 +255,8 @@ fun SearchListContent(
             if (searchItems.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = onScanClick,
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
                 ) {
                     Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
                 }
@@ -318,7 +319,7 @@ fun SearchListContent(
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                                 ),
-                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFD32F2F)) else null
+                                border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) else null
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
@@ -327,7 +328,7 @@ fun SearchListContent(
                                     Icon(
                                         if (isScanned) Icons.Rounded.CheckCircle else Icons.Rounded.Tag,
                                         contentDescription = null,
-                                        tint = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary,
+                                        tint = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(28.dp)
                                     )
                                     Spacer(Modifier.width(12.dp))
@@ -384,7 +385,7 @@ fun SearchListContent(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 if (item.scanOrder != null) {
                                                     Surface(
-                                                        color = Color(0xFFD32F2F),
+                                                        color = MaterialTheme.colorScheme.secondary,
                                                         shape = CircleShape,
                                                         modifier = Modifier.size(18.dp)
                                                     ) {
@@ -393,7 +394,7 @@ fun SearchListContent(
                                                                 text = item.scanOrder.toString(),
                                                                 style = MaterialTheme.typography.labelSmall,
                                                                 fontWeight = FontWeight.Bold,
-                                                                color = Color.White
+                                                                color = MaterialTheme.colorScheme.onSecondary
                                                             )
                                                         }
                                                     }
@@ -403,14 +404,14 @@ fun SearchListContent(
                                                     "FOUND",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontWeight = FontWeight.ExtraBold,
-                                                    color = Color(0xFFD32F2F)
+                                                    color = MaterialTheme.colorScheme.secondary
                                                 )
                                             }
                                             if (item.scanTimestamp != null) {
                                                 Text(
                                                     text = timeFormatter.format(Date(item.scanTimestamp)),
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurface
+                                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
                                                 )
                                             }
                                         }
@@ -425,7 +426,7 @@ fun SearchListContent(
             if (searchItems.isNotEmpty()) {
                 val foundCount = searchItems.count { it.scanTimestamp != null }
                 val totalCount = searchItems.size
-                val scannedColor = if (foundCount == totalCount) Color(0xFF388E3C) else Color(0xFFD32F2F)
+                val scannedColor = if (foundCount == totalCount) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
 
                 Surface(
                     modifier = Modifier

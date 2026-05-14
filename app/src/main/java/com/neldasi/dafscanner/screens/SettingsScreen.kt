@@ -204,6 +204,7 @@ fun SettingsScreenContent(
                             subtitle = when (currentTheme) {
                                 "LIGHT" -> stringResource(R.string.theme_light)
                                 "DARK" -> stringResource(R.string.theme_dark)
+                                "DAF" -> "DAF Theme"
                                 else -> stringResource(R.string.theme_system)
                             },
                             onClick = { showThemeDialog = true }
@@ -261,8 +262,8 @@ fun SettingsScreenContent(
                         FloatingActionButton(
                             onClick = { showAddDialog = true },
                             modifier = Modifier.size(40.dp),
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
                             shape = RoundedCornerShape(12.dp),
                             elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
                         ) {
@@ -422,6 +423,11 @@ fun SettingsScreenContent(
                 title = { Text(stringResource(R.string.theme_setting_title), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ThemeOption(
+                            title = "DAF Theme",
+                            selected = currentTheme == "DAF",
+                            onClick = { onThemeChange("DAF"); showThemeDialog = false }
+                        )
                         ThemeOption(
                             title = stringResource(R.string.theme_system),
                             selected = currentTheme == "SYSTEM",

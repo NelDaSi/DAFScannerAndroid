@@ -20,7 +20,7 @@ object SettingsRepository {
 
     fun getTheme(context: Context): String {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        return prefs.getString("appTheme", "SYSTEM") ?: "SYSTEM"
+        return prefs.getString("appTheme", "DAF") ?: "DAF"
     }
 
     fun setTheme(context: Context, theme: String) {
