@@ -307,7 +307,7 @@ fun SearchListContent(
                 Column(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(searchItems) { item ->
@@ -410,7 +410,7 @@ fun SearchListContent(
                                                 Text(
                                                     text = timeFormatter.format(Date(item.scanTimestamp)),
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = Color(0xFFD32F2F).copy(alpha = 0.6f)
+                                                    color = MaterialTheme.colorScheme.onSurface
                                                 )
                                             }
                                         }
@@ -450,13 +450,13 @@ fun SearchListContent(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(color = Color.Gray, fontWeight = FontWeight.Normal)) {
+                                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Normal)) {
                                     append("Progress: ")
                                 }
                                 withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
                                     append("$foundCount")
                                 }
-                                withStyle(style = SpanStyle(color = Color.Black, fontWeight = FontWeight.Bold)) {
+                                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)) {
                                     append(" / $totalCount")
                                 }
                             },
