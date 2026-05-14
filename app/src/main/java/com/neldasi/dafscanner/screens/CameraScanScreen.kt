@@ -65,10 +65,20 @@ import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+
+data class ScanFeedback(
+    val serial: String,
+    val isMatch: Boolean,
+    val alreadyScanned: Boolean,
+    val scanTimestamp: Long? = null
+)
 
 // Helper to trigger autofocus at center of preview
 private fun requestCenterFocus(previewView: PreviewView, camera: Camera?) {
@@ -119,10 +129,20 @@ fun CameraScanScreen(
     var camera: Camera? by remember { mutableStateOf(value = null) }
     var isTorchOn by remember { mutableStateOf(value = false) }
 
-    // State for Verify Mode Feedback
-    var verifyResult by remember { mutableStateOf<Triple<String, Boolean, Boolean>?>(null) } // Serial, IsMatch, AlreadyScanned
+    // State for Feedback and Cooldowns
+    var verifyResult by remember { mutableStateOf<ScanFeedback?>(null) }
+    var countdown by remember { mutableIntStateOf(0) }
     val verifyScope = rememberCoroutineScope()
     var isPaused by remember { mutableStateOf(false) }
+    
+    // To prevent a new scan from immediately triggering its own duplicate warning
+    var lastProcessedCode by remember { mutableStateOf<String?>(null) }
+    var lastProcessedTimestamp by remember { mutableLongStateOf(0L) }
+
+    val existingParts = remember {
+        navController.previousBackStackEntry?.savedStateHandle?.get<Map<String, Long>>("EXISTING_PARTS") ?: emptyMap()
+    }
+    val sessionScanned = remember { mutableStateMapOf<String, Long>() }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
     val transformableState = rememberTransformableState { zoomChange, _, _ ->
@@ -144,6 +164,16 @@ fun CameraScanScreen(
 
     LaunchedEffect(scannedResult) {
         scannedResult?.let { value ->
+            // 1. Debounce rapid-fire scans of the exact same code in Continuous Mode
+            val now = System.currentTimeMillis()
+            if (continuousScanEnabled && value == lastProcessedCode && (now - lastProcessedTimestamp) < 2000) {
+                scannedResult = null
+                return@let
+            }
+
+            lastSerial = extractSerial(value)
+
+            // 2. Flash visual feedback
             if (value != lastFlashedCode) {
                 lastFlashedCode = value
                 flashScope.launch {
@@ -155,22 +185,22 @@ fun CameraScanScreen(
                 }
             }
 
+            // 3. Process the scan based on mode
             if (isVerifyMode) {
-                // In Verify mode, we show overlay and stay on screen
                 val serial = extractSerial(value)
-                
                 if (searchViewModel != null) {
                     val currentItems = searchViewModel.searchItems.value
-                    val isMatch = currentItems.any { it.serialNumber == serial }
-                    val alreadyScanned = currentItems.any { it.serialNumber == serial && it.scanTimestamp != null }
+                    val matchItem = currentItems.find { it.serialNumber == serial }
+                    val isMatch = matchItem != null
+                    val alreadyScanned = matchItem?.scanTimestamp != null
                     searchViewModel.checkScannedCode(context, value)
-                    verifyResult = Triple(serial, isMatch, alreadyScanned)
+                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, matchItem?.scanTimestamp)
                 } else {
                     val serialList = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SERIAL_LIST") ?: emptyList()
                     val scannedSerials = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SCANNED_SERIALS") ?: emptyList()
                     val isMatch = serialList.contains(serial)
                     val alreadyScanned = scannedSerials.contains(serial)
-                    verifyResult = Triple(serial, isMatch, alreadyScanned)
+                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned)
                     if (isMatch && !alreadyScanned) {
                         val updatedScanned = scannedSerials + serial
                         navController.previousBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", updatedScanned)
@@ -178,25 +208,59 @@ fun CameraScanScreen(
                 }
 
                 isPaused = true
-                
-                // Keep passing result for general listeners if any
                 navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
+                
+                countdown = 3
                 verifyScope.launch {
-                    delay(3000)
-                    if (verifyResult?.first == serial) {
+                    while (countdown > 0) {
+                        delay(1000)
+                        if (verifyResult?.serial == serial) countdown-- else break
+                    }
+                    if (verifyResult?.serial == serial) {
                         verifyResult = null
                         isPaused = false
                         scannedResult = null
                     }
                 }
-            } else if (continuousScanEnabled) {
-                lastSerial = extractSerial(value)
-                navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                appendPendingScan(context, value)
-                scannedResult = null
             } else {
-                navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                navController.popBackStack()
+                // Main Scanning Mode logic
+                val sessionTimestamp = sessionScanned[value]
+                val existingTimestamp = existingParts[value]
+                val finalTimestamp = sessionTimestamp ?: existingTimestamp
+                
+                if (finalTimestamp != null) {
+                    // DUPLICATE DETECTED
+                    val serial = extractSerial(value)
+                    verifyResult = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp)
+                    isPaused = true
+                    
+                    countdown = 3
+                    verifyScope.launch {
+                        while (countdown > 0) {
+                            delay(1000)
+                            if (verifyResult?.serial == serial) countdown-- else break
+                        }
+                        if (verifyResult?.serial == serial) {
+                            verifyResult = null
+                            isPaused = false
+                            scannedResult = null
+                        }
+                    }
+                } else {
+                    // NEW SCAN SUCCESS
+                    lastProcessedCode = value
+                    lastProcessedTimestamp = now
+                    
+                    if (continuousScanEnabled) {
+                        navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
+                        appendPendingScan(context, value)
+                        sessionScanned[value] = now
+                        scannedResult = null
+                    } else {
+                        navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
+                        navController.popBackStack()
+                    }
+                }
             }
         }
     }
@@ -209,6 +273,8 @@ fun CameraScanScreen(
         flashAlpha = flashAlpha.value,
         transformableState = transformableState,
         verifyResult = verifyResult,
+        countdown = countdown,
+        isVerifyMode = isVerifyMode,
         onToggleTorch = {
             val newState = !isTorchOn
             isTorchOn = newState
@@ -313,7 +379,9 @@ fun CameraScanScreenContent(
     isTorchOn: Boolean,
     flashAlpha: Float,
     transformableState: androidx.compose.foundation.gestures.TransformableState,
-    verifyResult: Triple<String, Boolean, Boolean>? = null,
+    verifyResult: ScanFeedback? = null,
+    countdown: Int = 0,
+    isVerifyMode: Boolean = false,
     onToggleTorch: () -> Unit,
     onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
@@ -334,9 +402,9 @@ fun CameraScanScreenContent(
         CameraOverlay(isCameraReady = isCameraReady, errorMessage = cameraError)
 
         if (verifyResult != null) {
-            val (serial, isMatch, alreadyScanned) = verifyResult
             val backgroundColor = when {
-                isMatch -> Color(0xFFD32F2F) // Red for Match
+                verifyResult.alreadyScanned && !isVerifyMode -> Color.DarkGray
+                verifyResult.isMatch -> Color(0xFFD32F2F) // Red for Match
                 else -> Color(0xFF388E3C) // Green for No Match
             }
 
@@ -353,8 +421,8 @@ fun CameraScanScreenContent(
                 ) {
                     Icon(
                         when {
-                            alreadyScanned -> Icons.Rounded.History
-                            isMatch -> Icons.Rounded.Warning
+                            verifyResult.alreadyScanned -> Icons.Rounded.History
+                            verifyResult.isMatch -> Icons.Rounded.Warning
                             else -> Icons.Rounded.CheckCircle
                         },
                         contentDescription = null,
@@ -363,24 +431,41 @@ fun CameraScanScreenContent(
                     )
                     Spacer(Modifier.height(16.dp))
                     
-                    if (alreadyScanned) {
-                        Surface(
-                            color = Color.Black.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Text(
-                                "ALREADY SCANNED",
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold
-                            )
+                    if (verifyResult.alreadyScanned) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            ) {
+                                Text(
+                                    "ALREADY SCANNED",
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            verifyResult.scanTimestamp?.let { ts ->
+                                val dateStr = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()).format(Date(ts))
+                                Text(
+                                    text = "First seen: $dateStr",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(Modifier.height(8.dp))
+                            }
                         }
                     }
 
                     Text(
-                        text = if (isMatch) "MATCH FOUND" else "NO MATCH",
+                        text = when {
+                            verifyResult.alreadyScanned && !isVerifyMode -> "DUPLICATE CODE"
+                            verifyResult.isMatch -> "MATCH FOUND"
+                            else -> "NO MATCH"
+                        },
                         color = Color.White,
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
@@ -388,13 +473,13 @@ fun CameraScanScreenContent(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "HEX: $serial",
+                        text = "HEX: ${verifyResult.serial}",
                         color = Color.White,
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "DEC: ${try { serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
+                        text = "DEC: ${try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
@@ -408,7 +493,11 @@ fun CameraScanScreenContent(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
-                        Text("DISMISS", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = if (countdown > 0) "DISMISS ($countdown)" else "DISMISS",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
                     }
                 }
             }
@@ -629,7 +718,7 @@ private fun extractSerial(fullCode: String): String {
     return parseScannedCode(fullCode)?.serialNumber ?: (if (fullCode.length >= 18) fullCode.substring(12, 18) else fullCode.take(6))
 }
 
-@ComposePreview(showBackground = true)
+@ComposePreview(showBackground = true, name = "Normal Scan")
 @Composable
 fun CameraScanScreenPreview() {
     JetpackComposeTheme {
@@ -640,6 +729,32 @@ fun CameraScanScreenPreview() {
             isTorchOn = false,
             flashAlpha = 0f,
             transformableState = rememberTransformableState { _, _, _ -> },
+            isVerifyMode = false,
+            onToggleTorch = {},
+            onClose = {},
+            onSimulateScan = {},
+        ) { android.view.View(it) }
+    }
+}
+
+@ComposePreview(showBackground = true, name = "Duplicate Warning")
+@Composable
+fun CameraScanScreenDuplicatePreview() {
+    JetpackComposeTheme {
+        CameraScanScreenContent(
+            isCameraReady = true,
+            cameraError = null,
+            lastSerial = "123456",
+            isTorchOn = false,
+            flashAlpha = 0f,
+            transformableState = rememberTransformableState { _, _, _ -> },
+            verifyResult = ScanFeedback(
+                serial = "01C821",
+                isMatch = false,
+                alreadyScanned = true,
+                scanTimestamp = System.currentTimeMillis() - 3600000
+            ),
+            isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
             onSimulateScan = {},

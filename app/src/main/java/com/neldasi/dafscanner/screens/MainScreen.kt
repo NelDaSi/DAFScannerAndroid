@@ -158,17 +158,11 @@ fun MainScreenContent(
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
     var showMenu by remember { mutableStateOf(value = false) }
-    val duplicateCodes = remember { mutableStateListOf<String>() }
-    var showDuplicateDialog by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
 
     fun addCodeIfNew(code: String) {
         if (code.isBlank()) return
-        if (scannedParts.any { it.fullCode == code }) {
-            if (!duplicateCodes.contains(code)) duplicateCodes.add(code)
-            showDuplicateDialog = true
-            return
-        }
+        if (scannedParts.any { it.fullCode == code }) return
         onAddPart(code)
     }
 
@@ -383,7 +377,11 @@ fun MainScreenContent(
                                     addCodeIfNew(simulatedCode)
                                 } else {
                                     when (cameraPermissionState.status) {
-                                        PermissionStatus.Granted -> navController.navigate(CameraRoute(isVerifyMode = false))
+                                        PermissionStatus.Granted -> {
+                                            val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
+                                            navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
+                                            navController.navigate(CameraRoute(isVerifyMode = false))
+                                        }
                                         is PermissionStatus.Denied -> {
                                             if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
                                             else cameraPermissionState.launchPermissionRequest()
@@ -420,14 +418,6 @@ fun MainScreenContent(
             }
         )
     }
-
-    DuplicateDialog(
-        show = showDuplicateDialog,
-        duplicateCodes = duplicateCodes,
-        onDismiss = { showDuplicateDialog = false; duplicateCodes.clear() },
-        scope = scope,
-        context = context
-    )
 
     PermissionRationaleDialog(
         show = showPermissionRationaleDialog,
