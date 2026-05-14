@@ -5,6 +5,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.neldasi.dafscanner.extras.parseScannedCode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,31 @@ class SearchListViewModel : ViewModel() {
 
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
     val lastScannedResult = _lastScannedResult.asStateFlow()
+
+    private val gson = Gson()
+    private val prefKey = "search_list_data"
+
+    fun initStorage(context: Context) {
+        if (_searchItems.value.isNotEmpty()) return
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        val json = prefs.getString(prefKey, null)
+        if (json != null) {
+            try {
+                val type = object : TypeToken<List<SearchItem>>() {}.type
+                val items: List<SearchItem> = gson.fromJson(json, type)
+                _searchItems.value = items
+                Log.d("SearchListVM", "Loaded ${items.size} items from storage")
+            } catch (e: Exception) {
+                Log.e("SearchListVM", "Error loading from storage", e)
+            }
+        }
+    }
+
+    private fun saveToStorage(context: Context) {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        val json = gson.toJson(_searchItems.value)
+        prefs.edit().putString(prefKey, json).apply()
+    }
 
     private fun hexToDec(hex: String): String {
         return try {
@@ -172,6 +199,7 @@ class SearchListViewModel : ViewModel() {
                     }
                 }
                 _searchItems.value = results.distinctBy { it.serialNumber }
+                saveToStorage(context)
                 Log.d("SearchListVM", "Loaded ${_searchItems.value.size} serial numbers")
             } catch (e: Exception) {
                 Log.e("SearchListVM", "Error loading CSV", e)
@@ -179,13 +207,13 @@ class SearchListViewModel : ViewModel() {
         }
     }
 
-    fun checkScannedCode(fullCode: String) {
+    fun checkScannedCode(context: Context, fullCode: String) {
         val parsed = parseScannedCode(fullCode)
         val serial = parsed?.serialNumber ?: (if (fullCode.length >= 6) fullCode.takeLast(6) else fullCode)
-        forceMarkAsScanned(serial)
+        forceMarkAsScanned(context, serial)
     }
 
-    fun forceMarkAsScanned(serial: String) {
+    fun forceMarkAsScanned(context: Context, serial: String) {
         Log.d("SearchListVM", "forceMarkAsScanned: $serial")
         val currentItems = _searchItems.value
         val itemIndex = currentItems.indexOfFirst { it.serialNumber == serial }
@@ -201,6 +229,7 @@ class SearchListViewModel : ViewModel() {
                     scanOrder = nextOrder
                 )
                 _searchItems.value = updatedItems
+                saveToStorage(context)
                 Log.d("SearchListVM", "Match found! Scan order: $nextOrder")
             } else {
                 Log.d("SearchListVM", "Match found but already scanned at ${item.scanTimestamp}")
@@ -215,8 +244,10 @@ class SearchListViewModel : ViewModel() {
         _lastScannedResult.value = null
     }
 
-    fun clearList() {
+    fun clearList(context: Context) {
         _searchItems.value = emptyList()
         _lastScannedResult.value = null
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        prefs.edit().remove(prefKey).apply()
     }
 }

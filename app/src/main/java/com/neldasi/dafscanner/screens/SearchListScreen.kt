@@ -1,5 +1,6 @@
 package com.neldasi.dafscanner.screens
 
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,10 +29,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.FileProvider
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchItem
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
+import java.io.File
 
 @Composable
 fun SearchListScreen(
@@ -40,6 +43,10 @@ fun SearchListScreen(
 ) {
     val context = LocalContext.current
     val searchItems by viewModel.searchItems.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.initStorage(context)
+    }
 
     Log.d("SearchListScreen", "UI Update: ${searchItems.count { it.scanTimestamp != null }} / ${searchItems.size}")
 
@@ -61,12 +68,81 @@ fun SearchListScreen(
         }
     }
 
+    val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+
     SearchListContent(
         searchItems = searchItems,
         onBackClick = { navController.popBackStack() },
-        onClearListClick = { viewModel.clearList() },
+        onClearListClick = { viewModel.clearList(context) },
         onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
-        onImportCsvClick = { csvPickerLauncher.launch("text/comma-separated-values") }
+        onImportCsvClick = { csvPickerLauncher.launch("text/comma-separated-values") },
+        onShareCsv = {
+            if (searchItems.isEmpty()) return@SearchListContent
+            
+            val sb = StringBuilder()
+            sb.append("Order;Status;HEX;DEC;Type;Scan Time\n")
+            
+            searchItems.forEach { item ->
+                val isFound = item.scanTimestamp != null
+                val status = if (isFound) "FOUND" else "MISSING"
+                val order = item.scanOrder?.toString() ?: "-"
+                val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
+                
+                sb.append("$order;$status;${item.serialNumber};${item.decSerial};${item.typeCode};$time\n")
+            }
+            
+            try {
+                val cachePath = File(context.cacheDir, "exports")
+                cachePath.mkdirs()
+                val file = File(cachePath, "verification_results.csv")
+                file.writeText(sb.toString())
+                
+                val contentUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/csv"
+                    putExtra(Intent.EXTRA_STREAM, contentUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(shareIntent, "Share CSV File"))
+            } catch (e: Exception) {
+                Log.e("SearchListScreen", "Error sharing CSV file", e)
+            }
+        },
+        onShareSummary = {
+            if (searchItems.isEmpty()) return@SearchListContent
+            
+            val total = searchItems.size
+            val foundItems = searchItems.filter { it.scanTimestamp != null }.sortedBy { it.scanOrder }
+            val missingItems = searchItems.filter { it.scanTimestamp == null }
+            
+            val sb = StringBuilder()
+            sb.append("DAF Scanner - Verification Summary\n")
+            sb.append("Progress: ${foundItems.size}/$total\n\n")
+            
+            if (foundItems.isNotEmpty()) {
+                sb.append("✅ FOUND (${foundItems.size})\n")
+                foundItems.forEach { item ->
+                    val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
+                    sb.append("${item.scanOrder}. HEX: ${item.serialNumber} (DEC: ${item.decSerial}) - ${item.typeCode} - $time\n")
+                }
+                sb.append("\n")
+            }
+            
+            if (missingItems.isNotEmpty()) {
+                sb.append("❌ MISSING (${missingItems.size})\n")
+                missingItems.forEach { item ->
+                    sb.append("- HEX: ${item.serialNumber} (DEC: ${item.decSerial}) - ${item.typeCode}\n")
+                }
+            }
+            
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Verification Summary - ${foundItems.size}/${total}")
+                putExtra(Intent.EXTRA_TEXT, sb.toString())
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "Share Summary"))
+        }
     )
 }
 
@@ -77,9 +153,12 @@ fun SearchListContent(
     onBackClick: () -> Unit,
     onClearListClick: () -> Unit,
     onScanClick: () -> Unit,
-    onImportCsvClick: () -> Unit
+    onImportCsvClick: () -> Unit,
+    onShareCsv: () -> Unit,
+    onShareSummary: () -> Unit
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showShareOptions by remember { mutableStateOf(false) }
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
     if (showDeleteConfirmation) {
@@ -100,6 +179,48 @@ fun SearchListContent(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showShareOptions) {
+        AlertDialog(
+            onDismissRequest = { showShareOptions = false },
+            title = { Text("Share Results") },
+            text = { Text("Choose how you would like to share the verification data.") },
+            confirmButton = {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            onShareSummary()
+                            showShareOptions = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Rounded.Description, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Summary Report")
+                    }
+                    Button(
+                        onClick = {
+                            onShareCsv()
+                            showShareOptions = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Icon(Icons.Rounded.TableChart, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("CSV (Excel Format)")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showShareOptions = false }) {
                     Text("Cancel")
                 }
             }
@@ -128,6 +249,9 @@ fun SearchListContent(
                 },
                 actions = {
                     if (searchItems.isNotEmpty()) {
+                        IconButton(onClick = { showShareOptions = true }) {
+                            Icon(Icons.Rounded.Share, contentDescription = "Share Results")
+                        }
                         IconButton(onClick = { showDeleteConfirmation = true }) {
                             Icon(Icons.Rounded.Delete, contentDescription = "Clear List")
                         }
@@ -319,7 +443,9 @@ fun SearchListEmptyPreview() {
             onBackClick = {},
             onClearListClick = {},
             onScanClick = {},
-            onImportCsvClick = {}
+            onImportCsvClick = {},
+            onShareCsv = {},
+            onShareSummary = {}
         )
     }
 }
@@ -337,7 +463,9 @@ fun SearchListWithDataPreview() {
             onBackClick = {},
             onClearListClick = {},
             onScanClick = {},
-            onImportCsvClick = {}
+            onImportCsvClick = {},
+            onShareCsv = {},
+            onShareSummary = {}
         )
     }
 }

@@ -162,7 +162,7 @@ fun CameraScanScreen(
                     val currentItems = searchViewModel.searchItems.value
                     val isMatch = currentItems.any { it.serialNumber == serial }
                     val alreadyScanned = currentItems.any { it.serialNumber == serial && it.scanTimestamp != null }
-                    searchViewModel.checkScannedCode(value)
+                    searchViewModel.checkScannedCode(context, value)
                     verifyResult = Triple(serial, isMatch, alreadyScanned)
                 } else {
                     val serialList = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SERIAL_LIST") ?: emptyList()
