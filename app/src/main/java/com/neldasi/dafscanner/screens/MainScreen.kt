@@ -40,6 +40,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.IosShare
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
@@ -48,6 +49,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -154,6 +157,7 @@ fun MainScreenContent(
     var showSettingsDialog by remember { mutableStateOf(value = false) }
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
+    var showMenu by remember { mutableStateOf(value = false) }
     val duplicateCodes = remember { mutableStateListOf<String>() }
     var showDuplicateDialog by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
@@ -249,30 +253,41 @@ fun MainScreenContent(
                         }
                     }
                     if (!selectionMode) {
-                        IconButton(
-                            onClick = {
-                                if (scannedParts.isNotEmpty()) {
-                                    selectionMode = true
-                                    selectedCodes.clear()
-                                }
-                            },
-                            enabled = scannedParts.isNotEmpty()
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Rounded.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
                         ) {
-                            Icon(
-                                Icons.Rounded.DeleteOutline,
-                                contentDescription = "Enter selection mode",
-                                tint = if (scannedParts.isNotEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete_selected)) },
+                                leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    if (scannedParts.isNotEmpty()) {
+                                        selectionMode = true
+                                        selectedCodes.clear()
+                                    }
+                                },
+                                enabled = scannedParts.isNotEmpty()
                             )
-                        }
-                        IconButton(
-                            onClick = { navController.navigate(SettingsRoute) },
-                        ) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "Settings")
-                        }
-                        IconButton(
-                            onClick = { navController.navigate(SearchListRoute) },
-                        ) {
-                            Icon(Icons.Rounded.Search, contentDescription = "Verify List")
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.verify_serials_title)) },
+                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    navController.navigate(SearchListRoute)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_screen_title)) },
+                                leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    navController.navigate(SettingsRoute)
+                                }
+                            )
                         }
                     }
                 },
