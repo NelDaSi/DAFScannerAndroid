@@ -35,10 +35,18 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updateImage(uri: String?) {
-        val currentPart = _part.value ?: return
+    fun updateImageForCode(fullCode: String, uri: String?) {
         viewModelScope.launch {
-            val updated = currentPart.copy(imageUri = uri)
+            val part = repository.getPartByCode(fullCode) ?: return@launch
+            
+            // Append a timestamp to the URI to force Room and StateFlow to trigger 
+            // an update even if the file path remains the same. This also busts the Coil cache.
+            val finalUri = uri?.let {
+                val cleanUri = it.substringBefore("?t=")
+                "$cleanUri?t=${System.currentTimeMillis()}"
+            }
+            
+            val updated = part.copy(imageUri = finalUri)
             repository.update(updated)
             _part.value = updated
         }

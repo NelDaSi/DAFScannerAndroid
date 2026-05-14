@@ -60,6 +60,9 @@
     <string name="about_title">Over</string>
     <string name="about_text">Versie: %1$s</string>
     <string name="ok">OK</string>
+    <string name="save">Opslaan</string>
+    <string name="rotate">Draaien</string>
+    <string name="edit_image">Afbeelding bewerken</string>
 
     <!-- Permission rationale dialog -->
     <string name="camera_permission_title">Camera machtiging vereist</string>

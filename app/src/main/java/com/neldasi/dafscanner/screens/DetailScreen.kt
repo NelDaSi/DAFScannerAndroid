@@ -9,7 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -32,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -48,8 +51,10 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.parseScannedCode
+import com.neldasi.dafscanner.extras.saveImageToInternal
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.DetailViewModel
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -79,7 +84,7 @@ fun DetailScreen(
         note = note,
         imageUri = imageUri,
         onNoteChange = { viewModel.updateNote(it) },
-    ) { viewModel.updateImage(it) }
+    ) { viewModel.updateImageForCode(fullCode, it) }
 }
 
 @Composable
@@ -110,21 +115,20 @@ fun DetailScreenContent(
     var showImageSourceDialog by remember { mutableStateOf(value = false) }
     var showImagePreview by remember { mutableStateOf(value = false) }
 
+    val scope = rememberCoroutineScope()
+
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && (imageFileUri != null)) {
-            onImageUpdate(imageFileUri.toString())
+        if (success) {
+            val file = File(context.filesDir, "img_$fullCode.jpg")
+            onImageUpdate(Uri.fromFile(file).toString())
         }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { selectedUri ->
-            val file = File(context.filesDir, "img_$fullCode.jpg")
-            if (file.exists()) file.delete()
-            context.contentResolver.openInputStream(selectedUri)?.use { input ->
-                FileOutputStream(file).use { output ->
-                    input.copyTo(output)
-                }
-                onImageUpdate(Uri.fromFile(file).toString())
+            scope.launch {
+                val savedUri = saveImageToInternal(context, selectedUri, fullCode)
+                onImageUpdate(savedUri)
             }
         }
     }
@@ -206,10 +210,10 @@ fun DetailScreenContent(
                             .fillMaxWidth()
                             .aspectRatio(1.4f)
                             .clip(RoundedCornerShape(28.dp))
-                            .combinedClickable(
-                                onClick = { showImageSourceDialog = true },
-                                onLongClick = { if (imageUri != null) showImagePreview = true }
-                            ),
+                            .clickable { 
+                                if (imageUri != null) showImagePreview = true 
+                                else showImageSourceDialog = true 
+                            },
                         shape = RoundedCornerShape(28.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         colors = CardDefaults.cardColors(
@@ -224,16 +228,19 @@ fun DetailScreenContent(
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
-                                // Edit Overlay
+                                // Change/Add Overlay
                                 Surface(
-                                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(12.dp)
+                                        .clickable { showImageSourceDialog = true },
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.secondary,
                                     tonalElevation = 4.dp
                                 ) {
                                     Icon(
-                                        Icons.Rounded.Edit,
-                                        contentDescription = null,
+                                        Icons.Rounded.AddAPhoto,
+                                        contentDescription = stringResource(R.string.edit_image),
                                         modifier = Modifier.padding(10.dp).size(20.dp),
                                         tint = Color.White
                                     )
@@ -341,7 +348,22 @@ fun DetailScreenContent(
             title = { Text(stringResource(R.string.select_image_source), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ImageSourceItem(Icons.Rounded.CameraAlt, stringResource(R.string.take_photo)) {
+                        val file = File(context.filesDir, "img_$fullCode.jpg")
+                        // Delete existing file to ensure camera writes to a fresh file
+                        if (file.exists()) file.delete()
+
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                        imageFileUri = uri
+                        cameraLauncher.launch(uri)
+                        showImageSourceDialog = false
+                    }
+                    ImageSourceItem(Icons.Rounded.PhotoLibrary, stringResource(R.string.pick_gallery)) {
+                        galleryLauncher.launch("image/*")
+                        showImageSourceDialog = false
+                    }
                     if (imageUri != null) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         TextButton(onClick = {
                             val file = File(context.filesDir, "img_$fullCode.jpg")
                             if (file.exists()) file.delete()
@@ -354,18 +376,6 @@ fun DetailScreenContent(
                                 Text(stringResource(R.string.remove_image), color = MaterialTheme.colorScheme.error)
                             }
                         }
-                    } else {
-                        ImageSourceItem(Icons.Rounded.CameraAlt, stringResource(R.string.take_photo)) {
-                            val file = File(context.filesDir, "img_$fullCode.jpg")
-                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                            imageFileUri = uri
-                            cameraLauncher.launch(uri)
-                            showImageSourceDialog = false
-                        }
-                        ImageSourceItem(Icons.Rounded.PhotoLibrary, stringResource(R.string.pick_gallery)) {
-                            galleryLauncher.launch("image/*")
-                            showImageSourceDialog = false
-                        }
                     }
                 }
             },
@@ -374,11 +384,21 @@ fun DetailScreenContent(
     }
 
     if (showImagePreview && (imageUri != null)) {
-        AlertDialog(
-            onDismissRequest = { showImagePreview = false },
-            confirmButton = {},
-            text = { ZoomableImage(imageUri) }
-        )
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                ZoomableImage(imageUri)
+                
+                IconButton(
+                    onClick = { showImagePreview = false },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 32.dp, end = 16.dp)
+                ) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White)
+                }
+            }
+        }
     }
 }
 
@@ -442,29 +462,60 @@ fun DetailScreenPreview() {
 fun ZoomableImage(uri: Uri) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    val state = rememberTransformableState { zoomChange, offsetChange, _ ->
-        scale *= zoomChange
-        offset += offsetChange
-    }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .graphicsLayer(
-                scaleX = scale.coerceIn(1f, 5f),
-                scaleY = scale.coerceIn(1f, 5f),
-                translationX = offset.x,
-                translationY = offset.y
-            )
-            .transformable(state = state)
+            .fillMaxSize()
             .clipToBounds()
     ) {
-        Image(
-            painter = rememberAsyncImagePainter(uri),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
-        )
+        val maxWidth = constraints.maxWidth.toFloat()
+        val maxHeight = constraints.maxHeight.toFloat()
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(1f, 5f)
+
+                        val extraWidth = (scale - 1) * maxWidth
+                        val extraHeight = (scale - 1) * maxHeight
+
+                        val maxX = (extraWidth / 2).coerceAtLeast(0f)
+                        val maxY = (extraHeight / 2).coerceAtLeast(0f)
+
+                        offset = Offset(
+                            x = (offset.x + pan.x).coerceIn(-maxX, maxX),
+                            y = (offset.y + pan.y).coerceIn(-maxY, maxY)
+                        )
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            if (scale > 1f) {
+                                scale = 1f
+                                offset = Offset.Zero
+                            } else {
+                                scale = 3f
+                            }
+                        }
+                    )
+                }
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(uri),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    },
+                contentScale = ContentScale.Fit
+            )
+        }
     }
 }

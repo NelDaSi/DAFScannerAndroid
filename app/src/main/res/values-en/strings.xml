@@ -60,6 +60,9 @@
     <string name="about_title">About</string>
     <string name="about_text">Version: %1$s</string>
     <string name="ok">OK</string>
+    <string name="save">Save</string>
+    <string name="rotate">Rotate</string>
+    <string name="edit_image">Edit Image</string>
 
     <!-- Permission rationale dialog -->
     <string name="camera_permission_title">Camera permission required</string>
