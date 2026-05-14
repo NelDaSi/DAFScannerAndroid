@@ -8,15 +8,17 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.rounded.*
@@ -175,116 +177,160 @@ fun DetailScreenContent(
                         chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         context.startActivity(chooser)
                     }) {
-                        Icon(Icons.Rounded.IosShare, contentDescription = stringResource(R.string.share))
+                        Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share))
                     }
                 },
                 scrollBehavior = scrollBehavior
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.5f)
-                        .clip(RoundedCornerShape(24.dp))
-                        .combinedClickable(
-                            onClick = { showImageSourceDialog = true },
-                            onLongClick = { if (imageUri != null) showImagePreview = true }
-                        ),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (imageUri != null) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        if (imageUri != null) {
-                            Image(
-                                painter = rememberAsyncImagePainter(imageUri),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Rounded.AddAPhoto,
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            // Background Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1.4f)
+                            .clip(RoundedCornerShape(28.dp))
+                            .combinedClickable(
+                                onClick = { showImageSourceDialog = true },
+                                onLongClick = { if (imageUri != null) showImagePreview = true }
+                            ),
+                        shape = RoundedCornerShape(28.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            if (imageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(imageUri),
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(48.dp)
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
                                 )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    text = stringResource(R.string.tap_to_add_image),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                                )
+                                // Edit Overlay
+                                Surface(
+                                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    tonalElevation = 4.dp
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Edit,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(10.dp).size(20.dp),
+                                        tint = Color.White
+                                    )
+                                }
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Surface(
+                                        modifier = Modifier.size(72.dp),
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.AddAPhoto,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.padding(20.dp).size(32.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        text = stringResource(R.string.tap_to_add_image),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Text(
-                    stringResource(R.string.extra_note),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    OutlinedTextField(
-                        value = note,
-                        onValueChange = onNoteChange,
-                        placeholder = { Text(stringResource(R.string.extra_note)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Transparent
-                        )
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    stringResource(R.string.title_scanned_items),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        val formattedDate = remember(timestamp) {
-                            SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+                item {
+                    Card(
+                        shape = RoundedCornerShape(28.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.AutoMirrored.Rounded.Notes,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.extra_note),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            OutlinedTextField(
+                                value = note,
+                                onValueChange = onNoteChange,
+                                placeholder = { Text("Enter additional information...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                                )
+                            )
                         }
-                        parsed?.let {
-                            DetailRow(Icons.Rounded.Numbers, stringResource(R.string.type), it.typeCode)
-                            DetailRow(Icons.Rounded.Business, stringResource(R.string.supplier), it.supplierCode)
-                            DetailRow(Icons.Rounded.Tag, "Serial (HEX)", it.serialNumber)
-                            DetailRow(Icons.Rounded.Tag, "Serial (DEC)", it.decSerial)
-                            DetailRow(Icons.Rounded.Layers, stringResource(R.string.batch), it.batchNumber)
-                        }
-                        DetailRow(Icons.Rounded.Event, stringResource(R.string.scanned_at), formattedDate)
                     }
                 }
-                Spacer(modifier = Modifier.height(40.dp))
+
+                item {
+                    Card(
+                        shape = RoundedCornerShape(28.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            val formattedDate = remember(timestamp) {
+                                SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+                            }
+                            
+                            parsed?.let {
+                                DetailRow(Icons.Rounded.Fingerprint, stringResource(R.string.type), it.typeCode)
+                                DetailRow(Icons.Rounded.Business, stringResource(R.string.supplier), it.supplierCode)
+                                DetailRow(Icons.Rounded.Tag, "Serial (HEX)", it.serialNumber)
+                                DetailRow(Icons.Rounded.Dialpad, "Serial (DEC)", it.decSerial)
+                                DetailRow(Icons.Rounded.Category, stringResource(R.string.batch), it.batchNumber)
+                            }
+                            DetailRow(Icons.Rounded.EventAvailable, stringResource(R.string.scanned_at), formattedDate)
+                        }
+                    }
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
         }
     }
@@ -355,7 +401,7 @@ private fun DetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, lab
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.padding(10.dp).size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.secondary
             )
         }
         Column {
