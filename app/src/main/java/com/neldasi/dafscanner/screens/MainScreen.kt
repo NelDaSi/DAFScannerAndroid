@@ -98,6 +98,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.components.UpdateDialog
 import com.neldasi.dafscanner.data.ScannedPart
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.isRunningOnEmulator
@@ -122,6 +123,7 @@ fun MainScreen(
 ) {
     val scannedParts by viewModel.filteredParts.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
 
     MainScreenContent(
         navController = navController,
@@ -132,6 +134,10 @@ fun MainScreen(
         onDeleteSelected = { viewModel.deleteSelected(it) },
         onDeletePart = { viewModel.deletePart(it) },
     ) { viewModel.exportToCsv() }
+
+    updateInfo?.let { info ->
+        UpdateDialog(info = info, onDismiss = { viewModel.dismissUpdateDialog() })
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

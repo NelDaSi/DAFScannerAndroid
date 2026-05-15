@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -29,25 +31,36 @@ object UpdateManager {
         val body: String
     )
 
-    suspend fun checkForUpdates(context: Context): ReleaseInfo? = withContext(Dispatchers.IO) {
+    sealed class UpdateResult {
+        data class NewUpdate(val info: ReleaseInfo) : UpdateResult()
+        object UpToDate : UpdateResult()
+        data class Error(val message: String) : UpdateResult()
+    }
+
+    suspend fun checkForUpdates(context: Context): UpdateResult = withContext(Dispatchers.IO) {
+        if (!isNetworkAvailable(context)) {
+            return@withContext UpdateResult.Error("No internet connection")
+        }
+
         try {
             val url = URL(GITHUB_API_URL)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
 
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val root = json.parseToJsonElement(response).jsonObject
-                val tagName = root["tag_name"]?.jsonPrimitive?.content ?: return@withContext null
+                val tagName = root["tag_name"]?.jsonPrimitive?.content ?: return@withContext UpdateResult.Error("Invalid response from server")
                 
-                // Get the APK asset
-                val assets = root["assets"]?.jsonArray ?: return@withContext null
+                val assets = root["assets"]?.jsonArray ?: return@withContext UpdateResult.Error("No assets found in release")
                 val apkAsset = assets.firstOrNull { 
                     it.jsonObject["name"]?.jsonPrimitive?.content?.endsWith(".apk") == true 
-                }?.jsonObject ?: return@withContext null
+                }?.jsonObject ?: return@withContext UpdateResult.Error("No APK found in release")
                 
-                val downloadUrl = apkAsset["browser_download_url"]?.jsonPrimitive?.content ?: return@withContext null
+                val downloadUrl = apkAsset["browser_download_url"]?.jsonPrimitive?.content ?: return@withContext UpdateResult.Error("No download URL found")
                 val body = root["body"]?.jsonPrimitive?.content ?: ""
 
                 val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -58,13 +71,23 @@ object UpdateManager {
                 val currentVersion = packageInfo.versionName ?: "0.0.0"
                 
                 if (isNewer(tagName, currentVersion)) {
-                    return@withContext ReleaseInfo(tagName, downloadUrl, body)
+                    UpdateResult.NewUpdate(ReleaseInfo(tagName, downloadUrl, body))
+                } else {
+                    UpdateResult.UpToDate
                 }
+            } else {
+                UpdateResult.Error("Server returned code ${connection.responseCode}")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            UpdateResult.Error("Error checking for updates: ${e.localizedMessage}")
         }
-        null
+    }
+
+    private fun isNetworkAvailable(context: Context): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun isNewer(latest: String, current: String): Boolean {

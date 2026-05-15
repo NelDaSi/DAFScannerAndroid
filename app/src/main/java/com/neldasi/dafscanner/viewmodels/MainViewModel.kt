@@ -6,11 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.neldasi.dafscanner.data.AppDatabase
 import com.neldasi.dafscanner.data.ScannedPart
 import com.neldasi.dafscanner.data.ScanRepository
+import com.neldasi.dafscanner.extras.UpdateManager
 import com.neldasi.dafscanner.extras.parseScannedCode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,6 +31,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val searchQuery: StateFlow<String> = _searchQuery
 
     val filteredParts: StateFlow<List<ScannedPart>>
+
+    private val _updateInfo = MutableStateFlow<UpdateManager.ReleaseInfo?>(null)
+    val updateInfo = _updateInfo.asStateFlow()
 
     init {
         val scanDao = AppDatabase.getDatabase(application).scanDao()
@@ -61,6 +67,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+        checkForUpdatesOnStartup()
+    }
+
+    private fun checkForUpdatesOnStartup() {
+        viewModelScope.launch {
+            delay(2000) // Small delay to not interfere with startup
+            val result = UpdateManager.checkForUpdates(getApplication())
+            if (result is UpdateManager.UpdateResult.NewUpdate) {
+                _updateInfo.value = result.info
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _updateInfo.value = null
     }
 
     fun onSearchQueryChange(query: String) {

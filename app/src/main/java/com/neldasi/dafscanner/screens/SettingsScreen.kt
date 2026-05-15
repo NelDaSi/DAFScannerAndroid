@@ -82,6 +82,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.components.UpdateDialog
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.UpdateManager
@@ -104,6 +105,14 @@ fun SettingsScreen(
 
     val updateInfo by viewModel.updateInfo.collectAsState()
     val isCheckingUpdates by viewModel.isCheckingUpdates.collectAsState()
+    val updateMessage by viewModel.updateMessage.collectAsState()
+
+    LaunchedEffect(updateMessage) {
+        updateMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearUpdateMessage()
+        }
+    }
 
     LaunchedEffect(Unit) {
         vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
@@ -540,36 +549,7 @@ fun SettingsScreenContent(
         }
 
         updateInfo?.let { info ->
-            AlertDialog(
-                onDismissRequest = onDismissUpdate,
-                title = { Text("New Update Available!", fontWeight = FontWeight.Bold) },
-                text = {
-                    Column {
-                        Text("Version ${info.tagName} is available.", fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(info.body)
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            UpdateManager.downloadAndInstall(
-                                context,
-                                info.downloadUrl,
-                                "dafscanner-${info.tagName}.apk"
-                            )
-                            onDismissUpdate()
-                        }
-                    ) {
-                        Text("Update Now")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = onDismissUpdate) {
-                        Text("Later")
-                    }
-                }
-            )
+            UpdateDialog(info = info, onDismiss = onDismissUpdate)
         }
     }
 }

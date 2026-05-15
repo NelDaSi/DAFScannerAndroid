@@ -20,6 +20,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _isCheckingUpdates = MutableStateFlow(false)
     val isCheckingUpdates = _isCheckingUpdates.asStateFlow()
 
+    private val _updateMessage = MutableStateFlow<String?>(null)
+    val updateMessage = _updateMessage.asStateFlow()
+
     init {
         val scanDao = AppDatabase.getDatabase(application).scanDao()
         repository = ScanRepository(scanDao)
@@ -28,9 +31,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun checkForUpdates() {
         viewModelScope.launch {
             _isCheckingUpdates.value = true
-            _updateInfo.value = UpdateManager.checkForUpdates(getApplication())
+            when (val result = UpdateManager.checkForUpdates(getApplication())) {
+                is UpdateManager.UpdateResult.NewUpdate -> {
+                    _updateInfo.value = result.info
+                }
+                is UpdateManager.UpdateResult.UpToDate -> {
+                    _updateMessage.value = "App is up to date"
+                }
+                is UpdateManager.UpdateResult.Error -> {
+                    _updateMessage.value = result.message
+                }
+            }
             _isCheckingUpdates.value = false
         }
+    }
+
+    fun clearUpdateMessage() {
+        _updateMessage.value = null
     }
 
     fun dismissUpdateDialog() {
