@@ -151,7 +151,14 @@ fun SettingsScreen(
             currentTheme = it
             SettingsRepository.setTheme(context, it)
         },
-        onClearAllData = { viewModel.clearAllData() },
+        onClearAllData = {
+            viewModel.clearAllData()
+            // Reset local UI state to default values immediately
+            vibrateEnabled = false
+            screenAlwaysOn = false
+            continuousScanEnabled = false
+            currentTheme = "DAF"
+        },
         isCheckingUpdates = isCheckingUpdates,
         updateInfo = updateInfo,
         onCheckForUpdates = { viewModel.checkForUpdates() },
@@ -178,9 +185,13 @@ fun SettingsScreenContent(
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    
-    val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(SettingsRepository.loadAllowedTypes(context)) } }
+
+    val allowedTypes = remember { mutableStateListOf<String>() }
     val defaultAllowedTypes = setOf("2245293", "2245295", "2261325", "2150001", "2342199", "2342201", "2012566")
+
+    LaunchedEffect(Unit) {
+        allowedTypes.addAll(SettingsRepository.loadAllowedTypes(context))
+    }
     
     var showAddDialog by remember { mutableStateOf(value = false) }
     var newType by remember { mutableStateOf(value = "") }
@@ -439,6 +450,9 @@ fun SettingsScreenContent(
                     Button(
                         onClick = {
                             onClearAllData()
+                            // Clear and reset allowedTypes locally
+                            allowedTypes.clear()
+                            allowedTypes.addAll(defaultAllowedTypes)
                             Toast.makeText(context, R.string.yes, Toast.LENGTH_SHORT).show()
                             showClearAllDialog = false
                         },

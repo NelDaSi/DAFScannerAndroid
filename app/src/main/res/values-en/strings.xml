@@ -44,8 +44,8 @@
     <string name="unknown">Unknown</string>
 
     <!-- Clear-all confirmation -->
-    <string name="clear_confirm_title">Confirm clear all</string>
-    <string name="clear_confirm_text">Are you sure you want to remove all scanned items?</string>
+    <string name="clear_confirm_title">Reset App?</string>
+    <string name="clear_confirm_text">Are you sure you want to clear all data, settings, and images? This action cannot be undone.</string>
 
     <!-- Common buttons -->
     <string name="yes">Yes</string>
@@ -105,8 +105,8 @@
     <string name="flashlight_off_desc">Flashlight off</string>
     <string name="empty_title">Empty</string>
     <string name="empty_subtitle">Press the scan button to start</string>
-    <string name="settings_clear_all">Clear all scanned items</string>
-    <string name="settings_clear_all_desc">Remove all saved scans from the device</string>
+    <string name="settings_clear_all">Reset App</string>
+    <string name="settings_clear_all_desc">Clear all data, settings, and images (Factory Reset)</string>
 
     <string name="theme_setting_title">App theme</string>
     <string name="theme_light">Light</string>

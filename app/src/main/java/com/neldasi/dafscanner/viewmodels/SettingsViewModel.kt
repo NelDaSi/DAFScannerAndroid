@@ -56,9 +56,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun clearAllData() {
         viewModelScope.launch {
+            // 1. Delete all database entries
             repository.deleteAll()
+            
+            // 2. Clear all SharedPreferences
             val prefs = ScanStorage.prefs(getApplication())
             ScanStorage.clearAll(prefs)
+            
+            // 3. Delete all files in internal storage (images, etc.)
+            val context = getApplication<Application>()
+            context.filesDir.listFiles()?.forEach { it.delete() }
+            context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
         }
     }
 }

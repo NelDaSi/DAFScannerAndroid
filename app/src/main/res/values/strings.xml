@@ -44,8 +44,8 @@
     <string name="unknown">Onbekend</string>
 
     <!-- Clear-all confirmation -->
-    <string name="clear_confirm_title">Bevestig alles wissen</string>
-    <string name="clear_confirm_text">Weet je zeker dat je alle gescande items wilt verwijderen?</string>
+    <string name="clear_confirm_title">App resetten?</string>
+    <string name="clear_confirm_text">Weet je zeker dat je alle gegevens, instellingen en afbeeldingen wilt wissen? Dit kan niet ongedaan worden gemaakt.</string>
 
     <!-- Common buttons -->
     <string name="yes">Ja</string>
@@ -105,8 +105,8 @@
     <string name="flashlight_off_desc">Zaklamp uit</string>
     <string name="empty_title">Leeg</string>
     <string name="empty_subtitle">Druk op de scan-knop om te beginnen</string>
-    <string name="settings_clear_all">Alle gescande items wissen</string>
-    <string name="settings_clear_all_desc">Verwijder alle opgeslagen scans van het apparaat</string>
+    <string name="settings_clear_all">App resetten</string>
+    <string name="settings_clear_all_desc">Wis alle gegevens, instellingen en afbeeldingen (fabrieksinstellingen)</string>
 
     <string name="theme_setting_title">App thema</string>
     <string name="theme_light">Licht</string>
