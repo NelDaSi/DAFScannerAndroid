@@ -170,4 +170,9 @@
     <string name="dismiss_countdown">DISMISS (%1$d)</string>
     <string name="emulator_mode_desc">Emulator Mode: Click screen to simulate scan</string>
     <string name="camera_error">Failed to open camera.</string>
+    <string name="copy_type">Copy Type</string>
+    <string name="type_copied">Type copied to clipboard</string>
+    <string name="next_scan_in">Next scan in: %1$d</string>
+    <string name="tap_to_skip">Tap anywhere to scan now</string>
+    <string name="add_to_allowed">Add to Allowed Types</string>
 </resources>

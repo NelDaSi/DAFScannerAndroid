@@ -27,4 +27,9 @@ object SettingsRepository {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         prefs.edit { putString("appTheme", theme) }
     }
+
+    fun saveAllowedTypes(context: Context, types: Collection<String>) {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        prefs.edit { putStringSet("allowedTypes", types.toSet()) }
+    }
 }

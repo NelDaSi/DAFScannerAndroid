@@ -320,7 +320,7 @@ fun SettingsScreenContent(
                                 isDefault = type in defaultAllowedTypes,
                                 onDelete = {
                                     allowedTypes.remove(type)
-                                    saveAllowedTypes(context, allowedTypes)
+                                    SettingsRepository.saveAllowedTypes(context, allowedTypes)
                                 }
                             )
                         }
@@ -407,7 +407,7 @@ fun SettingsScreenContent(
                         onClick = {
                             if (newType.isNotBlank()) {
                                 allowedTypes.add(newType)
-                                saveAllowedTypes(context, allowedTypes)
+                                SettingsRepository.saveAllowedTypes(context, allowedTypes)
                                 newType = ""
                                 showAddDialog = false
                             } else {
@@ -701,11 +701,6 @@ private fun TypeItem(
             }
         }
     }
-}
-
-fun saveAllowedTypes(context: Context, types: List<String>) {
-    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-    prefs.edit { putStringSet("allowedTypes", types.toSet()) }
 }
 
 @Preview(showBackground = true)

@@ -1,6 +1,8 @@
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
+import android.content.ClipboardManager
+import android.content.ClipData
 import android.content.Context
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -123,7 +125,7 @@ fun CameraScanScreen(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
-    val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context) }
+    val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context).toMutableStateList() }
 
     // Keep screen on logic
     LaunchedEffect(screenAlwaysOn) {
@@ -136,6 +138,7 @@ fun CameraScanScreen(
     }
     
     var showNotAllowedDialog by remember { mutableStateOf(value = false) }
+    var scannedNotAllowedType by remember { mutableStateOf("") }
     var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(value = null) }
     var scannedResult by remember { mutableStateOf<String?>(value = null) }
     var cameraError by remember { mutableStateOf<String?>(value = null) }
@@ -147,7 +150,8 @@ fun CameraScanScreen(
 
     // State for Feedback and Cooldowns
     var verifyResult by remember { mutableStateOf<ScanFeedback?>(null) }
-    var countdown by remember { mutableIntStateOf(0) }
+    var continuousCooldown by remember { mutableIntStateOf(0) }
+    var cooldownJob: kotlinx.coroutines.Job? by remember { mutableStateOf(null) }
     val verifyScope = rememberCoroutineScope()
     var isPaused by remember { mutableStateOf(false) }
     
@@ -238,19 +242,6 @@ fun CameraScanScreen(
 
                 isPaused = true
                 navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                
-                countdown = 3
-                verifyScope.launch {
-                    while (countdown > 0) {
-                        delay(1000)
-                        if (verifyResult?.serial == serial) countdown-- else break
-                    }
-                    if (verifyResult?.serial == serial) {
-                        verifyResult = null
-                        isPaused = false
-                        scannedResult = null
-                    }
-                }
             } else {
                 // Main Scanning Mode logic
                 val sessionTimestamp = sessionScanned[value]
@@ -262,19 +253,6 @@ fun CameraScanScreen(
                     val serial = extractSerial(value)
                     verifyResult = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp)
                     isPaused = true
-                    
-                    countdown = 3
-                    verifyScope.launch {
-                        while (countdown > 0) {
-                            delay(1000)
-                            if (verifyResult?.serial == serial) countdown-- else break
-                        }
-                        if (verifyResult?.serial == serial) {
-                            verifyResult = null
-                            isPaused = false
-                            scannedResult = null
-                        }
-                    }
                 } else {
                     // NEW SCAN SUCCESS
                     lastProcessedCode = value
@@ -286,9 +264,15 @@ fun CameraScanScreen(
                         sessionScanned[value] = now
                         
                         // Give it a small pause so it doesn't immediately scan the same thing again
-                        delay(1500)
-                        scannedResult = null
-                        isPaused = false
+                        continuousCooldown = 2
+                        cooldownJob = verifyScope.launch {
+                            while (continuousCooldown > 0) {
+                                delay(1000)
+                                continuousCooldown--
+                            }
+                            scannedResult = null
+                            isPaused = false
+                        }
                     } else {
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
                         navController.popBackStack()
@@ -306,7 +290,7 @@ fun CameraScanScreen(
         flashAlpha = flashAlpha.value,
         transformableState = transformableState,
         verifyResult = verifyResult,
-        countdown = countdown,
+        continuousCooldown = continuousCooldown,
         isVerifyMode = isVerifyMode,
         vibrateEnabled = vibrateEnabled,
         continuousScanEnabled = continuousScanEnabled,
@@ -337,6 +321,12 @@ fun CameraScanScreen(
             verifyResult = null
             isPaused = false
             scannedResult = null
+        },
+        onDismissCooldown = {
+            cooldownJob?.cancel()
+            continuousCooldown = 0
+            scannedResult = null
+            isPaused = false
         },
         onSimulateScan = {
             if (!isPaused) {
@@ -371,12 +361,14 @@ fun CameraScanScreen(
                         cameraExecutor = cameraExecutor,
                         shouldProcess = { !isPaused && scannedResult == null },
                         onScannedValue = { scannedValue ->
-                            if (scannedValue.take(7) in allowedTypes) {
+                            val type = scannedValue.take(7)
+                            if (type in allowedTypes) {
                                 if (scannedResult == null && !isPaused) {
                                     isPaused = true
                                     scannedResult = scannedValue
                                 }
                             } else {
+                                scannedNotAllowedType = type
                                 showNotAllowedDialog = true
                                 isPaused = true
                             }
@@ -415,10 +407,65 @@ fun CameraScanScreen(
         AlertDialog(
             onDismissRequest = { showNotAllowedDialog = false; isPaused = false },
             title = { Text(stringResource(R.string.unsupported_code_title)) },
-            text = { Text(stringResource(R.string.unsupported_code_text)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.unsupported_code_text))
+                    Spacer(Modifier.height(16.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.type_code_label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = scannedNotAllowedType,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Type Code", scannedNotAllowedType)
+                                clipboard.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(context, R.string.type_copied, android.widget.Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.copy_type))
+                            }
+                        }
+                    }
+                }
+            },
             confirmButton = {
-                Button(onClick = { showNotAllowedDialog = false; isPaused = false }) {
-                    Text(stringResource(R.string.ok))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            allowedTypes.add(scannedNotAllowedType)
+                            SettingsRepository.saveAllowedTypes(context, allowedTypes)
+                            showNotAllowedDialog = false
+                            isPaused = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_to_allowed))
+                    }
+                    OutlinedButton(
+                        onClick = { showNotAllowedDialog = false; isPaused = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.ok))
+                    }
                 }
             }
         )
@@ -434,7 +481,7 @@ fun CameraScanScreenContent(
     flashAlpha: Float,
     transformableState: androidx.compose.foundation.gestures.TransformableState,
     verifyResult: ScanFeedback? = null,
-    countdown: Int = 0,
+    continuousCooldown: Int = 0,
     isVerifyMode: Boolean = false,
     vibrateEnabled: Boolean = false,
     continuousScanEnabled: Boolean = false,
@@ -445,6 +492,7 @@ fun CameraScanScreenContent(
     onToggleTorch: () -> Unit,
     onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
+    onDismissCooldown: () -> Unit = {},
     onSimulateScan: () -> Unit = {},
     onAndroidViewFactory: (Context) -> android.view.View,
 ) {
@@ -452,7 +500,15 @@ fun CameraScanScreenContent(
         modifier = Modifier
             .fillMaxSize()
             .transformable(state = transformableState)
-            .then(if (isRunningOnEmulator()) Modifier.clickable(onClick = onSimulateScan) else Modifier)
+            .then(
+                if (isRunningOnEmulator()) {
+                    Modifier.clickable(onClick = onSimulateScan)
+                } else if (continuousCooldown > 0) {
+                    Modifier.clickable(onClick = onDismissCooldown)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         AndroidView(factory = onAndroidViewFactory, modifier = Modifier.fillMaxSize())
 
@@ -465,6 +521,37 @@ fun CameraScanScreenContent(
             serial = lastSerial,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 24.dp, end = 24.dp)
         )
+
+        AnimatedVisibility(
+            visible = continuousCooldown > 0,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier.align(Alignment.Center).padding(top = 320.dp)
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.next_scan_in, continuousCooldown),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         if (verifyResult != null) {
             val backgroundColor = when {
@@ -563,7 +650,7 @@ fun CameraScanScreenContent(
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
                         Text(
-                            text = if (countdown > 0) stringResource(R.string.dismiss_countdown, countdown) else stringResource(R.string.dismiss),
+                            text = stringResource(R.string.dismiss),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
