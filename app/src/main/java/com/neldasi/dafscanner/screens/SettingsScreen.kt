@@ -142,7 +142,8 @@ fun SettingsScreen(
         onClearAllData = { viewModel.clearAllData() },
         isCheckingUpdates = isCheckingUpdates,
         updateInfo = updateInfo,
-        onCheckForUpdates = { viewModel.checkForUpdates() }
+        onCheckForUpdates = { viewModel.checkForUpdates() },
+        onDismissUpdate = { viewModel.dismissUpdateDialog() }
     )
 }
 
@@ -160,7 +161,8 @@ fun SettingsScreenContent(
     onClearAllData: () -> Unit,
     isCheckingUpdates: Boolean,
     updateInfo: UpdateManager.ReleaseInfo?,
-    onCheckForUpdates: () -> Unit
+    onCheckForUpdates: () -> Unit,
+    onDismissUpdate: () -> Unit
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -539,7 +541,7 @@ fun SettingsScreenContent(
 
         updateInfo?.let { info ->
             AlertDialog(
-                onDismissRequest = { /* No-op to force action */ },
+                onDismissRequest = onDismissUpdate,
                 title = { Text("New Update Available!", fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
@@ -556,13 +558,14 @@ fun SettingsScreenContent(
                                 info.downloadUrl,
                                 "dafscanner-${info.tagName}.apk"
                             )
+                            onDismissUpdate()
                         }
                     ) {
                         Text("Update Now")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { /* Could add a way to dismiss */ }) {
+                    TextButton(onClick = onDismissUpdate) {
                         Text("Later")
                     }
                 }
@@ -742,7 +745,8 @@ fun SettingsScreenPreview() {
             onClearAllData = {},
             isCheckingUpdates = false,
             updateInfo = null,
-            onCheckForUpdates = {}
+            onCheckForUpdates = {},
+            onDismissUpdate = {}
         )
     }
 }

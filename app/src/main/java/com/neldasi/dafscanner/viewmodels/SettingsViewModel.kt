@@ -33,6 +33,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun dismissUpdateDialog() {
+        _updateInfo.value = null
+    }
+
     fun clearAllData() {
         viewModelScope.launch {
             repository.deleteAll()
