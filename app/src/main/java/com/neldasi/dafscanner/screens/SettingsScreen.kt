@@ -70,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,7 @@ import androidx.navigation.compose.rememberNavController
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.extras.UpdateManager
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SettingsViewModel
 
@@ -99,6 +101,9 @@ fun SettingsScreen(
     var screenAlwaysOn by remember { mutableStateOf(value = false) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
     var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
+
+    val updateInfo by viewModel.updateInfo.collectAsState()
+    val isCheckingUpdates by viewModel.isCheckingUpdates.collectAsState()
 
     LaunchedEffect(Unit) {
         vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
@@ -134,7 +139,10 @@ fun SettingsScreen(
             currentTheme = it
             SettingsRepository.setTheme(context, it)
         },
-        onClearAllData = { viewModel.clearAllData() }
+        onClearAllData = { viewModel.clearAllData() },
+        isCheckingUpdates = isCheckingUpdates,
+        updateInfo = updateInfo,
+        onCheckForUpdates = { viewModel.checkForUpdates() }
     )
 }
 
@@ -149,7 +157,10 @@ fun SettingsScreenContent(
     onContinuousScanChange: (Boolean) -> Unit,
     currentTheme: String,
     onThemeChange: (String) -> Unit,
-    onClearAllData: () -> Unit
+    onClearAllData: () -> Unit,
+    isCheckingUpdates: Boolean,
+    updateInfo: UpdateManager.ReleaseInfo?,
+    onCheckForUpdates: () -> Unit
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -240,6 +251,12 @@ fun SettingsScreenContent(
                             title = "HEX <-> DEC Converter",
                             subtitle = "Tool to convert serial numbers",
                             onClick = { showConverterDialog = true }
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.SystemUpdateAlt,
+                            title = if (isCheckingUpdates) "Checking for updates..." else "Check for updates",
+                            subtitle = "Check GitHub for a new version",
+                            onClick = onCheckForUpdates
                         )
                     }
                 }
@@ -519,6 +536,38 @@ fun SettingsScreenContent(
                 }
             )
         }
+
+        updateInfo?.let { info ->
+            AlertDialog(
+                onDismissRequest = { /* No-op to force action */ },
+                title = { Text("New Update Available!", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text("Version ${info.tagName} is available.", fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(info.body)
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            UpdateManager.downloadAndInstall(
+                                context,
+                                info.downloadUrl,
+                                "dafscanner-${info.tagName}.apk"
+                            )
+                        }
+                    ) {
+                        Text("Update Now")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { /* Could add a way to dismiss */ }) {
+                        Text("Later")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -690,7 +739,10 @@ fun SettingsScreenPreview() {
             onContinuousScanChange = {},
             currentTheme = "SYSTEM",
             onThemeChange = {},
-            onClearAllData = {}
+            onClearAllData = {},
+            isCheckingUpdates = false,
+            updateInfo = null,
+            onCheckForUpdates = {}
         )
     }
 }
