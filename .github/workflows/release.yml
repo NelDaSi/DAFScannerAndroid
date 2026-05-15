@@ -41,11 +41,15 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "35.0.0"
 
+      - name: Rename APK
+        if: success()
+        run: mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/dafscanner-${{ github.ref_name }}.apk
+
       - name: Create Release
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          files: app/build/outputs/apk/release/dafscanner-${{ github.ref_name }}.apk
           name: Release ${{ github.ref_name }}
           body: |
             Automated release for version ${{ github.ref_name }}.
