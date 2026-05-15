@@ -1,6 +1,6 @@
 # DAF Scanner
 
-A robust Barcode Scanning and Verification application built with modern Android technologies. DAF Scanner is designed for industrial workflows where identifying, parsing, and verifying part serial numbers is critical.
+A robust Data Matrix Code (dmc) Scanning and Verification application built with modern Android technologies. DAF Scanner is designed for industrial workflows where identifying, parsing, and verifying part serial numbers is critical.
 
 ## 🚀 Features
 
