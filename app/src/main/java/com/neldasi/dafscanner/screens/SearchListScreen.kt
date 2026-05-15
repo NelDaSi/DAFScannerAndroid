@@ -101,7 +101,7 @@ fun SearchListScreen(
             val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             searchItems.forEach { item ->
                 val isFound = item.scanTimestamp != null
-                val status = if (isFound) "FOUND" else "MISSING"
+                val status = if (isFound) context.getString(R.string.status_found) else context.getString(R.string.status_missing)
                 val order = item.scanOrder?.toString() ?: "-"
                 val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
                 
@@ -139,7 +139,7 @@ fun SearchListScreen(
             sb.append(context.getString(R.string.scanned_progress, foundItems.size, total) + "\n\n")
             
             if (foundItems.isNotEmpty()) {
-                sb.append("✅ FOUND (${foundItems.size})\n")
+                sb.append(context.getString(R.string.found_section, foundItems.size) + "\n")
                 foundItems.forEach { item ->
                     val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
                     sb.append("${item.scanOrder}. HEX: ${item.serialNumber} (DEC: ${item.decSerial}) - ${item.typeCode} - $time\n")
@@ -148,7 +148,7 @@ fun SearchListScreen(
             }
             
             if (missingItems.isNotEmpty()) {
-                sb.append("❌ MISSING (${missingItems.size})\n")
+                sb.append(context.getString(R.string.missing_section, missingItems.size) + "\n")
                 missingItems.forEach { item ->
                     sb.append("- HEX: ${item.serialNumber} (DEC: ${item.decSerial}) - ${item.typeCode}\n")
                 }
@@ -382,7 +382,7 @@ fun SearchListContent(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                "HEX: ",
+                                                stringResource(R.string.hex_prefix),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
                                                 color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
@@ -396,7 +396,7 @@ fun SearchListContent(
                                         }
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                "DEC: ",
+                                                stringResource(R.string.dec_prefix),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
                                                 color = if (isScanned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) else Color(0xFF388E3C)

@@ -130,4 +130,44 @@
     <string name="share_summary_chooser">Share Summary</string>
     <string name="verification_summary_title">DAF Scanner - Verification Summary</string>
     <string name="verification_summary_subject">Verification Summary - %1$d/%2$d</string>
+
+    <string name="converter_title">HEX <![CDATA[<->]]> DEC Converter</string>
+    <string name="hex_label">HEX Value</string>
+    <string name="hex_placeholder">e.g. 01C821</string>
+    <string name="dec_label">DEC Value</string>
+    <string name="dec_placeholder">e.g. 116769</string>
+    <string name="close">Close</string>
+    <string name="new_update_available">New Update Available!</string>
+    <string name="version_available">Version %1$s is available.</string>
+    <string name="update_now">Update Now</string>
+    <string name="later">Later</string>
+    <string name="enter_note_placeholder">Enter additional information...</string>
+    <string name="theme_daf">DAF Theme</string>
+    <string name="checking_updates">Checking for updates...</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="check_github_desc">Check GitHub for a new version</string>
+    <string name="converter_desc">Tool to convert serial numbers</string>
+
+    <string name="status_found">FOUND</string>
+    <string name="status_missing">MISSING</string>
+    <string name="found_section">✅ FOUND (%1$d)</string>
+    <string name="missing_section">❌ MISSING (%1$d)</string>
+    <string name="export_scanned_items">Export Scanned Items</string>
+    <string name="select_all">Select All</string>
+    <string name="clear_search">Clear search</string>
+    <string name="export_csv">Export CSV</string>
+    <string name="hex_prefix">HEX: </string>
+    <string name="dec_prefix">DEC: </string>
+    <string name="has_note">Has Note</string>
+    <string name="serial_hex">Serial (HEX)</string>
+    <string name="serial_dec">Serial (DEC)</string>
+    <string name="already_scanned">ALREADY SCANNED</string>
+    <string name="first_seen">First seen: %1$s</string>
+    <string name="duplicate_code">DUPLICATE CODE</string>
+    <string name="match_found">MATCH FOUND</string>
+    <string name="no_match">NO MATCH</string>
+    <string name="dismiss">DISMISS</string>
+    <string name="dismiss_countdown">DISMISS (%1$d)</string>
+    <string name="emulator_mode_desc">Emulator Mode: Click screen to simulate scan</string>
+    <string name="camera_error">Failed to open camera.</string>
 </resources>

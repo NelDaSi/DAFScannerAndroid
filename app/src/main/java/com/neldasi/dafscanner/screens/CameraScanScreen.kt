@@ -368,7 +368,7 @@ fun CameraScanScreen(
                     isCameraReady = true
                     requestCenterFocus(previewView, boundCamera)
                 } catch (_: Exception) {
-                    cameraError = "Failed to open camera."
+                    cameraError = context.getString(R.string.camera_error)
                     isCameraReady = false
                 }
             }, ContextCompat.getMainExecutor(ctx))
@@ -481,7 +481,7 @@ fun CameraScanScreenContent(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             ) {
                                 Text(
-                                    "ALREADY SCANNED",
+                                    stringResource(R.string.already_scanned),
                                     color = Color.White,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelLarge,
@@ -496,7 +496,7 @@ fun CameraScanScreenContent(
                                     SimpleDateFormat("dd MMM, HH:mm", locale).format(Date(ts))
                                 }
                                 Text(
-                                    text = "First seen: $dateStr",
+                                    text = stringResource(R.string.first_seen, dateStr),
                                     color = Color.White.copy(alpha = 0.8f),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
@@ -508,9 +508,9 @@ fun CameraScanScreenContent(
 
                     Text(
                         text = when {
-                            verifyResult.alreadyScanned && !isVerifyMode -> "DUPLICATE CODE"
-                            verifyResult.isMatch -> "MATCH FOUND"
-                            else -> "NO MATCH"
+                            verifyResult.alreadyScanned && !isVerifyMode -> stringResource(R.string.duplicate_code)
+                            verifyResult.isMatch -> stringResource(R.string.match_found)
+                            else -> stringResource(R.string.no_match)
                         },
                         color = Color.White,
                         style = MaterialTheme.typography.displaySmall,
@@ -519,13 +519,13 @@ fun CameraScanScreenContent(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "HEX: ${verifyResult.serial}",
+                        text = "${stringResource(R.string.hex_prefix)}${verifyResult.serial}",
                         color = Color.White,
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "DEC: ${try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
+                        text = "${stringResource(R.string.dec_prefix)}${try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
@@ -540,7 +540,7 @@ fun CameraScanScreenContent(
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
                         Text(
-                            text = if (countdown > 0) "DISMISS ($countdown)" else "DISMISS",
+                            text = if (countdown > 0) stringResource(R.string.dismiss_countdown, countdown) else stringResource(R.string.dismiss),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -556,7 +556,7 @@ fun CameraScanScreenContent(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    "Emulator Mode: Click screen to simulate scan",
+                    stringResource(R.string.emulator_mode_desc),
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.labelLarge
                 )

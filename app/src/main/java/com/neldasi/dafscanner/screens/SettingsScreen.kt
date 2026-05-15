@@ -234,7 +234,7 @@ fun SettingsScreenContent(
                             subtitle = when (currentTheme) {
                                 "LIGHT" -> stringResource(R.string.theme_light)
                                 "DARK" -> stringResource(R.string.theme_dark)
-                                "DAF" -> "DAF Theme"
+                                "DAF" -> stringResource(R.string.theme_daf)
                                 else -> stringResource(R.string.theme_system)
                             },
                             onClick = { showThemeDialog = true }
@@ -259,14 +259,14 @@ fun SettingsScreenContent(
                         )
                         SettingsClickableItem(
                             icon = Icons.Rounded.Calculate,
-                            title = "HEX <-> DEC Converter",
-                            subtitle = "Tool to convert serial numbers",
+                            title = stringResource(R.string.converter_title),
+                            subtitle = stringResource(R.string.converter_desc),
                             onClick = { showConverterDialog = true }
                         )
                         SettingsClickableItem(
                             icon = Icons.Rounded.SystemUpdateAlt,
-                            title = if (isCheckingUpdates) "Checking for updates..." else "Check for updates",
-                            subtitle = "Check GitHub for a new version",
+                            title = if (isCheckingUpdates) stringResource(R.string.checking_updates) else stringResource(R.string.check_for_updates),
+                            subtitle = stringResource(R.string.check_github_desc),
                             onClick = onCheckForUpdates
                         )
                     }
@@ -460,7 +460,7 @@ fun SettingsScreenContent(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         ThemeOption(
-                            title = "DAF Theme",
+                            title = stringResource(R.string.theme_daf),
                             selected = currentTheme == "DAF",
                             onClick = { onThemeChange("DAF"); showThemeDialog = false }
                         )
@@ -495,7 +495,7 @@ fun SettingsScreenContent(
 
             AlertDialog(
                 onDismissRequest = { showConverterDialog = false },
-                title = { Text("HEX <-> DEC Converter", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.converter_title), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         OutlinedTextField(
@@ -508,8 +508,8 @@ fun SettingsScreenContent(
                                     "Error"
                                 }
                             },
-                            label = { Text("HEX Value") },
-                            placeholder = { Text("e.g. 01C821") },
+                            label = { Text(stringResource(R.string.hex_label)) },
+                            placeholder = { Text(stringResource(R.string.hex_placeholder)) },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -532,8 +532,8 @@ fun SettingsScreenContent(
                                     "Error"
                                 }
                             },
-                            label = { Text("DEC Value") },
-                            placeholder = { Text("e.g. 116769") },
+                            label = { Text(stringResource(R.string.dec_label)) },
+                            placeholder = { Text(stringResource(R.string.dec_placeholder)) },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -542,7 +542,7 @@ fun SettingsScreenContent(
                 },
                 confirmButton = {
                     Button(onClick = { showConverterDialog = false }) {
-                        Text("Close")
+                        Text(stringResource(R.string.close))
                     }
                 }
             )

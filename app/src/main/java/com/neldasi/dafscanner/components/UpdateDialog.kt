@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.UpdateManager
 
 @Composable
@@ -22,10 +24,10 @@ fun UpdateDialog(
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Update Available!", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.new_update_available), fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                Text("Version ${info.tagName} is available.", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.version_available, info.tagName), fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(info.body)
             }
@@ -41,12 +43,12 @@ fun UpdateDialog(
                     onDismiss()
                 }
             ) {
-                Text("Update Now")
+                Text(stringResource(R.string.update_now))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Later")
+                Text(stringResource(R.string.later))
             }
         }
     )

@@ -130,4 +130,44 @@
     <string name="share_summary_chooser">Samenvatting delen</string>
     <string name="verification_summary_title">DAF Scanner - Verificatieoverzicht</string>
     <string name="verification_summary_subject">Verificatieoverzicht - %1$d/%2$d</string>
+
+    <string name="converter_title">HEX <![CDATA[<->]]> DEC Converter</string>
+    <string name="hex_label">HEX Waarde</string>
+    <string name="hex_placeholder">bijv. 01C821</string>
+    <string name="dec_label">DEC Waarde</string>
+    <string name="dec_placeholder">bijv. 116769</string>
+    <string name="close">Sluiten</string>
+    <string name="new_update_available">Nieuwe update beschikbaar!</string>
+    <string name="version_available">Versie %1$s is beschikbaar.</string>
+    <string name="update_now">Nu updaten</string>
+    <string name="later">Later</string>
+    <string name="enter_note_placeholder">Voer extra informatie in...</string>
+    <string name="theme_daf">DAF Thema</string>
+    <string name="checking_updates">Controleren op updates...</string>
+    <string name="check_for_updates">Controleren op updates</string>
+    <string name="check_github_desc">Check GitHub voor een nieuwe versie</string>
+    <string name="converter_desc">Tool om serienummers te converteren</string>
+
+    <string name="status_found">GEVONDEN</string>
+    <string name="status_missing">ONTBREEKT</string>
+    <string name="found_section">✅ GEVONDEN (%1$d)</string>
+    <string name="missing_section">❌ ONTBREEKT (%1$d)</string>
+    <string name="export_scanned_items">Gescande items exporteren</string>
+    <string name="select_all">Alles selecteren</string>
+    <string name="clear_search">Zoekopdracht wissen</string>
+    <string name="export_csv">CSV Exporteren</string>
+    <string name="hex_prefix">HEX: </string>
+    <string name="dec_prefix">DEC: </string>
+    <string name="has_note">Heeft notitie</string>
+    <string name="serial_hex">Serie (HEX)</string>
+    <string name="serial_dec">Serie (DEC)</string>
+    <string name="already_scanned">ALREEDS GESCAND</string>
+    <string name="first_seen">Eerste keer: %1$s</string>
+    <string name="duplicate_code">DUBBELE CODE</string>
+    <string name="match_found">MATCH GEVONDEN</string>
+    <string name="no_match">GEEN MATCH</string>
+    <string name="dismiss">SLUITEN</string>
+    <string name="dismiss_countdown">SLUITEN (%1$d)</string>
+    <string name="emulator_mode_desc">Emulatormodus: Klik op het scherm om scan te simuleren</string>
+    <string name="camera_error">Kan camera niet openen.</string>
 </resources>

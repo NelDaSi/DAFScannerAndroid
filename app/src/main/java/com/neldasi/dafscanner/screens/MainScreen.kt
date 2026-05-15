@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -230,7 +231,7 @@ fun MainScreenContent(
                                 }
                             },
                         ) {
-                                Icon(Icons.Rounded.SelectAll, contentDescription = "Select All")
+                                Icon(Icons.Rounded.SelectAll, contentDescription = stringResource(R.string.select_all))
                             }
                             IconButton(
                                 onClick = {
@@ -277,13 +278,13 @@ fun MainScreenContent(
                                             putExtra(Intent.EXTRA_STREAM, uri)
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
-                                        context.startActivity(Intent.createChooser(intent, "Export Scanned Items"))
+                                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.export_scanned_items)))
                                     }
                                 }
                             },
                             enabled = scannedParts.isNotEmpty()
                         ) {
-                            Icon(Icons.Rounded.Share, contentDescription = "Export CSV")
+                            Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.export_csv))
                         }
                         IconButton(onClick = { navController.navigate(SettingsRoute) }) {
                             Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_screen_title))
@@ -330,7 +331,8 @@ fun MainScreenContent(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .imePadding(),
                     shape = RoundedCornerShape(32.dp),
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 8.dp,
@@ -359,7 +361,7 @@ fun MainScreenContent(
                             trailingIcon = {
                                 if (searchQuery.isNotEmpty()) {
                                     IconButton(onClick = { onSearchQueryChange("") }) {
-                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search", tint = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.clear_search), tint = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                             },
@@ -399,7 +401,7 @@ fun MainScreenContent(
                             shape = CircleShape,
                             elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
                         ) {
-                            Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
+                            Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.scan))
                         }
                     }
                 }
@@ -544,7 +546,7 @@ private fun PartItem(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "HEX: ",
+                        stringResource(R.string.hex_prefix),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -558,7 +560,7 @@ private fun PartItem(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "DEC: ",
+                        stringResource(R.string.dec_prefix),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF388E3C)
@@ -597,7 +599,7 @@ private fun PartItem(
                 )
                 if (!part.note.isNullOrEmpty()) {
                     Text(
-                        text = "Has Note",
+                        text = stringResource(R.string.has_note),
                         style = MaterialTheme.typography.labelSmall,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.primary,

@@ -298,7 +298,7 @@ fun DetailScreenContent(
                             OutlinedTextField(
                                 value = note,
                                 onValueChange = onNoteChange,
-                                placeholder = { Text("Enter additional information...") },
+                                placeholder = { Text(stringResource(R.string.enter_note_placeholder)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -326,8 +326,8 @@ fun DetailScreenContent(
                             parsed?.let {
                                 DetailRow(Icons.Rounded.Fingerprint, stringResource(R.string.type), it.typeCode)
                                 DetailRow(Icons.Rounded.Business, stringResource(R.string.supplier), it.supplierCode)
-                                DetailRow(Icons.Rounded.Tag, "Serial (HEX)", it.serialNumber)
-                                DetailRow(Icons.Rounded.Dialpad, "Serial (DEC)", it.decSerial)
+                                DetailRow(Icons.Rounded.Tag, stringResource(R.string.serial_hex), it.serialNumber)
+                                DetailRow(Icons.Rounded.Dialpad, stringResource(R.string.serial_dec), it.decSerial)
                                 DetailRow(Icons.Rounded.Category, stringResource(R.string.batch), it.batchNumber)
                             }
                             DetailRow(Icons.Rounded.EventAvailable, stringResource(R.string.scanned_at), formattedDate)
@@ -395,7 +395,7 @@ fun DetailScreenContent(
                     onClick = { showImagePreview = false },
                     modifier = Modifier.align(Alignment.TopEnd).padding(top = 32.dp, end = 16.dp)
                 ) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.close), tint = Color.White)
                 }
             }
         }
