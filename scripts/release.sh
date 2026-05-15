@@ -15,9 +15,12 @@ echo -e "${BLUE}   DAF Scanner - Release Automator    ${NC}"
 echo -e "${BLUE}======================================${NC}"
 
 # 0. Check for uncommitted changes
+# Refresh the index to avoid false positives
+git update-index -q --refresh
 if ! git diff-index --quiet HEAD --; then
-    echo -e "${RED}Error: You have uncommitted changes.${NC}"
-    echo -e "Please commit or stash them before running the release script."
+    echo -e "${RED}Error: You have uncommitted changes in tracked files:${NC}"
+    git diff-index --name-only HEAD --
+    echo -e "\nPlease commit or stash them before running the release script."
     exit 1
 fi
 
