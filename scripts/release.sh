@@ -8,97 +8,164 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}======================================${NC}"
-echo -e "${BLUE}   DAF Scanner - Release Automator    ${NC}"
-echo -e "${BLUE}======================================${NC}"
+show_header() {
+    clear
+    echo -e "${BLUE}======================================${NC}"
+    echo -e "${BLUE}   DAF Scanner - Release Automator    ${NC}"
+    echo -e "${BLUE}======================================${NC}"
+}
 
-# 0. Check for uncommitted changes
-# Refresh the index to avoid false positives
-git update-index -q --refresh
-if ! git diff-index --quiet HEAD --; then
-    echo -e "${RED}Error: You have uncommitted changes in tracked files:${NC}"
-    git diff-index --name-only HEAD --
-    echo -e "\nPlease commit or stash them before running the release script."
-    exit 1
-fi
+get_git_status() {
+    # Refresh index
+    git update-index -q --refresh
 
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-echo -e "${YELLOW}Current Branch: ${NC}$CURRENT_BRANCH"
+    # Tracked changes
+    UNCOMMITTED_COUNT=$(git diff-index --name-only HEAD -- | wc -l | xargs)
+    # Untracked files
+    UNTRACKED_COUNT=$(git ls-files --others --exclude-standard | wc -l | xargs)
+    TOTAL_CHANGES=$((UNCOMMITTED_COUNT + UNTRACKED_COUNT))
 
-# 1. Ask for Release Type
-echo -e "\n${BLUE}Release Type:${NC}"
-echo "1) Standard (Release from current branch: $CURRENT_BRANCH)"
-echo "2) Production (Merge $CURRENT_BRANCH into main and release from main)"
-read -p "Select option (1-2): " RELEASE_TYPE
+    # Ahead/Behind status
+    git fetch -q origin $(git rev-parse --abbrev-ref HEAD) 2>/dev/null
+    LOCAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    REMOTE_BRANCH="origin/$LOCAL_BRANCH"
 
-if [[ "$RELEASE_TYPE" == "2" ]]; then
-    if [[ "$CURRENT_BRANCH" == "main" ]]; then
-        echo -e "${YELLOW}You are already on main. Proceeding with standard release...${NC}"
-        TARGET_BRANCH="main"
+    if git rev-parse --verify "$REMOTE_BRANCH" >/dev/null 2>&1; then
+        STATUS_INFO=$(git rev-list --left-right --count HEAD...$REMOTE_BRANCH)
+        AHEAD=$(echo $STATUS_INFO | awk '{print $1}')
+        BEHIND=$(echo $STATUS_INFO | awk '{print $2}')
     else
-        TARGET_BRANCH="main"
-        echo -e "${YELLOW}Switching to $TARGET_BRANCH and merging $CURRENT_BRANCH...${NC}"
-        git checkout $TARGET_BRANCH || exit 1
-        git merge $CURRENT_BRANCH || exit 1
+        AHEAD="?"
+        BEHIND="?"
     fi
-else
-    TARGET_BRANCH=$CURRENT_BRANCH
-fi
+}
 
-# 2. Get current versions from gradle file
-CURRENT_VERSION_NAME=$(grep "versionName =" $GRADLE_FILE | sed 's/.*"\(.*\)".*/\1/')
-CURRENT_VERSION_CODE=$(grep "versionCode =" $GRADLE_FILE | sed 's/.*= \(.*\)/\1/')
+main_menu() {
+    show_header
+    get_git_status
 
-echo -e "\n${YELLOW}Current Project Version: ${NC}$CURRENT_VERSION_NAME ($CURRENT_VERSION_CODE)"
+    echo -e "${CYAN}--- Status ---${NC}"
+    echo -e "Branch:        ${YELLOW}$LOCAL_BRANCH${NC}"
 
-# 3. Get latest tag from git
-LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "None")
-echo -e "${YELLOW}Latest Git Tag:        ${NC}$LATEST_TAG"
-echo -e "${BLUE}--------------------------------------${NC}"
-
-# 4. Ask for new version name
-read -p "Enter NEW Version Name (e.g. 1.2.0) [Current: $CURRENT_VERSION_NAME]: " NEW_VERSION_NAME
-NEW_VERSION_NAME=${NEW_VERSION_NAME:-$CURRENT_VERSION_NAME}
-
-# 5. Ask for new version code
-SUGGESTED_CODE=$((CURRENT_VERSION_CODE + 1))
-read -p "Enter NEW Version Code (integer) [Suggested: $SUGGESTED_CODE]: " NEW_VERSION_CODE
-NEW_VERSION_CODE=${NEW_VERSION_CODE:-$SUGGESTED_CODE}
-
-echo -e "${BLUE}--------------------------------------${NC}"
-echo -e "Preparing to release ${GREEN}v$NEW_VERSION_NAME ($NEW_VERSION_CODE)${NC} on branch ${BLUE}$TARGET_BRANCH${NC}..."
-
-# 6. Update the Gradle file
-perl -i -pe "s/versionName = \".*\"/versionName = \"$NEW_VERSION_NAME\"/" $GRADLE_FILE
-perl -i -pe "s/versionCode = \d+/versionCode = $NEW_VERSION_CODE/" $GRADLE_FILE
-
-echo -e "${GREEN}✔ Updated $GRADLE_FILE${NC}"
-
-# 7. Git Operations
-echo -e "${YELLOW}Committing and Tagging...${NC}"
-git add $GRADLE_FILE
-git commit -m "chore: bump version to $NEW_VERSION_NAME ($NEW_VERSION_CODE)"
-git tag "v$NEW_VERSION_NAME"
-
-# 8. Push
-read -p "Push changes and tag to GitHub now? (y/n): " PUSH_CONFIRM
-if [[ $PUSH_CONFIRM =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Pushing to origin...${NC}"
-    git push origin $TARGET_BRANCH
-    git push origin "v$NEW_VERSION_NAME"
-
-    if [[ "$RELEASE_TYPE" == "2" && "$CURRENT_BRANCH" != "main" ]]; then
-        echo -e "${YELLOW}Syncing $CURRENT_BRANCH back with main...${NC}"
-        git checkout $CURRENT_BRANCH
-        git merge $TARGET_BRANCH
-        git push origin $CURRENT_BRANCH
+    if [ "$TOTAL_CHANGES" -eq "0" ]; then
+        echo -e "Working Tree:  ${GREEN}Clean${NC}"
+    else
+        echo -e "Working Tree:  ${RED}$TOTAL_CHANGES uncommitted changes${NC}"
+        if [ "$UNTRACKED_COUNT" -gt "0" ]; then
+            echo -e "               ($UNTRACKED_COUNT untracked files)"
+        fi
     fi
 
-    echo -e "${GREEN}🚀 Successfully released v$NEW_VERSION_NAME! GitHub Action started.${NC}"
-else
-    echo -e "${YELLOW}Changes committed locally on $TARGET_BRANCH, but NOT pushed.${NC}"
-fi
+    if [ "$AHEAD" != "?" ]; then
+        echo -e "Sync:          ${YELLOW}$AHEAD ahead${NC}, ${YELLOW}$BEHIND behind${NC} remote"
+    fi
+    echo -e "${BLUE}--------------${NC}\n"
 
-echo -e "${BLUE}======================================${NC}"
+    if [ "$TOTAL_CHANGES" -gt "0" ]; then
+        echo -e "${YELLOW}Changes detected! You must have a clean tree to release.${NC}"
+        echo "1) View changes (git status)"
+        echo "2) Commit all changes now"
+        echo "q) Exit"
+        read -p "Selection: " choice
+
+        case $choice in
+            1)
+                git status
+                read -p "Press Enter to return to menu..."
+                main_menu
+                ;;
+            2)
+                read -p "Enter commit message: " msg
+                if [ -n "$msg" ]; then
+                    git add .
+                    git commit -m "$msg"
+                    main_menu
+                else
+                    echo -e "${RED}Commit message cannot be empty!${NC}"
+                    sleep 2
+                    main_menu
+                fi
+                ;;
+            q|Q) exit 0 ;;
+            *) main_menu ;;
+        esac
+    else
+        echo -e "${GREEN}Ready for release!${NC}"
+        echo "1) Standard Release (from $LOCAL_BRANCH)"
+        echo "2) Production Release (merge $LOCAL_BRANCH into main)"
+        echo "q) Exit"
+        read -p "Selection: " choice
+
+        case $choice in
+            1) start_release "standard" ;;
+            2) start_release "production" ;;
+            q|Q) exit 0 ;;
+            *) main_menu ;;
+        esac
+    fi
+}
+
+start_release() {
+    TYPE=$1
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+    if [ "$TYPE" == "production" ]; then
+        if [ "$CURRENT_BRANCH" == "main" ]; then
+            TARGET_BRANCH="main"
+        else
+            TARGET_BRANCH="main"
+            echo -e "${YELLOW}Switching to main and merging $CURRENT_BRANCH...${NC}"
+            git checkout main || exit 1
+            git merge $CURRENT_BRANCH || exit 1
+        fi
+    else
+        TARGET_BRANCH=$CURRENT_BRANCH
+    fi
+
+    # Get current versions
+    CURRENT_NAME=$(grep "versionName =" $GRADLE_FILE | sed 's/.*"\(.*\)".*/\1/')
+    CURRENT_CODE=$(grep "versionCode =" $GRADLE_FILE | sed 's/.*= \(.*\)/\1/')
+    LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "None")
+
+    echo -e "\n${CYAN}Release Configuration:${NC}"
+    echo -e "Current: v$CURRENT_NAME ($CURRENT_CODE) | Tag: $LATEST_TAG"
+
+    read -p "Enter NEW Version Name [Current: $CURRENT_NAME]: " NEW_NAME
+    NEW_NAME=${NEW_NAME:-$CURRENT_NAME}
+
+    SUGGESTED_CODE=$((CURRENT_CODE + 1))
+    read -p "Enter NEW Version Code [Suggested: $SUGGESTED_CODE]: " NEW_CODE
+    NEW_CODE=${NEW_CODE:-$SUGGESTED_CODE}
+
+    echo -e "\n${YELLOW}Building v$NEW_NAME ($NEW_CODE) on $TARGET_BRANCH...${NC}"
+
+    # Update Gradle
+    perl -i -pe "s/versionName = \".*\"/versionName = \"$NEW_NAME\"/" $GRADLE_FILE
+    perl -i -pe "s/versionCode = \d+/versionCode = $NEW_CODE/" $GRADLE_FILE
+
+    # Git commit/tag
+    git add $GRADLE_FILE
+    git commit -m "chore: bump version to $NEW_NAME ($NEW_CODE)"
+    git tag "v$NEW_NAME"
+
+    read -p "Push to GitHub now? (y/n): " do_push
+    if [[ $do_push =~ ^[Yy]$ ]]; then
+        git push origin $TARGET_BRANCH
+        git push origin "v$NEW_NAME"
+
+        if [ "$TYPE" == "production" ] && [ "$CURRENT_BRANCH" != "main" ]; then
+            echo -e "${YELLOW}Syncing $CURRENT_BRANCH back...${NC}"
+            git checkout $CURRENT_BRANCH
+            git merge main
+            git push origin $CURRENT_BRANCH
+        fi
+        echo -e "${GREEN}🚀 Release v$NEW_NAME complete!${NC}"
+    else
+        echo -e "${YELLOW}Release tagged locally. Don't forget to push!${NC}"
+    fi
+}
+
+main_menu
