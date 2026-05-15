@@ -1,7 +1,4 @@
 package com.neldasi.dafscanner.extras
-import android.content.Context
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
@@ -18,10 +15,6 @@ import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.NotFoundException
 import kotlin.math.min
 
-private const val VIBRATE_DURATION = 100L
-
-// Size (in pixels) of the square region (center crop) we send to ZXing as fallback.
-// This does not correspond to dp; it is in the image buffer's pixel space.
 private const val ZXING_CROP_SIZE_PX = 480
 
 /**
@@ -142,8 +135,6 @@ private var frameSkipCounter = 0
 fun processImageProxy(
     barcodeScanner: BarcodeScanner,
     imageProxy: ImageProxy,
-    context: Context,
-    vibrateEnabled: Boolean,
     onScannedValue: (String) -> Unit,
     onError: ((Throwable) -> Unit)? = null
 ) {
@@ -173,15 +164,6 @@ fun processImageProxy(
 
             if (firstValue != null) {
                 onScannedValue(firstValue)
-                if (vibrateEnabled) {
-                    val vibrator = context.getSystemService(Vibrator::class.java)
-                    vibrator.vibrate(
-                        VibrationEffect.createOneShot(
-                            VIBRATE_DURATION,
-                            VibrationEffect.DEFAULT_AMPLITUDE
-                        )
-                    )
-                }
                 return@addOnSuccessListener
             }
 
@@ -194,15 +176,6 @@ fun processImageProxy(
                     if (zxingResult != null) {
                         Log.d("Scanner", "ZXing decoded Data Matrix: $zxingResult")
                         onScannedValue(zxingResult)
-                        if (vibrateEnabled) {
-                            val vibrator = context.getSystemService(Vibrator::class.java)
-                            vibrator.vibrate(
-                                VibrationEffect.createOneShot(
-                                    VIBRATE_DURATION,
-                                    VibrationEffect.DEFAULT_AMPLITUDE
-                                )
-                            )
-                        }
                         return@addOnSuccessListener
                     } else {
                         Log.d("Scanner", "ZXing fallback: nothing decoded")

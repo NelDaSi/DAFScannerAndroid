@@ -180,16 +180,29 @@ fun CameraScanScreen(
 
     LaunchedEffect(scannedResult) {
         scannedResult?.let { value ->
-            // 1. Debounce rapid-fire scans of the exact same code in Continuous Mode
             val now = System.currentTimeMillis()
+            
+            // 1. Debounce rapid-fire scans of the exact same code in Continuous Mode
             if (continuousScanEnabled && value == lastProcessedCode && (now - lastProcessedTimestamp) < 2000) {
                 scannedResult = null
+                isPaused = false
                 return@let
+            }
+
+            // 2. NEW/VALID SCAN: Trigger vibration feedback here instead of analyzer
+            if (vibrateEnabled) {
+                val vibrator = context.getSystemService(android.os.Vibrator::class.java)
+                vibrator?.vibrate(
+                    android.os.VibrationEffect.createOneShot(
+                        100L,
+                        android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                    )
+                )
             }
 
             lastSerial = extractSerial(value)
 
-            // 2. Flash visual feedback
+            // 3. Flash visual feedback
             if (value != lastFlashedCode) {
                 lastFlashedCode = value
                 flashScope.launch {
@@ -201,7 +214,7 @@ fun CameraScanScreen(
                 }
             }
 
-            // 3. Process the scan based on mode
+            // 4. Process the scan based on mode
             if (isVerifyMode) {
                 val serial = extractSerial(value)
                 if (searchViewModel != null) {
@@ -271,7 +284,11 @@ fun CameraScanScreen(
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
                         appendPendingScan(context, value)
                         sessionScanned[value] = now
+                        
+                        // Give it a small pause so it doesn't immediately scan the same thing again
+                        delay(1500)
                         scannedResult = null
+                        isPaused = false
                     } else {
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
                         navController.popBackStack()
@@ -350,15 +367,21 @@ fun CameraScanScreen(
                             .build())
                         .build().also { it.surfaceProvider = previewView.surfaceProvider }
 
-                    val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
-                        if (!isPaused) {
+                    val analyzer = buildImageAnalyzer(
+                        cameraExecutor = cameraExecutor,
+                        shouldProcess = { !isPaused && scannedResult == null },
+                        onScannedValue = { scannedValue ->
                             if (scannedValue.take(7) in allowedTypes) {
-                                if (scannedResult == null) scannedResult = scannedValue
+                                if (scannedResult == null && !isPaused) {
+                                    isPaused = true
+                                    scannedResult = scannedValue
+                                }
                             } else {
                                 showNotAllowedDialog = true
+                                isPaused = true
                             }
                         }
-                    }
+                    )
                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
                     provider.unbindAll()
                     val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
@@ -390,11 +413,11 @@ fun CameraScanScreen(
 
     if (showNotAllowedDialog) {
         AlertDialog(
-            onDismissRequest = { showNotAllowedDialog = false },
+            onDismissRequest = { showNotAllowedDialog = false; isPaused = false },
             title = { Text(stringResource(R.string.unsupported_code_title)) },
             text = { Text(stringResource(R.string.unsupported_code_text)) },
             confirmButton = {
-                Button(onClick = { showNotAllowedDialog = false }) {
+                Button(onClick = { showNotAllowedDialog = false; isPaused = false }) {
                     Text(stringResource(R.string.ok))
                 }
             }
@@ -826,8 +849,7 @@ private fun appendPendingScan(context: Context, code: String) {
 
 private fun buildImageAnalyzer(
     cameraExecutor: ExecutorService,
-    context: Context,
-    vibrateEnabled: Boolean,
+    shouldProcess: () -> Boolean,
     onScannedValue: (String) -> Unit
 ): ImageAnalysis {
     val options = BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX).build()
@@ -835,7 +857,11 @@ private fun buildImageAnalyzer(
     return ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
         .also { analysis ->
             analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                processImageProxy(barcodeScanner, imageProxy, context, vibrateEnabled, onScannedValue)
+                if (shouldProcess()) {
+                    processImageProxy(barcodeScanner, imageProxy, onScannedValue)
+                } else {
+                    imageProxy.close()
+                }
             }
         }
 }
