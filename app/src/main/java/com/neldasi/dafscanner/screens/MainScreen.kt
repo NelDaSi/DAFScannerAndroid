@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -264,6 +265,25 @@ fun MainScreenContent(
                         }
                         IconButton(onClick = { navController.navigate(SearchListRoute) }) {
                             Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.verify_serials_title))
+                        }
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    val file = onExportToCsv()
+                                    if (file != null) {
+                                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/csv"
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "Export Scanned Items"))
+                                    }
+                                }
+                            },
+                            enabled = scannedParts.isNotEmpty()
+                        ) {
+                            Icon(Icons.Rounded.Share, contentDescription = "Export CSV")
                         }
                         IconButton(onClick = { navController.navigate(SettingsRoute) }) {
                             Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_screen_title))

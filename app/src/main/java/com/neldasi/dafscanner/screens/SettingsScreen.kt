@@ -328,43 +328,43 @@ fun SettingsScreenContent(
                 }
             }
 
-//            item {
-//                Spacer(modifier = Modifier.height(24.dp))
-//                Card(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .clickable { showClearAllDialog = true },
-//                    shape = RoundedCornerShape(24.dp),
-//                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
-//                ) {
-//                    Row(
-//                        modifier = Modifier.padding(20.dp),
-//                        verticalAlignment = Alignment.CenterVertically,
-//                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-//                    ) {
-//                        Icon(
-//                            Icons.Rounded.DeleteOutline,
-//                            contentDescription = null,
-//                            tint = MaterialTheme.colorScheme.error,
-//                            modifier = Modifier.size(28.dp)
-//                        )
-//                        Column(modifier = Modifier.weight(1f)) {
-//                            Text(
-//                                text = stringResource(R.string.settings_clear_all),
-//                                color = MaterialTheme.colorScheme.error,
-//                                fontWeight = FontWeight.Bold,
-//                                style = MaterialTheme.typography.titleMedium
-//                            )
-//                            Text(
-//                                text = stringResource(R.string.settings_clear_all_desc),
-//                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
-//                                style = MaterialTheme.typography.bodySmall
-//                            )
-//                        }
-//                    }
-//                }
-//                Spacer(modifier = Modifier.height(40.dp))
-//            }
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showClearAllDialog = true },
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_clear_all),
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_clear_all_desc),
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(40.dp))
+            }
             item {
                 val packageInfo = remember {
                     try {
