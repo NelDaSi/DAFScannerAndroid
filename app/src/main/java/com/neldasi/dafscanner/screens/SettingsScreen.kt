@@ -28,13 +28,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.AllInclusive
 import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FilterNone
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.ScreenLockRotation
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.AlertDialog
@@ -246,13 +249,13 @@ fun SettingsScreenContent(
                             onCheckedChange = onVibrateChange
                         )
                         SettingsSwitchItem(
-                            icon = Icons.Rounded.SystemUpdateAlt,
+                            icon = Icons.Rounded.FilterNone,
                             title = stringResource(R.string.multi_scan_mode_label),
                             checked = continuousScanEnabled,
                             onCheckedChange = onContinuousScanChange
                         )
                         SettingsSwitchItem(
-                            icon = Icons.Rounded.ScreenLockRotation,
+                            icon = Icons.Rounded.Smartphone,
                             title = stringResource(R.string.screen_always_on_label),
                             checked = screenAlwaysOn,
                             onCheckedChange = onScreenAlwaysOnChange

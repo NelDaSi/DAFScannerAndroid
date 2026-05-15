@@ -517,9 +517,11 @@ fun CameraScanScreenContent(
 
         CameraOverlay(isCameraReady = isCameraReady, errorMessage = cameraError)
 
-        TopScannerBar(
+        LastScanBar(
             serial = lastSerial,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 24.dp, end = 24.dp)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 112.dp, start = 24.dp, end = 24.dp)
         )
 
         AnimatedVisibility(
@@ -689,7 +691,7 @@ fun CameraScanScreenContent(
 }
 
 @Composable
-private fun TopScannerBar(
+private fun LastScanBar(
     serial: String?,
     modifier: Modifier = Modifier
 ) {
@@ -869,7 +871,7 @@ private fun BottomScannerBar(
                 
                 // Continuous Scan
                 ScannerOptionButton(
-                    icon = Icons.Rounded.SystemUpdateAlt,
+                    icon = Icons.Rounded.FilterNone,
                     isActive = continuousScanEnabled,
                     activeColor = MaterialTheme.colorScheme.primary,
                     onClick = onToggleContinuous
@@ -885,7 +887,7 @@ private fun BottomScannerBar(
 
                 // Screen Always On
                 ScannerOptionButton(
-                    icon = Icons.Rounded.ScreenLockRotation,
+                    icon = Icons.Rounded.Smartphone,
                     isActive = screenAlwaysOn,
                     activeColor = MaterialTheme.colorScheme.primary,
                     onClick = onToggleScreenOn
@@ -894,9 +896,9 @@ private fun BottomScannerBar(
 
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.1f), CircleShape)
+                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f), CircleShape)
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(24.dp))
             }
         }
     }
