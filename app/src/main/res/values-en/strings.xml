@@ -141,9 +141,9 @@
     <string name="version_available">Version %1$s is available.</string>
     <string name="update_now">Update Now</string>
     <string name="later">Later</string>
-    <string name="enter_note_placeholder">Enter additional information...</string>
+    <string name="enter_note_placeholder">Enter additional information…</string>
     <string name="theme_daf">DAF Theme</string>
-    <string name="checking_updates">Checking for updates...</string>
+    <string name="checking_updates">Checking for updates…</string>
     <string name="check_for_updates">Check for updates</string>
     <string name="check_github_desc">Check GitHub for a new version</string>
     <string name="converter_desc">Tool to convert serial numbers</string>

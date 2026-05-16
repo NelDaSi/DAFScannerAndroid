@@ -141,9 +141,9 @@
     <string name="version_available">Versie %1$s is beschikbaar.</string>
     <string name="update_now">Nu updaten</string>
     <string name="later">Later</string>
-    <string name="enter_note_placeholder">Voer extra informatie in...</string>
+    <string name="enter_note_placeholder">Voer extra informatie in…</string>
     <string name="theme_daf">DAF Thema</string>
-    <string name="checking_updates">Controleren op updates...</string>
+    <string name="checking_updates">Controleren op updates…</string>
     <string name="check_for_updates">Controleren op updates</string>
     <string name="check_github_desc">Check GitHub voor een nieuwe versie</string>
     <string name="converter_desc">Tool om serienummers te converteren</string>
