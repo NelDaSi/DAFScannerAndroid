@@ -710,6 +710,7 @@ fun CameraScanScreenContent(
             screenAlwaysOn = screenAlwaysOn,
             onToggleScreenOn = onToggleScreenOn,
             onClose = onClose,
+            isVerifyMode = isVerifyMode,
             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
         )
 
@@ -891,6 +892,7 @@ private fun BottomScannerBar(
     screenAlwaysOn: Boolean,
     onToggleScreenOn: () -> Unit,
     onClose: () -> Unit,
+    isVerifyMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -918,13 +920,15 @@ private fun BottomScannerBar(
                     onClick = onToggleTorch
                 )
                 
-                // Continuous Scan
-                ScannerOptionButton(
-                    icon = Icons.Rounded.FilterNone,
-                    isActive = continuousScanEnabled,
-                    activeColor = MaterialTheme.colorScheme.primary,
-                    onClick = onToggleContinuous
-                )
+                // Continuous Scan (Hidden in Verify Mode)
+                if (!isVerifyMode) {
+                    ScannerOptionButton(
+                        icon = Icons.Rounded.FilterNone,
+                        isActive = continuousScanEnabled,
+                        activeColor = MaterialTheme.colorScheme.primary,
+                        onClick = onToggleContinuous
+                    )
+                }
 
                 // Vibrate
                 ScannerOptionButton(

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 data class SearchItem(
@@ -106,6 +107,14 @@ class SearchListViewModel : ViewModel() {
         count < items.size
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val totalCount: StateFlow<Int> = _filteredAndSortedItems
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val scannedCount: StateFlow<Int> = _filteredAndSortedItems
+        .map { items -> items.count { it.scanTimestamp != null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
 
     private val gson = Gson()
@@ -174,21 +183,61 @@ class SearchListViewModel : ViewModel() {
             try {
                 val results = withContext(Dispatchers.IO) {
                     val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext emptyList()
-                    val reader = inputStream.bufferedReader()
+                    val allText = inputStream.bufferedReader().use { it.readText() }
+                    if (allText.isBlank()) return@withContext emptyList()
+
+                    val rows = mutableListOf<List<String>>()
+                    val currentRow = mutableListOf<String>()
+                    val currentField = StringBuilder()
+                    var inQuotes = false
                     
-                    val itemsList = mutableListOf<SearchItem>()
-                    val processedSerials = mutableSetOf<String>()
-                    
-                    val allLines = mutableListOf<String>()
-                    // Read lines into a list first because we need to peek for headers
-                    // For truly massive files, we'd need a more streaming approach for headers too.
-                    reader.useLines { lines ->
-                        lines.forEach { allLines.add(it) }
+                    val firstLine = allText.lineSequence().firstOrNull() ?: ""
+                    val delimiter = if (firstLine.contains(";")) ';' else ','
+
+                    var i = 0
+                    while (i < allText.length) {
+                        val c = allText[i]
+                        if (inQuotes) {
+                            if (c == '"') {
+                                if (i + 1 < allText.length && allText[i+1] == '"') {
+                                    currentField.append('"')
+                                    i++
+                                } else {
+                                    inQuotes = false
+                                }
+                            } else {
+                                currentField.append(c)
+                            }
+                        } else {
+                            when (c) {
+                                '"' -> inQuotes = true
+                                delimiter -> {
+                                    currentRow.add(currentField.toString().trim())
+                                    currentField.setLength(0)
+                                }
+                                '\n', '\r' -> {
+                                    if (currentField.isNotEmpty() || currentRow.isNotEmpty()) {
+                                        currentRow.add(currentField.toString().trim())
+                                        rows.add(ArrayList(currentRow))
+                                        currentRow.clear()
+                                        currentField.setLength(0)
+                                    }
+                                    if (c == '\r' && i + 1 < allText.length && allText[i+1] == '\n') {
+                                        i++
+                                    }
+                                }
+                                else -> currentField.append(c)
+                            }
+                        }
+                        i++
+                    }
+                    if (currentField.isNotEmpty() || currentRow.isNotEmpty()) {
+                        currentRow.add(currentField.toString().trim())
+                        rows.add(currentRow)
                     }
 
-                    if (allLines.isEmpty()) return@withContext emptyList()
+                    if (rows.isEmpty()) return@withContext emptyList()
 
-                    var headerRowIndex = -1
                     var productIdIndex = -1
                     var machineIndex = -1
                     var outputMatIndex = -1
@@ -196,79 +245,52 @@ class SearchListViewModel : ViewModel() {
                     var startTimeIndex = -1
                     var completeDateIndex = -1
                     var completeTimeIndex = -1
+                    var headerRowIndex = -1
 
-                    fun String.normalizeHeader() = this.replace("\n", " ").replace("\r", " ").trim().lowercase()
+                    fun String.normalize() = this.replace("\n", " ").replace("\r", " ").trim().lowercase()
 
-                    // Simple CSV line splitter that handles quotes
-                    fun splitCsvLine(line: String): List<String> {
-                        val result = mutableListOf<String>()
-                        var inQuotes = false
-                        val currentField = StringBuilder()
-                        val delimiter = if (line.contains(";")) ';' else ','
-                        
-                        for (c in line) {
-                            if (c == '"') {
-                                inQuotes = !inQuotes
-                            } else if (c == delimiter && !inQuotes) {
-                                result.add(currentField.toString().trim())
-                                currentField.setLength(0)
-                            } else {
-                                currentField.append(c)
-                            }
-                        }
-                        result.add(currentField.toString().trim())
-                        return result
-                    }
-
-                    // Search for headers in first 50 lines
-                    for (i in 0 until minOf(allLines.size, 50)) {
-                        val row = splitCsvLine(allLines[i])
-                        val normalizedRow = row.map { it.normalizeHeader() }
-
-                        val pIdIdx = normalizedRow.indexOfFirst { it.contains("product id") }
+                    for (rowIdx in 0 until minOf(rows.size, 100)) {
+                        val row = rows[rowIdx]
+                        val normalized = row.map { it.normalize() }
+                        val pIdIdx = normalized.indexOfFirst { it.contains("product id") }
                         if (pIdIdx != -1) {
-                            headerRowIndex = i
+                            headerRowIndex = rowIdx
                             productIdIndex = pIdIdx
-                            machineIndex = normalizedRow.indexOfFirst { it == "machine" }
-                            outputMatIndex = normalizedRow.indexOfFirst { it == "output material" }
-                            startDateIndex = normalizedRow.indexOfFirst { it == "start date" }
-                            startTimeIndex = normalizedRow.indexOfFirst { it == "start time" }
-                            completeDateIndex = normalizedRow.indexOfFirst { it == "complete date" }
-                            completeTimeIndex = normalizedRow.indexOfFirst { it == "complete time" }
+                            machineIndex = normalized.indexOfFirst { it == "machine" }
+                            outputMatIndex = normalized.indexOfFirst { it == "output material" }
+                            startDateIndex = normalized.indexOfFirst { it.contains("start date") }
+                            startTimeIndex = normalized.indexOfFirst { it.contains("start time") }
+                            completeDateIndex = normalized.indexOfFirst { it.contains("complete date") }
+                            completeTimeIndex = normalized.indexOfFirst { it.contains("complete time") }
                             break
                         }
                     }
 
-                    val startIndex = if (headerRowIndex != -1) headerRowIndex + 1 else 1
-                    for (i in startIndex until allLines.size) {
-                        val row = splitCsvLine(allLines[i])
-                        val pIdIdx = if (productIdIndex != -1) productIdIndex else 0
+                    val itemsList = mutableListOf<SearchItem>()
+                    val processedSerials = mutableSetOf<String>()
+                    val startIdx = if (headerRowIndex != -1) headerRowIndex + 1 else 1
 
+                    for (r in startIdx until rows.size) {
+                        val row = rows[r]
+                        val pIdIdx = if (productIdIndex != -1) productIdIndex else 0
                         if (row.size > pIdIdx) {
                             val productId = row[pIdIdx]
                             if (productId.isNotBlank()) {
-                                val hex = productId.takeLast(6)
+                                val hex = if (productId.length >= 6) productId.takeLast(6) else productId
                                 if (!processedSerials.contains(hex)) {
-                                    val typeFromId = if (productId.length >= 7) productId.take(7) else "UNKNOWN"
-
-                                    val machine = if (machineIndex != -1 && row.size > machineIndex) row[machineIndex] else null
-                                    val outputMat = if (outputMatIndex != -1 && row.size > outputMatIndex) row[outputMatIndex] else null
-                                    val startDate = if (startDateIndex != -1 && row.size > startDateIndex) row[startDateIndex] else null
-                                    val startTime = if (startTimeIndex != -1 && row.size > startTimeIndex) row[startTimeIndex] else null
-                                    val completeDate = if (completeDateIndex != -1 && row.size > completeDateIndex) row[completeDateIndex] else null
-                                    val completeTime = if (completeTimeIndex != -1 && row.size > completeTimeIndex) row[completeTimeIndex] else null
-
+                                    val type = if (productId.length >= 7) productId.take(7) else "UNKNOWN"
+                                    
                                     itemsList.add(
                                         SearchItem(
-                                            typeCode = typeFromId,
+                                            typeCode = type,
                                             serialNumber = hex,
                                             decSerial = hexToDec(hex),
-                                            machine = machine,
-                                            outputMaterial = outputMat,
-                                            startDate = startDate,
-                                            startTime = startTime,
-                                            completeDate = completeDate,
-                                            completeTime = completeTime
+                                            machine = getValue(row, machineIndex),
+                                            outputMaterial = getValue(row, outputMatIndex),
+                                            startDate = getValue(row, startDateIndex),
+                                            startTime = getValue(row, startTimeIndex),
+                                            completeDate = getValue(row, completeDateIndex),
+                                            completeTime = getValue(row, completeTimeIndex)
                                         )
                                     )
                                     processedSerials.add(hex)
@@ -281,13 +303,16 @@ class SearchListViewModel : ViewModel() {
                 _searchItems.value = results
                 _visibleCount.value = 50
                 saveToStorage(context)
-                Log.d("SearchListVM", "Loaded ${_searchItems.value.size} serial numbers")
             } catch (e: Exception) {
                 Log.e("SearchListVM", "Error loading CSV", e)
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    private fun getValue(row: List<String>, index: Int): String? {
+        return if (index != -1 && row.size > index) row[index].ifBlank { null } else null
     }
 
     fun checkScannedCode(context: Context, fullCode: String) {

@@ -55,6 +55,8 @@ fun SearchListScreen(
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val hasMoreItems by viewModel.hasMoreItems.collectAsStateWithLifecycle()
+    val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
+    val scannedCount by viewModel.scannedCount.collectAsStateWithLifecycle()
     
     var showDeleteConfirmation by remember { mutableStateOf(value = false) }
     var showShareOptions by remember { mutableStateOf(value = false) }
@@ -111,6 +113,8 @@ fun SearchListScreen(
             }
         },
         hasMoreItems = hasMoreItems,
+        totalCount = totalCount,
+        scannedCount = scannedCount,
         onShareCsv = {
             if (searchItems.isEmpty()) return@SearchListContent
             
@@ -202,6 +206,8 @@ fun SearchListContent(
     onScanClick: () -> Unit,
     onImportCsvClick: () -> Unit,
     hasMoreItems: Boolean,
+    totalCount: Int,
+    scannedCount: Int,
     onShareCsv: () -> Unit,
     onShareSummary: () -> Unit
 ) {
@@ -550,15 +556,38 @@ fun SearchListContent(
                                                             maxLines = 1
                                                         )
                                                     }
+                                                } else if (item.typeCode != "UNKNOWN") {
+                                                    Row(
+                                                        modifier = Modifier.padding(top = 2.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Rounded.Inventory2,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(16.dp),
+                                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                                        )
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(
+                                                            text = item.typeCode,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
                                                 }
 
                                                 val dateTimeText = remember(item) {
                                                     when {
-                                                        item.startDate != null && item.startTime != null && item.completeTime != null -> {
-                                                            if (item.startDate == item.completeDate || item.completeDate == null) {
-                                                                "${item.startDate} ${item.startTime} - ${item.completeTime}"
+                                                        item.startDate != null && item.startTime != null -> {
+                                                            val start = "${item.startDate} ${item.startTime}"
+                                                            if (item.completeTime != null) {
+                                                                if (item.startDate == item.completeDate || item.completeDate == null) {
+                                                                    "$start - ${item.completeTime}"
+                                                                } else {
+                                                                    "$start - ${item.completeDate} ${item.completeTime}"
+                                                                }
                                                             } else {
-                                                                "${item.startDate} ${item.startTime} - ${item.completeDate} ${item.completeTime}"
+                                                                start
                                                             }
                                                         }
                                                         else -> null
@@ -621,9 +650,7 @@ fun SearchListContent(
                         }
 
                         if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
-                            val foundCount = searchItems.count { it.scanTimestamp != null }
-                            val totalCount = searchItems.size
-                            val scannedColor = if (foundCount == totalCount) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
+                            val scannedColor = if (scannedCount == totalCount && totalCount > 0) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
 
                             Surface(
                                 modifier = Modifier
@@ -652,7 +679,7 @@ fun SearchListContent(
                                                 append(stringResource(R.string.progress_label))
                                             }
                                             withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
-                                                append(foundCount.toString())
+                                                append(scannedCount.toString())
                                             }
                                             withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)) {
                                                 append(" / $totalCount")
@@ -734,6 +761,8 @@ fun SearchListEmptyPreview() {
             onScanClick = {},
             onImportCsvClick = {},
             hasMoreItems = false,
+            totalCount = 0,
+            scannedCount = 0,
             onShareCsv = {},
             onShareSummary = {}
         )
@@ -743,45 +772,46 @@ fun SearchListEmptyPreview() {
 @Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SearchListWithDataPreview() {
+    val mockItems = listOf(
+        SearchItem(
+            typeCode = "2261325", 
+            serialNumber = "01C821", 
+            decSerial = "116769", 
+            scanTimestamp = System.currentTimeMillis(), 
+            scanOrder = 1,
+            machine = "19602 (JUNKER CNC)",
+            outputMaterial = "2261325 (MX13 MY21)",
+            startDate = "11-5-2023",
+            startTime = "00:02:09",
+            completeTime = "00:17:07"
+        ),
+        SearchItem(
+            typeCode = "2002046", 
+            serialNumber = "01C822", 
+            decSerial = "116770",
+            machine = "19602 (JUNKER CNC)",
+            outputMaterial = "2002046 (NOKKENAS)",
+            startDate = "11-5-2023",
+            startTime = "00:17:20",
+            completeTime = "00:28:56"
+        ),
+        SearchItem(
+            typeCode = "TYPE789", 
+            serialNumber = "01C823", 
+            decSerial = "116771", 
+            scanTimestamp = System.currentTimeMillis(), 
+            scanOrder = 2,
+            machine = "19602 (JUNKER CNC)",
+            outputMaterial = "TYPE789 (MATERIAL)",
+            startDate = "10-5-2023",
+            startTime = "23:33:17",
+            completeDate = "11-5-2023",
+            completeTime = "00:01:55"
+        )
+    )
     JetpackComposeTheme {
         SearchListContent(
-            searchItems = listOf(
-                SearchItem(
-                    typeCode = "2261325", 
-                    serialNumber = "01C821", 
-                    decSerial = "116769", 
-                    scanTimestamp = System.currentTimeMillis(), 
-                    scanOrder = 1,
-                    machine = "19602 (JUNKER CNC)",
-                    outputMaterial = "2261325 (MX13 MY21)",
-                    startDate = "11-5-2023",
-                    startTime = "00:02:09",
-                    completeTime = "00:17:07"
-                ),
-                SearchItem(
-                    typeCode = "2002046", 
-                    serialNumber = "01C822", 
-                    decSerial = "116770",
-                    machine = "19602 (JUNKER CNC)",
-                    outputMaterial = "2002046 (NOKKENAS)",
-                    startDate = "11-5-2023",
-                    startTime = "00:17:20",
-                    completeTime = "00:28:56"
-                ),
-                SearchItem(
-                    typeCode = "TYPE789", 
-                    serialNumber = "01C823", 
-                    decSerial = "116771", 
-                    scanTimestamp = System.currentTimeMillis(), 
-                    scanOrder = 2,
-                    machine = "19602 (JUNKER CNC)",
-                    outputMaterial = "TYPE789 (MATERIAL)",
-                    startDate = "10-5-2023",
-                    startTime = "23:33:17",
-                    completeDate = "11-5-2023",
-                    completeTime = "00:01:55"
-                )
-            ),
+            searchItems = mockItems,
             searchQuery = "",
             onSearchQueryChange = {},
             sortOption = SearchSortOption.DEFAULT,
@@ -797,6 +827,8 @@ fun SearchListWithDataPreview() {
             onScanClick = {},
             onImportCsvClick = {},
             hasMoreItems = false,
+            totalCount = mockItems.size,
+            scannedCount = mockItems.count { it.scanTimestamp != null },
             onShareCsv = {},
             onShareSummary = {}
         )
