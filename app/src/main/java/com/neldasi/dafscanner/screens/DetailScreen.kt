@@ -442,7 +442,7 @@ private fun ImageSourceItem(icon: androidx.compose.ui.graphics.vector.ImageVecto
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun DetailScreenPreview() {
     val mockNavController = rememberNavController()

@@ -647,7 +647,7 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun MainScreenPreview() {
     val mockNavController = rememberNavController()

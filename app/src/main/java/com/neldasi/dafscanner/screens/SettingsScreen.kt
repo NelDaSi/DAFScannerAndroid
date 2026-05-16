@@ -720,7 +720,7 @@ private fun TypeItem(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SettingsScreenPreview() {
     JetpackComposeTheme {

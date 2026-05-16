@@ -491,7 +491,7 @@ fun SearchListContent(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SearchListEmptyPreview() {
     JetpackComposeTheme {
@@ -511,7 +511,7 @@ fun SearchListEmptyPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SearchListWithDataPreview() {
     JetpackComposeTheme {
@@ -535,7 +535,7 @@ fun SearchListWithDataPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SearchListDeleteConfirmationPreview() {
     JetpackComposeTheme {
@@ -558,7 +558,7 @@ fun SearchListDeleteConfirmationPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SearchListShareOptionsPreview() {
     JetpackComposeTheme {
