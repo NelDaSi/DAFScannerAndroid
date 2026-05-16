@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
@@ -218,7 +216,7 @@ fun CameraScanScreen(
     val sessionScanned = remember { mutableStateMapOf<String, Long>() }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
-    val transformableState = rememberTransformableState { zoomChange, _, _ ->
+    val transformableState = rememberTransformableState { _, zoomChange, _, _ ->
         val newZoom = (zoomRatio * zoomChange).coerceIn(1f, 10f)
         zoomRatio = newZoom
         camera?.cameraControl?.setZoomRatio(newZoom)
@@ -1023,7 +1021,7 @@ fun CameraScanScreenPreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _ -> },
+            transformableState = rememberTransformableState { _, _, _, _ -> },
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
@@ -1042,7 +1040,7 @@ fun CameraScanScreenDuplicatePreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _ -> },
+            transformableState = rememberTransformableState { _, _, _, _ -> },
             verifyResult = ScanFeedback(
                 serial = "01C821",
                 isMatch = false,
