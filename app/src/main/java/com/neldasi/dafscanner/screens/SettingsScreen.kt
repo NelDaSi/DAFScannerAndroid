@@ -137,12 +137,6 @@ fun SettingsScreen(
         onScreenAlwaysOnChange = {
             screenAlwaysOn = it
             prefs.edit { putBoolean("screenAlwaysOn", it) }
-            val activity = (context as? Activity)
-            if (it) {
-                activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            } else {
-                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
         },
         continuousScanEnabled = continuousScanEnabled,
         onContinuousScanChange = {

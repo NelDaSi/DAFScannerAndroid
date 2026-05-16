@@ -177,16 +177,6 @@ fun CameraScanScreen(
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context).toMutableStateList() }
 
-    // Keep screen on logic
-    LaunchedEffect(screenAlwaysOn) {
-        val activity = context as? Activity
-        if (screenAlwaysOn) {
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-    
     var showNotAllowedDialog by remember { mutableStateOf(value = false) }
     var scannedNotAllowedType by remember { mutableStateOf("") }
     var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(value = null) }
@@ -554,7 +544,11 @@ fun CameraScanScreenContent(
                 }
             )
     ) {
-        AndroidView(factory = onAndroidViewFactory, modifier = Modifier.fillMaxSize())
+        AndroidView(
+            factory = onAndroidViewFactory, 
+            modifier = Modifier.fillMaxSize(),
+            update = { view -> view.keepScreenOn = screenAlwaysOn }
+        )
 
         // Flash overlay
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = flashAlpha)))
