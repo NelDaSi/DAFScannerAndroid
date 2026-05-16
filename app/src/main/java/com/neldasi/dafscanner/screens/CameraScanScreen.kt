@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
@@ -125,6 +127,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
+import androidx.compose.ui.platform.LocalLocale
 
 
 data class ScanFeedback(
@@ -654,7 +657,7 @@ fun CameraScanScreenContent(
                             verifyResult.scanTimestamp?.let { ts ->
                                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                                 // Accessing locales through LocalConfiguration ensures recomposition on change
-                                val locale = configuration.locales[0] ?: Locale.getDefault()
+                                val locale = configuration.locales[0] ?: LocalLocale.current.platformLocale
                                 val dateStr = remember(ts, locale) {
                                     SimpleDateFormat("dd MMM, HH:mm", locale).format(Date(ts))
                                 }
