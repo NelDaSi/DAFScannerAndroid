@@ -354,92 +354,182 @@ fun SearchListContent(
                                 border = if (isScanned) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary) 
                                          else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if ((isScanned && item.scanOrder != null)) {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            shape = CircleShape,
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
-                                                    text = item.scanOrder.toString(),
+                                                    stringResource(R.string.hex_prefix),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = item.serialNumber,
+                                                    style = MaterialTheme.typography.headlineMedium,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    stringResource(R.string.dec_prefix),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isScanned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) else Color(0xFF388E3C)
+                                                )
+                                                Text(
+                                                    text = item.decSerial,
                                                     style = MaterialTheme.typography.titleMedium,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color.White
+                                                    color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
                                                 )
                                             }
                                         }
-                                    } else {
-                                        Icon(
-                                            Icons.Rounded.Tag,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                    
-                                    Spacer(Modifier.width(12.dp))
-                                    
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                stringResource(R.string.hex_prefix),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
-                                            )
-                                            Text(
-                                                text = item.serialNumber,
-                                                style = MaterialTheme.typography.titleLarge,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                stringResource(R.string.dec_prefix),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) else Color(0xFF388E3C)
-                                            )
-                                            Text(
-                                                text = item.decSerial,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
-                                            )
-                                        }
-                                    }
-                                    
-                                    Column(
-                                        horizontalAlignment = Alignment.End,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Surface(
-                                            color = if (isScanned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
-                                            shape = RoundedCornerShape(4.dp)
-                                        ) {
-                                            Text(
-                                                text = item.typeCode,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
-                                            )
-                                        }
 
-                                        if (isScanned) {
-                                            Spacer(Modifier.height(4.dp))
+                                        Column(
+                                            horizontalAlignment = Alignment.End,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            if ((isScanned && item.scanOrder != null)) {
+                                                Surface(
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    shape = CircleShape,
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Text(
+                                                            text = item.scanOrder.toString(),
+                                                            style = MaterialTheme.typography.titleMedium,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color.White
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Icon(
+                                                    Icons.Rounded.Tag,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(28.dp)
+                                                )
+                                            }
+
+                                            if (isScanned) {
+                                                Spacer(Modifier.height(4.dp))
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        text = stringResource(R.string.found_at_label),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                                                    )
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(
+                                                        text = timeFormatter.format(Date(item.scanTimestamp)),
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+
+                                    if (!item.machine.isNullOrBlank()) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Rounded.PrecisionManufacturing,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                            Spacer(Modifier.width(6.dp))
                                             Text(
-                                                text = timeFormatter.format(Date(item.scanTimestamp)),
+                                                text = item.machine,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
+                                        }
+                                    }
+
+                                    if (!item.outputMaterial.isNullOrBlank()) {
+                                        Row(
+                                            modifier = Modifier.padding(top = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Inventory2,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = item.outputMaterial,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+
+                                    val dateTimeText = remember(item) {
+                                        when {
+                                            item.startDate != null && item.startTime != null && item.completeTime != null -> {
+                                                if (item.startDate == item.completeDate || item.completeDate == null) {
+                                                    "${item.startDate} ${item.startTime} - ${item.completeTime}"
+                                                } else {
+                                                    "${item.startDate} ${item.startTime} - ${item.completeDate} ${item.completeTime}"
+                                                }
+                                            }
+                                            else -> null
+                                        }
+                                    }
+
+                                    if (dateTimeText != null) {
+                                        Spacer(Modifier.height(6.dp))
+                                        Surface(
+                                            color = Color(0xFFD32F2F).copy(alpha = 0.08f),
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFD32F2F).copy(alpha = 0.2f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Rounded.Schedule,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = Color(0xFFD32F2F)
+                                                )
+                                                Spacer(Modifier.width(6.dp))
+                                                Text(
+                                                    text = stringResource(R.string.production_label),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = Color(0xFFD32F2F)
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(
+                                                    text = dateTimeText,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFFD32F2F)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -522,9 +612,41 @@ fun SearchListWithDataPreview() {
     JetpackComposeTheme {
         SearchListContent(
             searchItems = listOf(
-                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis(), 1),
-                SearchItem("TYPE456", "01C822", "116770"),
-                SearchItem("TYPE789", "01C823", "116771", System.currentTimeMillis(), 2)
+                SearchItem(
+                    typeCode = "2261325", 
+                    serialNumber = "01C821", 
+                    decSerial = "116769", 
+                    scanTimestamp = System.currentTimeMillis(), 
+                    scanOrder = 1,
+                    machine = "19602 (JUNKER CNC)",
+                    outputMaterial = "2261325 (MX13 MY21)",
+                    startDate = "11-5-2023",
+                    startTime = "00:02:09",
+                    completeTime = "00:17:07"
+                ),
+                SearchItem(
+                    typeCode = "2002046", 
+                    serialNumber = "01C822", 
+                    decSerial = "116770",
+                    machine = "19602 (JUNKER CNC)",
+                    outputMaterial = "2002046 (NOKKENAS)",
+                    startDate = "11-5-2023",
+                    startTime = "00:17:20",
+                    completeTime = "00:28:56"
+                ),
+                SearchItem(
+                    typeCode = "TYPE789", 
+                    serialNumber = "01C823", 
+                    decSerial = "116771", 
+                    scanTimestamp = System.currentTimeMillis(), 
+                    scanOrder = 2,
+                    machine = "19602 (JUNKER CNC)",
+                    outputMaterial = "TYPE789 (MATERIAL)",
+                    startDate = "10-5-2023",
+                    startTime = "23:33:17",
+                    completeDate = "11-5-2023",
+                    completeTime = "00:01:55"
+                )
             ),
             showDeleteConfirmation = false,
             onShowDeleteConfirmationChange = {},

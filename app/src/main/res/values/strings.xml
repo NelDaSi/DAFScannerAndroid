@@ -183,6 +183,13 @@
     <string name="next_scan_in">Volgende scan over: %1$d</string>
     <string name="tap_to_skip">Tik overal om nu te scannen</string>
     <string name="add_to_allowed">Toevoegen aan toegestane types</string>
+    <string name="found_at_label">Gevonden om:</string>
+    <string name="production_label">Productie:</string>
+    <string name="machine_label">Machine: %1$s</string>
+    <string name="output_material_label">Materiaal: %1$s</string>
+    <string name="start_label">Start: %1$s %2$s</string>
+    <string name="complete_label">Klaar: %1$s %2$s</string>
+    <string name="date_time_label">Datum: %1$s %2$s - %3$s</string>
     <string name="continuous_scan_on">Multi-scan aan</string>
     <string name="continuous_scan_off">Multi-scan uit</string>
     <string name="vibration_on">Trillen aan</string>

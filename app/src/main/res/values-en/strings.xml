@@ -183,6 +183,13 @@
     <string name="next_scan_in">Next scan in: %1$d</string>
     <string name="tap_to_skip">Tap anywhere to scan now</string>
     <string name="add_to_allowed">Add to Allowed Types</string>
+    <string name="found_at_label">Found at:</string>
+    <string name="production_label">Production:</string>
+    <string name="machine_label">Machine: %1$s</string>
+    <string name="output_material_label">Material: %1$s</string>
+    <string name="start_label">Start: %1$s %2$s</string>
+    <string name="complete_label">Complete: %1$s %2$s</string>
+    <string name="date_time_label">Date: %1$s %2$s - %3$s</string>
     <string name="continuous_scan_on">Multi-scan ON</string>
     <string name="continuous_scan_off">Multi-scan OFF</string>
     <string name="vibration_on">Vibration ON</string>

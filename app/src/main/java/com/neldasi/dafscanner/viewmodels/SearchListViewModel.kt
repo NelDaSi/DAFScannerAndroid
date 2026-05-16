@@ -18,7 +18,13 @@ data class SearchItem(
     val serialNumber: String,
     val decSerial: String,
     val scanTimestamp: Long? = null,
-    val scanOrder: Int? = null
+    val scanOrder: Int? = null,
+    val machine: String? = null,
+    val outputMaterial: String? = null,
+    val startDate: String? = null,
+    val startTime: String? = null,
+    val completeDate: String? = null,
+    val completeTime: String? = null
 )
 
 data class ScanMatchResult(
@@ -127,17 +133,31 @@ class SearchListViewModel : ViewModel() {
 
                 var headerRowIndex = -1
                 var productIdIndex = -1
+                var machineIndex = -1
+                var outputMatIndex = -1
+                var startDateIndex = -1
+                var startTimeIndex = -1
+                var completeDateIndex = -1
+                var completeTimeIndex = -1
 
-                // Search for the "Product ID" header in any row (checking first 50 rows)
+                // Helper to normalize header names
+                fun String.normalizeHeader() = this.replace("\n", " ").replace("\r", " ").trim().lowercase()
+
+                // Search for headers
                 for (rowIdx in 0 until minOf(rows.size, 50)) {
                     val row = rows[rowIdx]
-                    val foundColIdx = row.indexOfFirst { 
-                        it.replace("\n", " ").replace("\r", " ").trim()
-                            .contains("Product ID", ignoreCase = true) 
-                    }
-                    if (foundColIdx != -1) {
+                    val normalizedRow = row.map { it.normalizeHeader() }
+                    
+                    val pIdIdx = normalizedRow.indexOfFirst { it.contains("product id") }
+                    if (pIdIdx != -1) {
                         headerRowIndex = rowIdx
-                        productIdIndex = foundColIdx
+                        productIdIndex = pIdIdx
+                        machineIndex = normalizedRow.indexOfFirst { it == "machine" }
+                        outputMatIndex = normalizedRow.indexOfFirst { it == "output material" }
+                        startDateIndex = normalizedRow.indexOfFirst { it == "start date" }
+                        startTimeIndex = normalizedRow.indexOfFirst { it == "start time" }
+                        completeDateIndex = normalizedRow.indexOfFirst { it == "complete date" }
+                        completeTimeIndex = normalizedRow.indexOfFirst { it == "complete time" }
                         break
                     }
                 }
@@ -149,22 +169,28 @@ class SearchListViewModel : ViewModel() {
                         val row = rows[rowIdx]
                         if (row.size > productIdIndex) {
                             val productId = row[productIdIndex]
-                            if (productId.length >= 13) {
+                            if (productId.isNotBlank()) {
                                 val hex = productId.takeLast(6)
+                                val typeFromId = if (productId.length >= 7) productId.take(7) else "UNKNOWN"
+                                
+                                val machine = if (machineIndex != -1 && row.size > machineIndex) row[machineIndex] else null
+                                val outputMat = if (outputMatIndex != -1 && row.size > outputMatIndex) row[outputMatIndex] else null
+                                val startDate = if (startDateIndex != -1 && row.size > startDateIndex) row[startDateIndex] else null
+                                val startTime = if (startTimeIndex != -1 && row.size > startTimeIndex) row[startTimeIndex] else null
+                                val completeDate = if (completeDateIndex != -1 && row.size > completeDateIndex) row[completeDateIndex] else null
+                                val completeTime = if (completeTimeIndex != -1 && row.size > completeTimeIndex) row[completeTimeIndex] else null
+
                                 results.add(
                                     SearchItem(
-                                        typeCode = productId.take(7),
+                                        typeCode = typeFromId,
                                         serialNumber = hex,
-                                        decSerial = hexToDec(hex)
-                                    )
-                                )
-                            } else if (productId.isNotBlank()) {
-                                val hex = productId.takeLast(6)
-                                results.add(
-                                    SearchItem(
-                                        typeCode = "UNKNOWN",
-                                        serialNumber = hex,
-                                        decSerial = hexToDec(hex)
+                                        decSerial = hexToDec(hex),
+                                        machine = machine,
+                                        outputMaterial = outputMat,
+                                        startDate = startDate,
+                                        startTime = startTime,
+                                        completeDate = completeDate,
+                                        completeTime = completeTime
                                     )
                                 )
                             }
