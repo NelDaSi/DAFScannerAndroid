@@ -324,7 +324,9 @@ fun CameraScanScreen(
                         }
                     } else {
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                        navController.popBackStack()
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
                     }
                 }
             }
@@ -367,7 +369,9 @@ fun CameraScanScreen(
         },
         onClose = {
             searchViewModel?.clearResult()
-            navController.popBackStack()
+            if (navController.previousBackStackEntry != null) {
+                navController.popBackStack()
+            }
         },
         onDismissVerify = {
             verifyResult = null

@@ -104,7 +104,11 @@ fun SearchListScreen(
         onShowDeleteConfirmationChange = { showDeleteConfirmation = it },
         showShareOptions = showShareOptions,
         onShowShareOptionsChange = { showShareOptions = it },
-        onBackClick = { navController.popBackStack() },
+        onBackClick = { 
+            if (navController.previousBackStackEntry != null) {
+                navController.popBackStack()
+            }
+        },
         onClearListClick = { viewModel.clearList(context) },
         onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
         onImportCsvClick = {
