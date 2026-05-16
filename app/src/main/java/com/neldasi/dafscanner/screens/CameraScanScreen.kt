@@ -168,6 +168,7 @@ fun CameraScanScreen(
     var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean("vibrateEnabled", false)) }
     var continuousScanEnabled by remember { mutableStateOf(prefs.getBoolean("continuousScanEnabled", false)) }
     var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean("screenAlwaysOn", false)) }
+    val cameraErrorString = stringResource(R.string.camera_error)
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -432,7 +433,7 @@ fun CameraScanScreen(
                     isCameraReady = true
                     requestCenterFocus(previewView, boundCamera)
                 } catch (_: Exception) {
-                    cameraError = context.getString(R.string.camera_error)
+                    cameraError = cameraErrorString
                     isCameraReady = false
                 }
             }, ContextCompat.getMainExecutor(ctx))
@@ -652,6 +653,7 @@ fun CameraScanScreenContent(
                             
                             verifyResult.scanTimestamp?.let { ts ->
                                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                                // Accessing locales through LocalConfiguration ensures recomposition on change
                                 val locale = configuration.locales[0] ?: Locale.getDefault()
                                 val dateStr = remember(ts, locale) {
                                     SimpleDateFormat("dd MMM, HH:mm", locale).format(Date(ts))
