@@ -202,4 +202,5 @@
     <string name="sort_production_time">Tijd productie</string>
     <string name="sort_default">Standaard</string>
     <string name="search_items">Items zoeken…</string>
+    <string name="loading">Laden…</string>
 </resources>

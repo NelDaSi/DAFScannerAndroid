@@ -202,4 +202,5 @@
     <string name="sort_production_time">Production Time</string>
     <string name="sort_default">Default</string>
     <string name="search_items">Search items…</string>
+    <string name="loading">Loading…</string>
 </resources>
