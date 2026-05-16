@@ -162,6 +162,7 @@ fun MainScreenContent(
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
+    val exportChooserTitle = stringResource(R.string.export_scanned_items)
 
     fun addCodeIfNew(code: String) {
         if (code.isBlank()) return
@@ -275,7 +276,7 @@ fun MainScreenContent(
                                             putExtra(Intent.EXTRA_STREAM, uri)
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
-                                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.export_scanned_items)))
+                                        context.startActivity(Intent.createChooser(intent, exportChooserTitle))
                                     }
                                 }
                             },

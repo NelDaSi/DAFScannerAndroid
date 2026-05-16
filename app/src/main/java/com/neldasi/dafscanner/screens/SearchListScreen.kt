@@ -52,6 +52,16 @@ fun SearchListScreen(
     var showDeleteConfirmation by remember { mutableStateOf(value = false) }
     var showShareOptions by remember { mutableStateOf(value = false) }
 
+    val statusFound = stringResource(R.string.status_found)
+    val statusMissing = stringResource(R.string.status_missing)
+    val shareChooserTitle = stringResource(R.string.share_csv_chooser)
+    val summaryTitle = stringResource(R.string.verification_summary_title)
+    val progressLabel = stringResource(R.string.scanned_progress)
+    val foundSectionLabel = stringResource(R.string.found_section)
+    val missingSectionLabel = stringResource(R.string.missing_section)
+    val summarySubject = stringResource(R.string.verification_summary_subject)
+    val summaryChooserTitle = stringResource(R.string.share_summary_chooser)
+
     LaunchedEffect(Unit) {
         viewModel.initStorage(context)
     }
@@ -101,7 +111,7 @@ fun SearchListScreen(
             val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             searchItems.forEach { item ->
                 val isFound = item.scanTimestamp != null
-                val status = if (isFound) context.getString(R.string.status_found) else context.getString(R.string.status_missing)
+                val status = if (isFound) statusFound else statusMissing
                 val order = item.scanOrder?.toString() ?: "-"
                 val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
                 
@@ -121,7 +131,7 @@ fun SearchListScreen(
                     putExtra(Intent.EXTRA_STREAM, contentUri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_csv_chooser)))
+                context.startActivity(Intent.createChooser(shareIntent, shareChooserTitle))
             } catch (e: Exception) {
                 Log.e("SearchListScreen", "Error sharing CSV file", e)
             }
@@ -135,11 +145,11 @@ fun SearchListScreen(
             
             val sb = StringBuilder()
             val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            sb.append(context.getString(R.string.verification_summary_title) + "\n")
-            sb.append(context.getString(R.string.scanned_progress, foundItems.size, total) + "\n\n")
+            sb.append(summaryTitle + "\n")
+            sb.append(progressLabel.format(foundItems.size, total) + "\n\n")
             
             if (foundItems.isNotEmpty()) {
-                sb.append(context.getString(R.string.found_section, foundItems.size) + "\n")
+                sb.append(foundSectionLabel.format(foundItems.size) + "\n")
                 foundItems.forEach { item ->
                     val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
                     sb.append("${item.scanOrder}. HEX: ${item.serialNumber} (DEC: ${item.decSerial}) - ${item.typeCode} - $time\n")
@@ -148,7 +158,7 @@ fun SearchListScreen(
             }
             
             if (missingItems.isNotEmpty()) {
-                sb.append(context.getString(R.string.missing_section, missingItems.size) + "\n")
+                sb.append(missingSectionLabel.format(missingItems.size) + "\n")
                 missingItems.forEach { item ->
                     sb.append("- HEX: ${item.serialNumber} (DEC: ${item.decSerial}) - ${item.typeCode}\n")
                 }
@@ -156,10 +166,10 @@ fun SearchListScreen(
             
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.verification_summary_subject, foundItems.size, total))
+                putExtra(Intent.EXTRA_SUBJECT, summarySubject.format(foundItems.size, total))
                 putExtra(Intent.EXTRA_TEXT, sb.toString())
             }
-            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_summary_chooser)))
+            context.startActivity(Intent.createChooser(shareIntent, summaryChooserTitle))
         },
     )
 }
