@@ -33,7 +33,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.FileProvider
-import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchItem
@@ -96,11 +95,7 @@ fun SearchListScreen(
         onClearListClick = { viewModel.clearList(context) },
         onScanClick = { navController.navigate(CameraRoute(isVerifyMode = true)) },
         onImportCsvClick = {
-            if (isRunningOnEmulator()) {
-                viewModel.loadMockData(context)
-            } else {
-                csvPickerLauncher.launch("text/comma-separated-values")
-            }
+            csvPickerLauncher.launch("text/comma-separated-values")
         },
         onShareCsv = {
             if (searchItems.isEmpty()) return@SearchListContent

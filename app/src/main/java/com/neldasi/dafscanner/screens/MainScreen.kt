@@ -100,7 +100,6 @@ import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.components.UpdateDialog
 import com.neldasi.dafscanner.data.ScannedPart
 import com.neldasi.dafscanner.extras.ScanStorage
-import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.navigation.DetailRoute
@@ -403,18 +402,14 @@ fun MainScreenContent(
 
                             FloatingActionButton(
                                 onClick = {
-                                    if (isRunningOnEmulator()) {
-                                        // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
-                                        val simulatedCode = "215000188429${(100000..999999).random()}"
-                                        addCodeIfNew(simulatedCode)
-                                    } else if (cameraPermissionState.status.isGranted) {
+                                    if (cameraPermissionState.status.isGranted) {
                                         val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
                                         navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
                                         navController.navigate(CameraRoute(isVerifyMode = false))
                                     }
                                 },
-                                containerColor = if (cameraPermissionState.status.isGranted || isRunningOnEmulator()) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (cameraPermissionState.status.isGranted || isRunningOnEmulator()) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline,
+                                containerColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline,
                                 shape = CircleShape,
                                 elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
                             ) {

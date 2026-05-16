@@ -176,7 +176,6 @@
     <string name="no_match">NO MATCH</string>
     <string name="dismiss">DISMISS</string>
     <string name="dismiss_countdown">DISMISS (%1$d)</string>
-    <string name="emulator_mode_desc">Emulator Mode: Click screen to simulate scan</string>
     <string name="camera_error">Failed to open camera.</string>
     <string name="copy_type">Copy Type</string>
     <string name="type_copied">Type copied to clipboard</string>

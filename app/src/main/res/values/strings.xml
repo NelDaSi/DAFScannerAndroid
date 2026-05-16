@@ -176,7 +176,6 @@
     <string name="no_match">GEEN MATCH</string>
     <string name="dismiss">SLUITEN</string>
     <string name="dismiss_countdown">SLUITEN (%1$d)</string>
-    <string name="emulator_mode_desc">Emulatormodus: Klik op het scherm om scan te simuleren</string>
     <string name="camera_error">Kan camera niet openen.</string>
     <string name="copy_type">Type kopiëren</string>
     <string name="type_copied">Type naar klembord gekopieerd</string>

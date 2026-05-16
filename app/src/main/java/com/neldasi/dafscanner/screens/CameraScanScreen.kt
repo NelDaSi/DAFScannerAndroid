@@ -109,7 +109,6 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.extras.SettingsRepository
-import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
@@ -378,72 +377,55 @@ fun CameraScanScreen(
             continuousCooldown = 0
             scannedResult = null
             isPaused = false
-        },
-        onSimulateScan = {
-            if (!isPaused) {
-                val simulatedCode = "215000188429${(100000..999999).random()}"
-                scannedResult = simulatedCode
-            }
         }
     ) { ctx ->
-        if (isRunningOnEmulator()) {
-            // In emulator, we don't start CameraX to avoid errors/black screen
-            // or we could let it start if it works, but usually it's just a black screen.
-            // Let's just provide a dummy view.
-            android.view.View(ctx)
-        } else {
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-            }
-            previewViewRef = previewView
-            cameraProviderFuture.addListener({
-                try {
-                    val provider = cameraProviderFuture.get()
-                    cameraProvider = provider
-                    val preview = Preview.Builder()
-                        .setResolutionSelector(ResolutionSelector.Builder()
-                            .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_16_9, AspectRatioStrategy.FALLBACK_RULE_AUTO))
-                            .build())
-                        .build().also { it.surfaceProvider = previewView.surfaceProvider }
-
-                    val analyzer = buildImageAnalyzer(
-                        cameraExecutor = cameraExecutor,
-                        shouldProcess = { !isPaused && scannedResult == null },
-                        onScannedValue = { scannedValue ->
-                            val type = scannedValue.take(7)
-                            if (type in allowedTypes) {
-                                if (scannedResult == null && !isPaused) {
-                                    isPaused = true
-                                    scannedResult = scannedValue
-                                }
-                            } else {
-                                scannedNotAllowedType = type
-                                showNotAllowedDialog = true
-                                isPaused = true
-                            }
-                        }
-                    )
-                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                    provider.unbindAll()
-                    val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
-                    camera = boundCamera
-                    try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
-                    try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
-                    isCameraReady = true
-                    requestCenterFocus(previewView, boundCamera)
-                } catch (_: Exception) {
-                    cameraError = cameraErrorString
-                    isCameraReady = false
-                }
-            }, ContextCompat.getMainExecutor(ctx))
-            previewView
+        val previewView = PreviewView(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
         }
-    }
+        previewViewRef = previewView
+        cameraProviderFuture.addListener({
+            try {
+                val provider = cameraProviderFuture.get()
+                cameraProvider = provider
+                val preview = Preview.Builder()
+                    .setResolutionSelector(ResolutionSelector.Builder()
+                        .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_16_9, AspectRatioStrategy.FALLBACK_RULE_AUTO))
+                        .build())
+                    .build().also { it.surfaceProvider = previewView.surfaceProvider }
 
-    if (isRunningOnEmulator()) {
-        isCameraReady = true
+                val analyzer = buildImageAnalyzer(
+                    cameraExecutor = cameraExecutor,
+                    shouldProcess = { !isPaused && scannedResult == null },
+                    onScannedValue = { scannedValue ->
+                        val type = scannedValue.take(7)
+                        if (type in allowedTypes) {
+                            if (scannedResult == null && !isPaused) {
+                                isPaused = true
+                                scannedResult = scannedValue
+                            }
+                        } else {
+                            scannedNotAllowedType = type
+                            showNotAllowedDialog = true
+                            isPaused = true
+                        }
+                    }
+                )
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                provider.unbindAll()
+                val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
+                camera = boundCamera
+                try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
+                try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
+                isCameraReady = true
+                requestCenterFocus(previewView, boundCamera)
+            } catch (_: Exception) {
+                cameraError = cameraErrorString
+                isCameraReady = false
+            }
+        }, ContextCompat.getMainExecutor(ctx))
+        previewView
     }
 
     LaunchedEffect(isCameraReady, camera) {
@@ -544,7 +526,6 @@ fun CameraScanScreenContent(
     onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
     onDismissCooldown: () -> Unit = {},
-    onSimulateScan: () -> Unit = {},
     onAndroidViewFactory: (Context) -> android.view.View,
 ) {
     Box(
@@ -552,9 +533,7 @@ fun CameraScanScreenContent(
             .fillMaxSize()
             .transformable(state = transformableState)
             .then(
-                if (isRunningOnEmulator()) {
-                    Modifier.clickable(onClick = onSimulateScan)
-                } else if (continuousCooldown > 0) {
+                if (continuousCooldown > 0) {
                     Modifier.clickable(onClick = onDismissCooldown)
                 } else {
                     Modifier
@@ -710,20 +689,6 @@ fun CameraScanScreenContent(
                         )
                     }
                 }
-            }
-        }
-
-        if (isRunningOnEmulator()) {
-            Surface(
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 100.dp),
-                color = MaterialTheme.colorScheme.tertiaryContainer,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    stringResource(R.string.emulator_mode_desc),
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.labelLarge
-                )
             }
         }
 
@@ -1025,7 +990,6 @@ fun CameraScanScreenPreview() {
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
-            onSimulateScan = {},
         ) { android.view.View(it) }
     }
 }
@@ -1050,7 +1014,6 @@ fun CameraScanScreenDuplicatePreview() {
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
-            onSimulateScan = {},
         ) { android.view.View(it) }
     }
 }
