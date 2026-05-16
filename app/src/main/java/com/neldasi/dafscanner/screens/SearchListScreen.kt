@@ -54,6 +54,7 @@ fun SearchListScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val hasMoreItems by viewModel.hasMoreItems.collectAsStateWithLifecycle()
     
     var showDeleteConfirmation by remember { mutableStateOf(value = false) }
     var showShareOptions by remember { mutableStateOf(value = false) }
@@ -109,6 +110,7 @@ fun SearchListScreen(
                 csvPickerLauncher.launch("text/comma-separated-values")
             }
         },
+        hasMoreItems = hasMoreItems,
         onShareCsv = {
             if (searchItems.isEmpty()) return@SearchListContent
             
@@ -199,6 +201,7 @@ fun SearchListContent(
     onClearListClick: () -> Unit,
     onScanClick: () -> Unit,
     onImportCsvClick: () -> Unit,
+    hasMoreItems: Boolean,
     onShareCsv: () -> Unit,
     onShareSummary: () -> Unit
 ) {
@@ -602,7 +605,7 @@ fun SearchListContent(
                                 }
                             }
                             
-                            if (searchItems.isNotEmpty()) {
+                            if (hasMoreItems) {
                                 item {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -730,6 +733,7 @@ fun SearchListEmptyPreview() {
             onClearListClick = {},
             onScanClick = {},
             onImportCsvClick = {},
+            hasMoreItems = false,
             onShareCsv = {},
             onShareSummary = {}
         )
@@ -792,6 +796,7 @@ fun SearchListWithDataPreview() {
             onClearListClick = {},
             onScanClick = {},
             onImportCsvClick = {},
+            hasMoreItems = false,
             onShareCsv = {},
             onShareSummary = {}
         )

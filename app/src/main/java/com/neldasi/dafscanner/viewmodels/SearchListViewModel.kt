@@ -99,6 +99,13 @@ class SearchListViewModel : ViewModel() {
         items.take(count)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val hasMoreItems: StateFlow<Boolean> = combine(
+        _filteredAndSortedItems,
+        _visibleCount
+    ) { items, count ->
+        count < items.size
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
 
     private val gson = Gson()
