@@ -124,6 +124,19 @@ fun MainScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
 
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!cameraPermissionState.status.isGranted) {
+            if (cameraPermissionState.status.shouldShowRationale) {
+                showPermissionRationaleDialog = true
+            } else {
+                cameraPermissionState.launchPermissionRequest()
+            }
+        }
+    }
+
     MainScreenContent(
         navController = navController,
         scannedParts = scannedParts,
@@ -132,11 +145,21 @@ fun MainScreen(
         onAddPart = { viewModel.addPart(it) },
         onDeleteSelected = { viewModel.deleteSelected(it) },
         onDeletePart = { viewModel.deletePart(it) },
+        cameraPermissionState = cameraPermissionState,
     ) { viewModel.exportToCsv() }
 
     updateInfo?.let { info ->
         UpdateDialog(info = info, onDismiss = { viewModel.dismissUpdateDialog() })
     }
+
+    PermissionRationaleDialog(
+        show = showPermissionRationaleDialog,
+        onDismiss = { showPermissionRationaleDialog = false },
+        onConfirm = { 
+            showPermissionRationaleDialog = false
+            cameraPermissionState.launchPermissionRequest()
+        }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -149,12 +172,12 @@ fun MainScreenContent(
     onAddPart: (String) -> Unit,
     onDeleteSelected: (List<String>) -> Unit,
     onDeletePart: (ScannedPart) -> Unit,
+    cameraPermissionState: com.google.accompanist.permissions.PermissionState,
     onExportToCsv: suspend () -> File?,
 ) {
     val context = LocalContext.current
     val sharedPreferences = remember { ScanStorage.prefs(context) }
     val selectedCodes = remember { mutableStateListOf<String>() }
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     var showPermissionRationaleDialog by remember { mutableStateOf(value = false) }
@@ -381,15 +404,15 @@ fun MainScreenContent(
                                     val simulatedCode = "215000188429${(100000..999999).random()}"
                                     addCodeIfNew(simulatedCode)
                                 } else {
-                                    when (cameraPermissionState.status) {
-                                        PermissionStatus.Granted -> {
-                                            val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
-                                            navController.navigate(CameraRoute(isVerifyMode = false))
-                                        }
-                                        is PermissionStatus.Denied -> {
-                                            if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
-                                            else cameraPermissionState.launchPermissionRequest()
+                                    if (cameraPermissionState.status.isGranted) {
+                                        val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
+                                        navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
+                                        navController.navigate(CameraRoute(isVerifyMode = false))
+                                    } else {
+                                        if (cameraPermissionState.status.shouldShowRationale) {
+                                            showPermissionRationaleDialog = true
+                                        } else {
+                                            cameraPermissionState.launchPermissionRequest()
                                         }
                                     }
                                 }
@@ -664,6 +687,7 @@ fun MainScreenPreview() {
             onAddPart = {},
             onDeleteSelected = {},
             onDeletePart = {},
+            cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
         ) { null }
     }
 }
