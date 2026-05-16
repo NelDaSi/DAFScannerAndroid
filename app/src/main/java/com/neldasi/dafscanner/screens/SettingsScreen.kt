@@ -4,6 +4,9 @@
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.rounded.Calculate
+import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FilterNone
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -267,6 +271,16 @@ fun SettingsScreenContent(
                             title = stringResource(R.string.screen_always_on_label),
                             checked = screenAlwaysOn,
                             onCheckedChange = onScreenAlwaysOnChange
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.CameraAlt,
+                            title = stringResource(R.string.camera_permission_settings),
+                            subtitle = stringResource(R.string.camera_permission_settings_desc),
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                intent.data = Uri.fromParts("package", context.packageName, null)
+                                context.startActivity(intent)
+                            }
                         )
                         SettingsClickableItem(
                             icon = Icons.Rounded.Calculate,

@@ -348,81 +348,78 @@ fun MainScreenContent(
 
             // Floating Search and Scan Bar
             if (!selectionMode) {
-                Surface(
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
                         .fillMaxWidth()
                         .imePadding(),
-                    shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Surface(
+                        shape = RoundedCornerShape(32.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp,
+                        shadowElevation = 8.dp
                     ) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = onSearchQueryChange,
-                            placeholder = { 
-                                Text(
-                                    stringResource(R.string.search_serials_hint),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                ) 
-                            },
+                        Row(
                             modifier = Modifier
-                                .weight(1f),
-                            shape = RoundedCornerShape(24.dp),
-                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { onSearchQueryChange("") }) {
-                                        Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.clear_search), tint = MaterialTheme.colorScheme.primary)
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = onSearchQueryChange,
+                                placeholder = { 
+                                    Text(
+                                        stringResource(R.string.search_serials_hint),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    ) 
+                                },
+                                modifier = Modifier
+                                    .weight(1f),
+                                shape = RoundedCornerShape(24.dp),
+                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { onSearchQueryChange("") }) {
+                                            Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.clear_search), tint = MaterialTheme.colorScheme.primary)
+                                        }
                                     }
-                                }
-                            },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             )
-                        )
 
-                        FloatingActionButton(
-                            onClick = {
-                                if (isRunningOnEmulator()) {
-                                    // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
-                                    val simulatedCode = "215000188429${(100000..999999).random()}"
-                                    addCodeIfNew(simulatedCode)
-                                } else {
-                                    if (cameraPermissionState.status.isGranted) {
+                            FloatingActionButton(
+                                onClick = {
+                                    if (isRunningOnEmulator()) {
+                                        // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
+                                        val simulatedCode = "215000188429${(100000..999999).random()}"
+                                        addCodeIfNew(simulatedCode)
+                                    } else if (cameraPermissionState.status.isGranted) {
                                         val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
                                         navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
                                         navController.navigate(CameraRoute(isVerifyMode = false))
-                                    } else {
-                                        if (cameraPermissionState.status.shouldShowRationale) {
-                                            showPermissionRationaleDialog = true
-                                        } else {
-                                            cameraPermissionState.launchPermissionRequest()
-                                        }
                                     }
-                                }
-                            },
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary,
-                            shape = CircleShape,
-                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                        ) {
-                            Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.scan))
+                                },
+                                containerColor = if (cameraPermissionState.status.isGranted || isRunningOnEmulator()) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (cameraPermissionState.status.isGranted || isRunningOnEmulator()) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline,
+                                shape = CircleShape,
+                                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                            ) {
+                                Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.scan))
+                            }
                         }
                     }
                 }

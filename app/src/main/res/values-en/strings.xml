@@ -40,6 +40,9 @@
     <string name="scan">Scan</string>
     <string name="no_items_scanned">No items scanned yet.</string>
     <string name="camera_permission_required">Camera permission is required to scan items.</string>
+    <string name="camera_permission_denied">Camera permission was denied. Scanning is disabled.</string>
+    <string name="camera_permission_settings">Manage Camera Permission</string>
+    <string name="camera_permission_settings_desc">Adjust camera permission in system settings</string>
     <string name="scanned_item">Scanned item</string>
     <string name="unknown">Unknown</string>
 

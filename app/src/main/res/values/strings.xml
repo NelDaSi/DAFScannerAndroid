@@ -40,6 +40,9 @@
     <string name="scan">Scannen</string>
     <string name="no_items_scanned">Nog geen items gescand.</string>
     <string name="camera_permission_required">Camera machtiging vereist om items te scannen.</string>
+    <string name="camera_permission_denied">Camera machtiging is geweigerd. Scannen is niet mogelijk.</string>
+    <string name="camera_permission_settings">Camera machtiging beheren</string>
+    <string name="camera_permission_settings_desc">Pas de camera machtiging aan in de systeeminstellingen</string>
     <string name="scanned_item">Gescand item</string>
     <string name="unknown">Onbekend</string>
 
