@@ -44,8 +44,8 @@
     <string name="unknown">Onbekend</string>
 
     <!-- Clear-all confirmation -->
-    <string name="clear_confirm_title">Bevestig alles wissen</string>
-    <string name="clear_confirm_text">Weet je zeker dat je alle gescande items wilt verwijderen?</string>
+    <string name="clear_confirm_title">App resetten?</string>
+    <string name="clear_confirm_text">Weet je zeker dat je alle gegevens, instellingen en afbeeldingen wilt wissen? Dit kan niet ongedaan worden gemaakt.</string>
 
     <!-- Common buttons -->
     <string name="yes">Ja</string>
@@ -60,6 +60,9 @@
     <string name="about_title">Over</string>
     <string name="about_text">Versie: %1$s</string>
     <string name="ok">OK</string>
+    <string name="save">Opslaan</string>
+    <string name="rotate">Draaien</string>
+    <string name="edit_image">Afbeelding bewerken</string>
 
     <!-- Permission rationale dialog -->
     <string name="camera_permission_title">Camera machtiging vereist</string>
@@ -102,8 +105,8 @@
     <string name="flashlight_off_desc">Zaklamp uit</string>
     <string name="empty_title">Leeg</string>
     <string name="empty_subtitle">Druk op de scan-knop om te beginnen</string>
-    <string name="settings_clear_all">Alle gescande items wissen</string>
-    <string name="settings_clear_all_desc">Verwijder alle opgeslagen scans van het apparaat</string>
+    <string name="settings_clear_all">App resetten</string>
+    <string name="settings_clear_all_desc">Wis alle gegevens, instellingen en afbeeldingen (fabrieksinstellingen)</string>
 
     <string name="theme_setting_title">App thema</string>
     <string name="theme_light">Licht</string>
@@ -127,4 +130,49 @@
     <string name="share_summary_chooser">Samenvatting delen</string>
     <string name="verification_summary_title">DAF Scanner - Verificatieoverzicht</string>
     <string name="verification_summary_subject">Verificatieoverzicht - %1$d/%2$d</string>
+
+    <string name="converter_title">HEX <![CDATA[<->]]> DEC Converter</string>
+    <string name="hex_label">HEX Waarde</string>
+    <string name="hex_placeholder">bijv. 01C821</string>
+    <string name="dec_label">DEC Waarde</string>
+    <string name="dec_placeholder">bijv. 116769</string>
+    <string name="close">Sluiten</string>
+    <string name="new_update_available">Nieuwe update beschikbaar!</string>
+    <string name="version_available">Versie %1$s is beschikbaar.</string>
+    <string name="update_now">Nu updaten</string>
+    <string name="later">Later</string>
+    <string name="enter_note_placeholder">Voer extra informatie in...</string>
+    <string name="theme_daf">DAF Thema</string>
+    <string name="checking_updates">Controleren op updates...</string>
+    <string name="check_for_updates">Controleren op updates</string>
+    <string name="check_github_desc">Check GitHub voor een nieuwe versie</string>
+    <string name="converter_desc">Tool om serienummers te converteren</string>
+
+    <string name="status_found">GEVONDEN</string>
+    <string name="status_missing">ONTBREEKT</string>
+    <string name="found_section">✅ GEVONDEN (%1$d)</string>
+    <string name="missing_section">❌ ONTBREEKT (%1$d)</string>
+    <string name="export_scanned_items">Gescande items exporteren</string>
+    <string name="select_all">Alles selecteren</string>
+    <string name="clear_search">Zoekopdracht wissen</string>
+    <string name="export_csv">CSV Exporteren</string>
+    <string name="hex_prefix">HEX: </string>
+    <string name="dec_prefix">DEC: </string>
+    <string name="has_note">Heeft notitie</string>
+    <string name="serial_hex">Serie (HEX)</string>
+    <string name="serial_dec">Serie (DEC)</string>
+    <string name="already_scanned">ALREEDS GESCAND</string>
+    <string name="first_seen">Eerste keer: %1$s</string>
+    <string name="duplicate_code">DUBBELE CODE</string>
+    <string name="match_found">MATCH GEVONDEN</string>
+    <string name="no_match">GEEN MATCH</string>
+    <string name="dismiss">SLUITEN</string>
+    <string name="dismiss_countdown">SLUITEN (%1$d)</string>
+    <string name="emulator_mode_desc">Emulatormodus: Klik op het scherm om scan te simuleren</string>
+    <string name="camera_error">Kan camera niet openen.</string>
+    <string name="copy_type">Type kopiëren</string>
+    <string name="type_copied">Type naar klembord gekopieerd</string>
+    <string name="next_scan_in">Volgende scan over: %1$d</string>
+    <string name="tap_to_skip">Tik overal om nu te scannen</string>
+    <string name="add_to_allowed">Toevoegen aan toegestane types</string>
 </resources>
