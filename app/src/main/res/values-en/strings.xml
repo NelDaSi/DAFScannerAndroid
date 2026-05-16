@@ -196,4 +196,10 @@
     <string name="vibration_off">Vibration OFF</string>
     <string name="screen_always_on_on">Screen always ON enabled</string>
     <string name="screen_always_on_off">Screen always ON disabled</string>
+    <string name="sort_machine">Machine</string>
+    <string name="sort_type">Type</string>
+    <string name="sort_found_time">Found Time</string>
+    <string name="sort_production_time">Production Time</string>
+    <string name="sort_default">Default</string>
+    <string name="search_items">Search items…</string>
 </resources>

@@ -9,7 +9,11 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.neldasi.dafscanner.extras.parseScannedCode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 
@@ -27,6 +31,14 @@ data class SearchItem(
     val completeTime: String? = null
 )
 
+enum class SearchSortOption {
+    DEFAULT,
+    MACHINE,
+    TYPE,
+    FOUND_TIME,
+    PRODUCTION_TIME
+}
+
 data class ScanMatchResult(
     val serial: String,
     val isMatch: Boolean,
@@ -36,10 +48,55 @@ class SearchListViewModel : ViewModel() {
     private val _searchItems = MutableStateFlow<List<SearchItem>>(emptyList())
     val searchItems = _searchItems.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    private val _sortOption = MutableStateFlow(SearchSortOption.DEFAULT)
+    val sortOption = _sortOption.asStateFlow()
+
+    val filteredItems: StateFlow<List<SearchItem>> = combine(
+        _searchItems,
+        _searchQuery,
+        _sortOption
+    ) { items, query, sort ->
+        val filtered = if (query.isBlank()) {
+            items
+        } else {
+            val q = query.lowercase()
+            items.filter { item ->
+                item.serialNumber.lowercase().contains(q) ||
+                item.decSerial.lowercase().contains(q) ||
+                item.typeCode.lowercase().contains(q) ||
+                (item.machine?.lowercase()?.contains(q) ?: false) ||
+                (item.outputMaterial?.lowercase()?.contains(q) ?: false) ||
+                (item.startDate?.lowercase()?.contains(q) ?: false) ||
+                (item.startTime?.lowercase()?.contains(q) ?: false)
+            }
+        }
+
+        when (sort) {
+            SearchSortOption.DEFAULT -> filtered
+            SearchSortOption.MACHINE -> filtered.sortedBy { it.machine ?: "" }
+            SearchSortOption.TYPE -> filtered.sortedBy { it.typeCode }
+            SearchSortOption.FOUND_TIME -> filtered.sortedByDescending { it.scanTimestamp ?: 0L }
+            SearchSortOption.PRODUCTION_TIME -> filtered.sortedByDescending { 
+                "${it.startDate ?: ""} ${it.startTime ?: ""}" 
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
 
     private val gson = Gson()
     private val prefKey = "search_list_data"
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun onSortOptionChange(option: SearchSortOption) {
+        _sortOption.value = option
+    }
 
     fun initStorage(context: Context) {
         if (_searchItems.value.isNotEmpty()) return

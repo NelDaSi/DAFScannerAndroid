@@ -5,13 +5,15 @@ import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,27 +21,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.FileProvider
+import com.neldasi.dafscanner.R
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchItem
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
-import androidx.compose.ui.res.stringResource
-import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.viewmodels.SearchSortOption
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SearchListScreen(
@@ -47,7 +50,10 @@ fun SearchListScreen(
     viewModel: SearchListViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val searchItems by viewModel.searchItems.collectAsStateWithLifecycle()
+    val searchItems by viewModel.filteredItems.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
+    
     var showDeleteConfirmation by remember { mutableStateOf(value = false) }
     var showShareOptions by remember { mutableStateOf(value = false) }
 
@@ -65,8 +71,6 @@ fun SearchListScreen(
         viewModel.initStorage(context)
     }
 
-    Log.d("SearchListScreen", "UI Update: ${searchItems.count { it.scanTimestamp != null }} / ${searchItems.size}")
-
     val csvPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
@@ -74,7 +78,6 @@ fun SearchListScreen(
     }
 
     LaunchedEffect(searchItems) {
-        // Keeping this for non-shared VM cases or as backup
         navController.currentBackStackEntry?.savedStateHandle?.set("SERIAL_LIST", searchItems.map { it.serialNumber })
         navController.currentBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", searchItems.filter { it.scanTimestamp != null }.map { it.serialNumber })
     }
@@ -87,6 +90,10 @@ fun SearchListScreen(
 
     SearchListContent(
         searchItems = searchItems,
+        searchQuery = searchQuery,
+        onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        sortOption = sortOption,
+        onSortOptionChange = { viewModel.onSortOptionChange(it) },
         showDeleteConfirmation = showDeleteConfirmation,
         onShowDeleteConfirmationChange = { showDeleteConfirmation = it },
         showShareOptions = showShareOptions,
@@ -173,6 +180,10 @@ fun SearchListScreen(
 @Composable
 fun SearchListContent(
     searchItems: List<SearchItem>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    sortOption: SearchSortOption,
+    onSortOptionChange: (SearchSortOption) -> Unit,
     showDeleteConfirmation: Boolean,
     onShowDeleteConfirmationChange: (Boolean) -> Unit,
     showShareOptions: Boolean,
@@ -185,6 +196,7 @@ fun SearchListContent(
     onShareSummary: () -> Unit
 ) {
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+    var showSortMenu by remember { mutableStateOf(false) }
 
     if (showDeleteConfirmation) {
         AlertDialog(
@@ -271,7 +283,22 @@ fun SearchListContent(
                     }
                 },
                 actions = {
-                    if (searchItems.isNotEmpty()) {
+                    if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort")
+                            }
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false }
+                            ) {
+                                SortMenuItem(SearchSortOption.DEFAULT, R.string.sort_default, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.MACHINE, R.string.sort_machine, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.TYPE, R.string.sort_type, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.FOUND_TIME, R.string.sort_found_time, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.PRODUCTION_TIME, R.string.sort_production_time, sortOption, onSortOptionChange) { showSortMenu = false }
+                            }
+                        }
                         IconButton(onClick = { onShowShareOptionsChange(true) }) {
                             Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share))
                         }
@@ -283,7 +310,7 @@ fun SearchListContent(
             )
         },
         floatingActionButton = {
-            if (searchItems.isNotEmpty()) {
+            if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = onScanClick,
                     containerColor = MaterialTheme.colorScheme.secondary,
@@ -294,55 +321,80 @@ fun SearchListContent(
             }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (searchItems.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.FileUpload,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        stringResource(R.string.no_list_loaded),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        stringResource(R.string.import_csv_instruction),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    Button(
-                        onClick = onImportCsvClick,
-                        shape = RoundedCornerShape(12.dp)
+            if (searchItems.isEmpty() && searchQuery.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Rounded.FileOpen, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.import_csv))
+                        Icon(
+                            Icons.Rounded.FileUpload,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            stringResource(R.string.no_list_loaded),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            stringResource(R.string.import_csv_instruction),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Button(
+                            onClick = onImportCsvClick,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Rounded.FileOpen, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.import_csv))
+                        }
                     }
                 }
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text(stringResource(R.string.search_items)) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(Icons.Rounded.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+
+                Box(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
+                        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(searchItems) { item ->
+                        items(searchItems, key = { it.serialNumber }) { item ->
                             val isScanned = item.scanTimestamp != null
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -357,178 +409,185 @@ fun SearchListContent(
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        verticalAlignment = Alignment.Top
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    stringResource(R.string.hex_prefix),
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
-                                                )
-                                                Text(
-                                                    text = item.serialNumber,
-                                                    style = MaterialTheme.typography.headlineMedium,
-                                                    fontWeight = FontWeight.Black,
-                                                    color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
-                                                )
-                                            }
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    stringResource(R.string.dec_prefix),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isScanned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) else Color(0xFF388E3C)
-                                                )
-                                                Text(
-                                                    text = item.decSerial,
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
-                                                )
-                                            }
-                                        }
-
-                                        Column(
-                                            horizontalAlignment = Alignment.End,
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            if ((isScanned && item.scanOrder != null)) {
-                                                Surface(
-                                                    color = MaterialTheme.colorScheme.secondary,
-                                                    shape = CircleShape,
-                                                    modifier = Modifier.size(32.dp)
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                                         Text(
-                                                            text = item.scanOrder.toString(),
+                                                            stringResource(R.string.hex_prefix),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = if (isScanned) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                                                        )
+                                                        Text(
+                                                            text = item.serialNumber,
+                                                            style = MaterialTheme.typography.headlineMedium,
+                                                            fontWeight = FontWeight.Black,
+                                                            color = if (isScanned) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text(
+                                                            stringResource(R.string.dec_prefix),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = if (isScanned) MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f) else Color(0xFF388E3C)
+                                                        )
+                                                        Text(
+                                                            text = item.decSerial,
                                                             style = MaterialTheme.typography.titleMedium,
                                                             fontWeight = FontWeight.Bold,
-                                                            color = Color.White
+                                                            color = if (isScanned) Color(0xFFD32F2F).copy(alpha = 0.8f) else MaterialTheme.colorScheme.secondary
                                                         )
                                                     }
                                                 }
-                                            } else {
-                                                Icon(
-                                                    Icons.Rounded.Tag,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(28.dp)
-                                                )
+
+                                                Column(
+                                                    horizontalAlignment = Alignment.End,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    if ((isScanned && item.scanOrder != null)) {
+                                                        Surface(
+                                                            color = MaterialTheme.colorScheme.secondary,
+                                                            shape = CircleShape,
+                                                            modifier = Modifier.size(32.dp)
+                                                        ) {
+                                                            Box(contentAlignment = Alignment.Center) {
+                                                                Text(
+                                                                    text = item.scanOrder.toString(),
+                                                                    style = MaterialTheme.typography.titleMedium,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = Color.White
+                                                                )
+                                                            }
+                                                        }
+                                                    } else {
+                                                        Icon(
+                                                            Icons.Rounded.Tag,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.secondary,
+                                                            modifier = Modifier.size(28.dp)
+                                                        )
+                                                    }
+
+                                                    if (isScanned) {
+                                                        Spacer(Modifier.height(4.dp))
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Text(
+                                                                text = stringResource(R.string.found_at_label),
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                                                            )
+                                                            Spacer(Modifier.width(4.dp))
+                                                            Text(
+                                                                text = timeFormatter.format(Date(item.scanTimestamp)),
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                             }
 
-                                            if (isScanned) {
-                                                Spacer(Modifier.height(4.dp))
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                thickness = 0.5.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant
+                                            )
+
+                                            if (!item.machine.isNullOrBlank()) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Text(
-                                                        text = stringResource(R.string.found_at_label),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                                                    Icon(
+                                                        Icons.Rounded.PrecisionManufacturing,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
                                                     )
-                                                    Spacer(Modifier.width(4.dp))
+                                                    Spacer(Modifier.width(6.dp))
                                                     Text(
-                                                        text = timeFormatter.format(Date(item.scanTimestamp)),
+                                                        text = item.machine,
                                                         style = MaterialTheme.typography.bodyMedium,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                 }
                                             }
-                                        }
-                                    }
 
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant
-                                    )
-
-                                    if (!item.machine.isNullOrBlank()) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                Icons.Rounded.PrecisionManufacturing,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(
-                                                text = item.machine,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    }
-
-                                    if (!item.outputMaterial.isNullOrBlank()) {
-                                        Row(
-                                            modifier = Modifier.padding(top = 2.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                Icons.Rounded.Inventory2,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Text(
-                                                text = item.outputMaterial,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    }
-
-                                    val dateTimeText = remember(item) {
-                                        when {
-                                            item.startDate != null && item.startTime != null && item.completeTime != null -> {
-                                                if (item.startDate == item.completeDate || item.completeDate == null) {
-                                                    "${item.startDate} ${item.startTime} - ${item.completeTime}"
-                                                } else {
-                                                    "${item.startDate} ${item.startTime} - ${item.completeDate} ${item.completeTime}"
+                                            if (!item.outputMaterial.isNullOrBlank()) {
+                                                Row(
+                                                    modifier = Modifier.padding(top = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        Icons.Rounded.Inventory2,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp),
+                                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                                    )
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Text(
+                                                        text = item.outputMaterial,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1
+                                                    )
                                                 }
                                             }
-                                            else -> null
-                                        }
-                                    }
 
-                                    if (dateTimeText != null) {
-                                        Spacer(Modifier.height(6.dp))
-                                        Surface(
-                                            color = Color(0xFFD32F2F).copy(alpha = 0.08f),
-                                            shape = RoundedCornerShape(4.dp),
-                                            border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFD32F2F).copy(alpha = 0.2f))
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    Icons.Rounded.Schedule,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(14.dp),
-                                                    tint = Color(0xFFD32F2F)
-                                                )
-                                                Spacer(Modifier.width(6.dp))
-                                                Text(
-                                                    text = stringResource(R.string.production_label),
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    color = Color(0xFFD32F2F)
-                                                )
-                                                Spacer(Modifier.width(4.dp))
-                                                Text(
-                                                    text = dateTimeText,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFFD32F2F)
-                                                )
+                                            val dateTimeText = remember(item) {
+                                                when {
+                                                    item.startDate != null && item.startTime != null && item.completeTime != null -> {
+                                                        if (item.startDate == item.completeDate || item.completeDate == null) {
+                                                            "${item.startDate} ${item.startTime} - ${item.completeTime}"
+                                                        } else {
+                                                            "${item.startDate} ${item.startTime} - ${item.completeDate} ${item.completeTime}"
+                                                        }
+                                                    }
+                                                    else -> null
+                                                }
+                                            }
+
+                                            if (dateTimeText != null) {
+                                                Spacer(Modifier.height(6.dp))
+                                                Surface(
+                                                    color = Color(0xFFD32F2F).copy(alpha = 0.08f),
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFD32F2F).copy(alpha = 0.2f))
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Rounded.Schedule,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(14.dp),
+                                                            tint = Color(0xFFD32F2F)
+                                                        )
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(
+                                                            text = stringResource(R.string.production_label),
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            color = Color(0xFFD32F2F)
+                                                        )
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text(
+                                                            text = dateTimeText,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color(0xFFD32F2F)
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -536,54 +595,76 @@ fun SearchListContent(
                             }
                         }
                     }
-                }
-            }
 
-            if (searchItems.isNotEmpty()) {
-                val foundCount = searchItems.count { it.scanTimestamp != null }
-                val totalCount = searchItems.size
-                val scannedColor = if (foundCount == totalCount) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
+                    if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
+                        val foundCount = searchItems.count { it.scanTimestamp != null }
+                        val totalCount = searchItems.size
+                        val scannedColor = if (foundCount == totalCount) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
 
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Rounded.BarChart,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Normal)) {
-                                    append(stringResource(R.string.progress_label))
-                                }
-                                withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
-                                    append(foundCount.toString())
-                                }
-                                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)) {
-                                    append(" / $totalCount")
-                                }
-                            },
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 8.dp,
+                            shadowElevation = 8.dp,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Rounded.BarChart,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = buildAnnotatedString {
+                                        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Normal)) {
+                                            append(stringResource(R.string.progress_label))
+                                        }
+                                        withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
+                                            append(foundCount.toString())
+                                        }
+                                        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)) {
+                                            append(" / $totalCount")
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SortMenuItem(
+    option: SearchSortOption,
+    labelRes: Int,
+    currentOption: SearchSortOption,
+    onOptionChange: (SearchSortOption) -> Unit,
+    onDismiss: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(stringResource(labelRes)) },
+        onClick = {
+            onOptionChange(option)
+            onDismiss()
+        },
+        trailingIcon = {
+            if (currentOption == option) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+    )
 }
 
 @Preview(showBackground = true, apiLevel = 36)
@@ -592,6 +673,10 @@ fun SearchListEmptyPreview() {
     JetpackComposeTheme {
         SearchListContent(
             searchItems = emptyList(),
+            searchQuery = "",
+            onSearchQueryChange = {},
+            sortOption = SearchSortOption.DEFAULT,
+            onSortOptionChange = {},
             showDeleteConfirmation = false,
             onShowDeleteConfirmationChange = {},
             showShareOptions = false,
@@ -648,55 +733,13 @@ fun SearchListWithDataPreview() {
                     completeTime = "00:01:55"
                 )
             ),
+            searchQuery = "",
+            onSearchQueryChange = {},
+            sortOption = SearchSortOption.DEFAULT,
+            onSortOptionChange = {},
             showDeleteConfirmation = false,
             onShowDeleteConfirmationChange = {},
             showShareOptions = false,
-            onShowShareOptionsChange = {},
-            onBackClick = {},
-            onClearListClick = {},
-            onScanClick = {},
-            onImportCsvClick = {},
-            onShareCsv = {},
-            onShareSummary = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, apiLevel = 36)
-@Composable
-fun SearchListDeleteConfirmationPreview() {
-    JetpackComposeTheme {
-        SearchListContent(
-            searchItems = listOf(
-                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis(), 1),
-                SearchItem("TYPE456", "01C822", "116770")
-            ),
-            showDeleteConfirmation = true,
-            onShowDeleteConfirmationChange = {},
-            showShareOptions = false,
-            onShowShareOptionsChange = {},
-            onBackClick = {},
-            onClearListClick = {},
-            onScanClick = {},
-            onImportCsvClick = {},
-            onShareCsv = {},
-            onShareSummary = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, apiLevel = 36)
-@Composable
-fun SearchListShareOptionsPreview() {
-    JetpackComposeTheme {
-        SearchListContent(
-            searchItems = listOf(
-                SearchItem("TYPE123", "01C821", "116769", System.currentTimeMillis(), 1),
-                SearchItem("TYPE456", "01C822", "116770")
-            ),
-            showDeleteConfirmation = false,
-            onShowDeleteConfirmationChange = {},
-            showShareOptions = true,
             onShowShareOptionsChange = {},
             onBackClick = {},
             onClearListClick = {},
