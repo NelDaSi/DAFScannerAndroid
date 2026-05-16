@@ -50,6 +50,7 @@ private val DafColorScheme = lightColorScheme(
 @Composable
 fun JetpackComposeTheme(
     theme: String = "DAF",
+    fontSizeScale: Float = 1.0f,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
@@ -74,7 +75,7 @@ fun JetpackComposeTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = getTypography(fontSizeScale),
         content = content
     )
 }

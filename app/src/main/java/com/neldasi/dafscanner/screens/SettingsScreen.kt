@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.TextFormat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -106,6 +107,7 @@ fun SettingsScreen(
     var screenAlwaysOn by remember { mutableStateOf(value = false) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
     var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
+    var fontSizeScale by remember { mutableStateOf(SettingsRepository.getFontSizeScale(context)) }
 
     val updateInfo by viewModel.updateInfo.collectAsState()
     val isCheckingUpdates by viewModel.isCheckingUpdates.collectAsState()
@@ -152,6 +154,11 @@ fun SettingsScreen(
             currentTheme = it
             SettingsRepository.setTheme(context, it)
         },
+        fontSizeScale = fontSizeScale,
+        onFontSizeChange = {
+            fontSizeScale = it
+            SettingsRepository.setFontSizeScale(context, it)
+        },
         onClearAllData = {
             viewModel.clearAllData()
             // Reset local UI state to default values immediately
@@ -159,6 +166,7 @@ fun SettingsScreen(
             screenAlwaysOn = false
             continuousScanEnabled = false
             currentTheme = "DAF"
+            fontSizeScale = 1.0f
         },
         isCheckingUpdates = isCheckingUpdates,
         updateInfo = updateInfo,
@@ -178,6 +186,8 @@ fun SettingsScreenContent(
     onContinuousScanChange: (Boolean) -> Unit,
     currentTheme: String,
     onThemeChange: (String) -> Unit,
+    fontSizeScale: Float,
+    onFontSizeChange: (Float) -> Unit,
     onClearAllData: () -> Unit,
     isCheckingUpdates: Boolean,
     updateInfo: UpdateManager.ReleaseInfo?,
@@ -198,6 +208,7 @@ fun SettingsScreenContent(
     var newType by remember { mutableStateOf(value = "") }
     var showClearAllDialog by remember { mutableStateOf(value = false) }
     var showThemeDialog by remember { mutableStateOf(value = false) }
+    var showFontSizeDialog by remember { mutableStateOf(value = false) }
     var showConverterDialog by remember { mutableStateOf(value = false) }
 
     Scaffold(
@@ -253,6 +264,16 @@ fun SettingsScreenContent(
                                 else -> stringResource(R.string.theme_system)
                             },
                             onClick = { showThemeDialog = true }
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.TextFormat,
+                            title = stringResource(R.string.font_size_label),
+                            subtitle = when (fontSizeScale) {
+                                0.85f -> stringResource(R.string.font_size_small)
+                                1.15f -> stringResource(R.string.font_size_large)
+                                else -> stringResource(R.string.font_size_medium)
+                            },
+                            onClick = { showFontSizeDialog = true }
                         )
                         SettingsSwitchItem(
                             icon = Icons.Rounded.NotificationsActive,
@@ -476,6 +497,37 @@ fun SettingsScreenContent(
                 },
                 dismissButton = {
                     TextButton(onClick = { showClearAllDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showFontSizeDialog) {
+            AlertDialog(
+                onDismissRequest = { showFontSizeDialog = false },
+                title = { Text(stringResource(R.string.font_size_label), fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ThemeOption(
+                            title = stringResource(R.string.font_size_small),
+                            selected = fontSizeScale == 0.85f,
+                            onClick = { onFontSizeChange(0.85f); showFontSizeDialog = false }
+                        )
+                        ThemeOption(
+                            title = stringResource(R.string.font_size_medium),
+                            selected = fontSizeScale == 1.0f,
+                            onClick = { onFontSizeChange(1.0f); showFontSizeDialog = false }
+                        )
+                        ThemeOption(
+                            title = stringResource(R.string.font_size_large),
+                            selected = fontSizeScale == 1.15f,
+                            onClick = { onFontSizeChange(1.15f); showFontSizeDialog = false }
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFontSizeDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 }
@@ -746,6 +798,8 @@ fun SettingsScreenPreview() {
             onContinuousScanChange = {},
             currentTheme = "SYSTEM",
             onThemeChange = {},
+            fontSizeScale = 1.0f,
+            onFontSizeChange = {},
             onClearAllData = {},
             isCheckingUpdates = false,
             updateInfo = null,

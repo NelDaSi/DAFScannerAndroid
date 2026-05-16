@@ -116,6 +116,11 @@
     <string name="theme_dark">Donker</string>
     <string name="theme_system">Systeemstandaard</string>
 
+    <string name="font_size_label">Lettergrootte</string>
+    <string name="font_size_small">Klein</string>
+    <string name="font_size_medium">Normaal</string>
+    <string name="font_size_large">Groot</string>
+
     <!-- SearchListScreen Strings -->
     <string name="verify_serials_title">Serienummers verifiëren</string>
     <string name="scanned_progress">Gescand %1$d / %2$d</string>

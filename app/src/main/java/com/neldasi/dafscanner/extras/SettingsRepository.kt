@@ -28,6 +28,16 @@ object SettingsRepository {
         prefs.edit { putString("appTheme", theme) }
     }
 
+    fun getFontSizeScale(context: Context): Float {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        return prefs.getFloat("fontSizeScale", 1.0f)
+    }
+
+    fun setFontSizeScale(context: Context, scale: Float) {
+        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        prefs.edit { putFloat("fontSizeScale", scale) }
+    }
+
     fun saveAllowedTypes(context: Context, types: Collection<String>) {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         prefs.edit { putStringSet("allowedTypes", types.toSet()) }
