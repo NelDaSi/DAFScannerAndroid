@@ -40,7 +40,6 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
@@ -50,8 +49,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -411,12 +408,13 @@ fun MainScreenContent(
 
     // Dialogs...
     if (itemToDelete != null) {
+        val deleteTarget = itemToDelete!!
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
             title = { Text(stringResource(R.string.delete_item_title)) },
             text = { Text(stringResource(R.string.delete_item_text)) },
             confirmButton = {
-                TextButton(onClick = { onDeletePart(itemToDelete!!); itemToDelete = null }) {
+                TextButton(onClick = { onDeletePart(deleteTarget); itemToDelete = null }) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },

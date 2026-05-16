@@ -49,8 +49,8 @@ fun SearchListScreen(
 ) {
     val context = LocalContext.current
     val searchItems by viewModel.searchItems.collectAsStateWithLifecycle()
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    var showShareOptions by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(value = false) }
+    var showShareOptions by remember { mutableStateOf(value = false) }
 
     LaunchedEffect(Unit) {
         viewModel.initStorage(context)
@@ -59,7 +59,7 @@ fun SearchListScreen(
     Log.d("SearchListScreen", "UI Update: ${searchItems.count { it.scanTimestamp != null }} / ${searchItems.size}")
 
     val csvPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
         uri?.let { viewModel.loadCsv(context, it) }
     }
@@ -160,7 +160,7 @@ fun SearchListScreen(
                 putExtra(Intent.EXTRA_TEXT, sb.toString())
             }
             context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_summary_chooser)))
-        }
+        },
     )
 }
 
@@ -353,7 +353,7 @@ fun SearchListContent(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (isScanned && item.scanOrder != null) {
+                                    if ((isScanned && item.scanOrder != null)) {
                                         Surface(
                                             color = MaterialTheme.colorScheme.secondary,
                                             shape = CircleShape,
@@ -427,7 +427,7 @@ fun SearchListContent(
                                             )
                                         }
 
-                                        if (isScanned && item.scanTimestamp != null) {
+                                        if (isScanned) {
                                             Spacer(Modifier.height(4.dp))
                                             Text(
                                                 text = timeFormatter.format(Date(item.scanTimestamp)),
@@ -476,7 +476,7 @@ fun SearchListContent(
                                     append(stringResource(R.string.progress_label))
                                 }
                                 withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
-                                    append("$foundCount")
+                                    append(foundCount.toString())
                                 }
                                 withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)) {
                                     append(" / $totalCount")

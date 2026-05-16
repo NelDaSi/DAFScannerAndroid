@@ -4,7 +4,6 @@
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
-import android.content.Context
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -28,7 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.rounded.AllInclusive
 import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FilterNone
@@ -162,7 +160,7 @@ fun SettingsScreen(
         isCheckingUpdates = isCheckingUpdates,
         updateInfo = updateInfo,
         onCheckForUpdates = { viewModel.checkForUpdates() },
-        onDismissUpdate = { viewModel.dismissUpdateDialog() }
+        onDismissUpdate = { viewModel.dismissUpdateDialog() },
     )
 }
 
@@ -181,7 +179,7 @@ fun SettingsScreenContent(
     isCheckingUpdates: Boolean,
     updateInfo: UpdateManager.ReleaseInfo?,
     onCheckForUpdates: () -> Unit,
-    onDismissUpdate: () -> Unit
+    onDismissUpdate: () -> Unit,
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -289,7 +287,7 @@ fun SettingsScreenContent(
 
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                var expanded by remember { mutableStateOf(false) }
+                var expanded by remember { mutableStateOf(value = false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -388,7 +386,8 @@ fun SettingsScreenContent(
                     }
                 }
                 val versionText = packageInfo?.let {
-                    "v${it.versionName} (${it.versionCode})"
+                    val vCode = androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it)
+                    "v${it.versionName} ($vCode)"
                 } ?: "v1.0 (1)"
 
                 Spacer(modifier = Modifier.height(24.dp))
