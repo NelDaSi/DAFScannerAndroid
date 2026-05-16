@@ -1,6 +1,7 @@
 package com.neldasi.dafscanner.ui.theme
 
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -45,6 +46,7 @@ private val DafColorScheme = lightColorScheme(
     onError = Color.White,
 )
 
+@RequiresApi(Build.VERSION_CODES.S)
 @Composable
 fun JetpackComposeTheme(
     theme: String = "DAF",
@@ -61,7 +63,7 @@ fun JetpackComposeTheme(
 
     val colorScheme = when {
         theme == "DAF" -> DafColorScheme
-        (dynamicColor && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)) -> {
+        (dynamicColor) -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
