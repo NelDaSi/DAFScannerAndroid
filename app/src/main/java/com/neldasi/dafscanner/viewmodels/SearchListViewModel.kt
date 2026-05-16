@@ -11,6 +11,7 @@ import com.neldasi.dafscanner.extras.parseScannedCode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 data class SearchItem(
     val typeCode: String,
@@ -30,7 +31,6 @@ class SearchListViewModel : ViewModel() {
     val searchItems = _searchItems.asStateFlow()
 
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
-    val lastScannedResult = _lastScannedResult.asStateFlow()
 
     private val gson = Gson()
     private val prefKey = "search_list_data"
@@ -54,7 +54,7 @@ class SearchListViewModel : ViewModel() {
     private fun saveToStorage(context: Context) {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         val json = gson.toJson(_searchItems.value)
-        prefs.edit().putString(prefKey, json).apply()
+        prefs.edit { putString(prefKey, json) }
     }
 
     private fun hexToDec(hex: String): String {
@@ -248,6 +248,6 @@ class SearchListViewModel : ViewModel() {
         _searchItems.value = emptyList()
         _lastScannedResult.value = null
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit().remove(prefKey).apply()
+        prefs.edit { remove(prefKey) }
     }
 }

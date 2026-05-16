@@ -176,10 +176,17 @@
     <string name="no_match">GEEN MATCH</string>
     <string name="dismiss">SLUITEN</string>
     <string name="dismiss_countdown">SLUITEN (%1$d)</string>
+    <string name="last_scan_label">Laatste scan: %1$s</string>
     <string name="camera_error">Kan camera niet openen.</string>
     <string name="copy_type">Type kopiëren</string>
     <string name="type_copied">Type naar klembord gekopieerd</string>
     <string name="next_scan_in">Volgende scan over: %1$d</string>
     <string name="tap_to_skip">Tik overal om nu te scannen</string>
     <string name="add_to_allowed">Toevoegen aan toegestane types</string>
+    <string name="continuous_scan_on">Multi-scan aan</string>
+    <string name="continuous_scan_off">Multi-scan uit</string>
+    <string name="vibration_on">Trillen aan</string>
+    <string name="vibration_off">Trillen uit</string>
+    <string name="screen_always_on_on">Scherm altijd aan geactiveerd</string>
+    <string name="screen_always_on_off">Scherm altijd aan gedeactiveerd</string>
 </resources>

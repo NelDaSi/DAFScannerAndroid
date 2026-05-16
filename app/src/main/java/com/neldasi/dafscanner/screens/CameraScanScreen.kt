@@ -205,6 +205,15 @@ fun CameraScanScreen(
     val verifyScope = rememberCoroutineScope()
     var isPaused by remember { mutableStateOf(false) }
     
+    // Custom Toast State
+    var toastMessage by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            delay(2000)
+            toastMessage = null
+        }
+    }
+
     // To prevent a new scan from immediately triggering its own duplicate warning
     var lastProcessedCode by remember { mutableStateOf<String?>(null) }
     var lastProcessedTimestamp by remember { mutableLongStateOf(0L) }
@@ -348,14 +357,17 @@ fun CameraScanScreen(
         onToggleVibrate = {
             vibrateEnabled = !vibrateEnabled
             prefs.edit { putBoolean("vibrateEnabled", vibrateEnabled) }
+            toastMessage = if (vibrateEnabled) R.string.vibration_on else R.string.vibration_off
         },
         onToggleContinuous = {
             continuousScanEnabled = !continuousScanEnabled
             prefs.edit { putBoolean("continuousScanEnabled", continuousScanEnabled) }
+            toastMessage = if (continuousScanEnabled) R.string.continuous_scan_on else R.string.continuous_scan_off
         },
         onToggleScreenOn = {
             screenAlwaysOn = !screenAlwaysOn
             prefs.edit { putBoolean("screenAlwaysOn", screenAlwaysOn) }
+            toastMessage = if (screenAlwaysOn) R.string.screen_always_on_on else R.string.screen_always_on_off
         },
         onToggleTorch = {
             val newState = !isTorchOn
@@ -377,7 +389,8 @@ fun CameraScanScreen(
             continuousCooldown = 0
             scannedResult = null
             isPaused = false
-        }
+        },
+        toastMessage = toastMessage,
     ) { ctx ->
         val previewView = PreviewView(ctx).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -526,6 +539,7 @@ fun CameraScanScreenContent(
     onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
     onDismissCooldown: () -> Unit = {},
+    toastMessage: Int? = null,
     onAndroidViewFactory: (Context) -> android.view.View,
 ) {
     Box(
@@ -550,8 +564,8 @@ fun CameraScanScreenContent(
         LastScanBar(
             serial = lastSerial,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 112.dp, start = 24.dp, end = 24.dp)
+                .align(Alignment.TopCenter)
+                .padding(top = 80.dp, start = 24.dp, end = 24.dp)
         )
 
         AnimatedVisibility(
@@ -704,6 +718,30 @@ fun CameraScanScreenContent(
             onClose = onClose,
             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
         )
+
+        // Custom Toast Overlay
+        AnimatedVisibility(
+            visible = toastMessage != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 180.dp)
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.8f),
+                shape = RoundedCornerShape(24.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+            ) {
+                Text(
+                    text = toastMessage?.let { stringResource(it) } ?: "",
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 
@@ -738,7 +776,7 @@ private fun LastScanBar(
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = serial ?: "",
+                    text = stringResource(R.string.last_scan_label, serial ?: ""),
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
