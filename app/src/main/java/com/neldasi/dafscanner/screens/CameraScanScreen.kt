@@ -1,11 +1,11 @@
 package com.neldasi.dafscanner.screens
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
 import android.view.ViewGroup
-import android.view.WindowManager
+import androidx.annotation.RequiresApi
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -96,6 +96,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -109,12 +110,12 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
-import com.neldasi.dafscanner.ui.theme.DafBlue
-import com.neldasi.dafscanner.ui.theme.DafRed
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
+import com.neldasi.dafscanner.ui.theme.DafBlue
+import com.neldasi.dafscanner.ui.theme.DafRed
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 import kotlinx.coroutines.delay
@@ -122,12 +123,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
-import androidx.compose.ui.platform.LocalLocale
 
 
 data class ScanFeedback(
@@ -871,7 +870,7 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?) {
                     text = it,
                     color = Color.White,
                     modifier = Modifier.padding(16.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -1054,6 +1053,7 @@ private fun extractSerial(fullCode: String): String {
     return parseScannedCode(fullCode)?.serialNumber ?: (if (fullCode.length >= 18) fullCode.substring(12, 18) else fullCode.take(6))
 }
 
+@RequiresApi(Build.VERSION_CODES.S)
 @ComposePreview(showBackground = true, name = "Normal Scan", apiLevel = 34)
 @Composable
 fun CameraScanScreenPreview() {
@@ -1072,6 +1072,7 @@ fun CameraScanScreenPreview() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.S)
 @ComposePreview(showBackground = true, name = "Duplicate Scan", apiLevel = 34)
 @Composable
 fun CameraScanScreenDuplicatePreview() {

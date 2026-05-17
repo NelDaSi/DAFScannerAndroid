@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -312,7 +313,7 @@ fun ConverterScreenContent(
                                 )
                         ) {
                             Icon(
-                                Icons.Rounded.PlaylistAdd, 
+                                Icons.AutoMirrored.Rounded.PlaylistAdd,
                                 contentDescription = "Save to history",
                                 tint = if (hexVal.length == 6 && decVal != "Error") MaterialTheme.colorScheme.onPrimaryContainer 
                                        else MaterialTheme.colorScheme.secondary

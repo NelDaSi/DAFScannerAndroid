@@ -5,8 +5,10 @@ package com.neldasi.dafscanner.screens
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -485,6 +487,7 @@ private fun ImageSourceItem(icon: androidx.compose.ui.graphics.vector.ImageVecto
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.S)
 @Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun DetailScreenPreview() {
