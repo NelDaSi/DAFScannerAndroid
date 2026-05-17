@@ -9,16 +9,38 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.neldasi.dafscanner.extras.parseScannedCode
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 data class SearchItem(
     val typeCode: String,
     val serialNumber: String,
     val decSerial: String,
     val scanTimestamp: Long? = null,
-    val scanOrder: Int? = null
+    val scanOrder: Int? = null,
+    val machine: String? = null,
+    val outputMaterial: String? = null,
+    val startDate: String? = null,
+    val startTime: String? = null,
+    val completeDate: String? = null,
+    val completeTime: String? = null
 )
+
+enum class SearchSortOption {
+    DEFAULT,
+    MACHINE,
+    TYPE,
+    FOUND_TIME,
+    PRODUCTION_TIME
+}
 
 data class ScanMatchResult(
     val serial: String,
@@ -29,32 +51,120 @@ class SearchListViewModel : ViewModel() {
     private val _searchItems = MutableStateFlow<List<SearchItem>>(emptyList())
     val searchItems = _searchItems.asStateFlow()
 
-    private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
-    val lastScannedResult = _lastScannedResult.asStateFlow()
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
 
-    private val gson = Gson()
-    private val prefKey = "search_list_data"
+    private val _sortOption = MutableStateFlow(SearchSortOption.DEFAULT)
+    val sortOption = _sortOption.asStateFlow()
 
-    fun initStorage(context: Context) {
-        if (_searchItems.value.isNotEmpty()) return
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        val json = prefs.getString(prefKey, null)
-        if (json != null) {
-            try {
-                val type = object : TypeToken<List<SearchItem>>() {}.type
-                val items: List<SearchItem> = gson.fromJson(json, type)
-                _searchItems.value = items
-                Log.d("SearchListVM", "Loaded ${items.size} items from storage")
-            } catch (e: Exception) {
-                Log.e("SearchListVM", "Error loading from storage", e)
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
+    private val _visibleCount = MutableStateFlow(50)
+
+    private val _filteredAndSortedItems = combine(
+        _searchItems,
+        _searchQuery,
+        _sortOption
+    ) { items, query, sort ->
+        val filtered = if (query.isBlank()) {
+            items
+        } else {
+            val q = query.lowercase()
+            items.filter { item ->
+                item.serialNumber.lowercase().contains(q) ||
+                item.decSerial.lowercase().contains(q) ||
+                item.typeCode.lowercase().contains(q) ||
+                (item.machine?.lowercase()?.contains(q) ?: false) ||
+                (item.outputMaterial?.lowercase()?.contains(q) ?: false) ||
+                (item.startDate?.lowercase()?.contains(q) ?: false) ||
+                (item.startTime?.lowercase()?.contains(q) ?: false)
+            }
+        }
+
+        when (sort) {
+            SearchSortOption.DEFAULT -> filtered
+            SearchSortOption.MACHINE -> filtered.sortedBy { it.machine ?: "" }
+            SearchSortOption.TYPE -> filtered.sortedBy { it.typeCode }
+            SearchSortOption.FOUND_TIME -> filtered.sortedByDescending { it.scanTimestamp ?: 0L }
+            SearchSortOption.PRODUCTION_TIME -> filtered.sortedByDescending { 
+                "${it.startDate ?: ""} ${it.startTime ?: ""}" 
             }
         }
     }
 
+    val filteredItems: StateFlow<List<SearchItem>> = combine(
+        _filteredAndSortedItems,
+        _visibleCount
+    ) { items, count ->
+        items.take(count)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val hasMoreItems: StateFlow<Boolean> = combine(
+        _filteredAndSortedItems,
+        _visibleCount
+    ) { items, count ->
+        count < items.size
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val totalCount: StateFlow<Int> = _filteredAndSortedItems
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val scannedCount: StateFlow<Int> = _filteredAndSortedItems
+        .map { items -> items.count { it.scanTimestamp != null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
+
+    private val gson = Gson()
+    private val prefKey = "search_list_data"
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+        _visibleCount.value = 50 // Reset pagination on search
+    }
+
+    fun onSortOptionChange(option: SearchSortOption) {
+        _sortOption.value = option
+        _visibleCount.value = 50 // Reset pagination on sort
+    }
+
+    fun loadMore() {
+        if (_visibleCount.value < _searchItems.value.size) {
+            _visibleCount.value += 50
+        }
+    }
+
+    fun initStorage(context: Context) {
+        if (_searchItems.value.isNotEmpty()) return
+        _isLoading.value = true
+        viewModelScope.launch {
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val json = prefs.getString(prefKey, null)
+            if (json != null) {
+                try {
+                    val items = withContext(Dispatchers.Default) {
+                        val type = object : TypeToken<List<SearchItem>>() {}.type
+                        gson.fromJson<List<SearchItem>>(json, type)
+                    }
+                    _searchItems.value = items
+                    Log.d("SearchListVM", "Loaded ${items.size} items from storage")
+                } catch (e: Exception) {
+                    Log.e("SearchListVM", "Error loading from storage", e)
+                }
+            }
+            _isLoading.value = false
+        }
+    }
+
     private fun saveToStorage(context: Context) {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        val json = gson.toJson(_searchItems.value)
-        prefs.edit().putString(prefKey, json).apply()
+        val currentItems = _searchItems.value
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val json = gson.toJson(currentItems)
+            prefs.edit { putString(prefKey, json) }
+        }
     }
 
     private fun hexToDec(hex: String): String {
@@ -65,174 +175,144 @@ class SearchListViewModel : ViewModel() {
         }
     }
 
-    fun loadMockData(context: Context) {
-        val results = mutableListOf<SearchItem>()
-        for (i in 1..25) {
-            val hex = String.format("%06X", (0x1000..0xFFFFFF).random())
-            results.add(SearchItem(
-                typeCode = "2245295",
-                serialNumber = hex,
-                decSerial = hexToDec(hex)
-            ))
-        }
-        _searchItems.value = results
-        
-        // Randomly mark 5 items as scanned
-        val toScan = results.shuffled().take(5)
-        toScan.forEachIndexed { index, item ->
-            val itemIndex = _searchItems.value.indexOfFirst { it.serialNumber == item.serialNumber }
-            if (itemIndex != -1) {
-                val updatedItems = _searchItems.value.toMutableList()
-                updatedItems[itemIndex] = updatedItems[itemIndex].copy(
-                    scanTimestamp = System.currentTimeMillis() - (index * 100000),
-                    scanOrder = index + 1
-                )
-                _searchItems.value = updatedItems
-            }
-        }
-        saveToStorage(context)
-    }
-
     fun loadCsv(context: Context, uri: Uri) {
+        if (_isLoading.value) return
+        _isLoading.value = true
         Log.d("SearchListVM", "Loading CSV: $uri")
         viewModelScope.launch {
             try {
-                val input = context.contentResolver.openInputStream(uri) ?: return@launch
-                val allText = input.bufferedReader().use { it.readText() }
-                if (allText.isBlank()) return@launch
+                val results = withContext(Dispatchers.IO) {
+                    val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext emptyList()
+                    val allText = inputStream.bufferedReader().use { it.readText() }
+                    if (allText.isBlank()) return@withContext emptyList()
 
-                val rows = mutableListOf<List<String>>()
-                val currentRow = mutableListOf<String>()
-                var currentField = StringBuilder()
-                var inQuotes = false
-                
-                val firstLine = allText.lineSequence().firstOrNull() ?: ""
-                val delimiter = if (firstLine.contains(";")) ';' else ','
+                    val rows = mutableListOf<List<String>>()
+                    val currentRow = mutableListOf<String>()
+                    val currentField = StringBuilder()
+                    var inQuotes = false
+                    
+                    val firstLine = allText.lineSequence().firstOrNull() ?: ""
+                    val delimiter = if (firstLine.contains(";")) ';' else ','
 
-                var i = 0
-                while (i < allText.length) {
-                    val c = allText[i]
-                    if (inQuotes) {
-                        if (c == '"') {
-                            if (i + 1 < allText.length && allText[i+1] == '"') {
-                                currentField.append('"')
-                                i++
+                    var i = 0
+                    while (i < allText.length) {
+                        val c = allText[i]
+                        if (inQuotes) {
+                            if (c == '"') {
+                                if (i + 1 < allText.length && allText[i+1] == '"') {
+                                    currentField.append('"')
+                                    i++
+                                } else {
+                                    inQuotes = false
+                                }
                             } else {
-                                inQuotes = false
+                                currentField.append(c)
                             }
                         } else {
-                            currentField.append(c)
-                        }
-                    } else {
-                        when (c) {
-                            '"' -> inQuotes = true
-                            delimiter -> {
-                                currentRow.add(currentField.toString().trim())
-                                currentField = StringBuilder()
-                            }
-                            '\n', '\r' -> {
-                                if (currentField.isNotEmpty() || currentRow.isNotEmpty()) {
+                            when (c) {
+                                '"' -> inQuotes = true
+                                delimiter -> {
                                     currentRow.add(currentField.toString().trim())
-                                    rows.add(currentRow.toList())
-                                    currentRow.clear()
-                                    currentField = StringBuilder()
+                                    currentField.setLength(0)
                                 }
-                                if (c == '\r' && i + 1 < allText.length && allText[i+1] == '\n') {
-                                    i++
+                                '\n', '\r' -> {
+                                    if (currentField.isNotEmpty() || currentRow.isNotEmpty()) {
+                                        currentRow.add(currentField.toString().trim())
+                                        rows.add(ArrayList(currentRow))
+                                        currentRow.clear()
+                                        currentField.setLength(0)
+                                    }
+                                    if (c == '\r' && i + 1 < allText.length && allText[i+1] == '\n') {
+                                        i++
+                                    }
+                                }
+                                else -> currentField.append(c)
+                            }
+                        }
+                        i++
+                    }
+                    if (currentField.isNotEmpty() || currentRow.isNotEmpty()) {
+                        currentRow.add(currentField.toString().trim())
+                        rows.add(currentRow)
+                    }
+
+                    if (rows.isEmpty()) return@withContext emptyList()
+
+                    var productIdIndex = -1
+                    var machineIndex = -1
+                    var outputMatIndex = -1
+                    var startDateIndex = -1
+                    var startTimeIndex = -1
+                    var completeDateIndex = -1
+                    var completeTimeIndex = -1
+                    var headerRowIndex = -1
+
+                    fun String.normalize() = this.replace("\n", " ").replace("\r", " ").trim().lowercase()
+
+                    for (rowIdx in 0 until minOf(rows.size, 100)) {
+                        val row = rows[rowIdx]
+                        val normalized = row.map { it.normalize() }
+                        val pIdIdx = normalized.indexOfFirst { it.contains("product id") }
+                        if (pIdIdx != -1) {
+                            headerRowIndex = rowIdx
+                            productIdIndex = pIdIdx
+                            machineIndex = normalized.indexOfFirst { it == "machine" }
+                            outputMatIndex = normalized.indexOfFirst { it == "output material" }
+                            startDateIndex = normalized.indexOfFirst { it.contains("start date") }
+                            startTimeIndex = normalized.indexOfFirst { it.contains("start time") }
+                            completeDateIndex = normalized.indexOfFirst { it.contains("complete date") }
+                            completeTimeIndex = normalized.indexOfFirst { it.contains("complete time") }
+                            break
+                        }
+                    }
+
+                    val itemsList = mutableListOf<SearchItem>()
+                    val processedSerials = mutableSetOf<String>()
+                    val startIdx = if (headerRowIndex != -1) headerRowIndex + 1 else 1
+
+                    for (r in startIdx until rows.size) {
+                        val row = rows[r]
+                        val pIdIdx = if (productIdIndex != -1) productIdIndex else 0
+                        if (row.size > pIdIdx) {
+                            val productId = row[pIdIdx]
+                            if (productId.isNotBlank()) {
+                                val hex = if (productId.length >= 6) productId.takeLast(6) else productId
+                                if (!processedSerials.contains(hex)) {
+                                    val type = if (productId.length >= 7) productId.take(7) else "UNKNOWN"
+                                    
+                                    itemsList.add(
+                                        SearchItem(
+                                            typeCode = type,
+                                            serialNumber = hex,
+                                            decSerial = hexToDec(hex),
+                                            machine = getValue(row, machineIndex),
+                                            outputMaterial = getValue(row, outputMatIndex),
+                                            startDate = getValue(row, startDateIndex),
+                                            startTime = getValue(row, startTimeIndex),
+                                            completeDate = getValue(row, completeDateIndex),
+                                            completeTime = getValue(row, completeTimeIndex)
+                                        )
+                                    )
+                                    processedSerials.add(hex)
                                 }
                             }
-                            else -> currentField.append(c)
                         }
                     }
-                    i++
+                    itemsList
                 }
-                if (currentField.isNotEmpty() || currentRow.isNotEmpty()) {
-                    currentRow.add(currentField.toString().trim())
-                    rows.add(currentRow.toList())
-                }
-
-                if (rows.isEmpty()) return@launch
-
-                var headerRowIndex = -1
-                var productIdIndex = -1
-
-                // Search for the "Product ID" header in any row (checking first 50 rows)
-                for (rowIdx in 0 until minOf(rows.size, 50)) {
-                    val row = rows[rowIdx]
-                    val foundColIdx = row.indexOfFirst { 
-                        it.replace("\n", " ").replace("\r", " ").trim()
-                            .contains("Product ID", ignoreCase = true) 
-                    }
-                    if (foundColIdx != -1) {
-                        headerRowIndex = rowIdx
-                        productIdIndex = foundColIdx
-                        break
-                    }
-                }
-
-                val results = mutableListOf<SearchItem>()
-                if (headerRowIndex != -1) {
-                    // Extract data from all rows after the header row
-                    for (rowIdx in (headerRowIndex + 1) until rows.size) {
-                        val row = rows[rowIdx]
-                        if (row.size > productIdIndex) {
-                            val productId = row[productIdIndex]
-                            if (productId.length >= 13) {
-                                val hex = productId.takeLast(6)
-                                results.add(
-                                    SearchItem(
-                                        typeCode = productId.take(7),
-                                        serialNumber = hex,
-                                        decSerial = hexToDec(hex)
-                                    )
-                                )
-                            } else if (productId.isNotBlank()) {
-                                val hex = productId.takeLast(6)
-                                results.add(
-                                    SearchItem(
-                                        typeCode = "UNKNOWN",
-                                        serialNumber = hex,
-                                        decSerial = hexToDec(hex)
-                                    )
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback: use first column of each row starting from row 1
-                    for (rowIdx in 1 until rows.size) {
-                        val row = rows[rowIdx]
-                        if (row.isNotEmpty()) {
-                            val productId = row[0]
-                            if (productId.length >= 13) {
-                                val hex = productId.takeLast(6)
-                                results.add(
-                                    SearchItem(
-                                        typeCode = productId.take(7),
-                                        serialNumber = hex,
-                                        decSerial = hexToDec(hex)
-                                    )
-                                )
-                            } else if (productId.isNotBlank()) {
-                                val hex = productId.takeLast(6)
-                                results.add(
-                                    SearchItem(
-                                        typeCode = "UNKNOWN",
-                                        serialNumber = hex,
-                                        decSerial = hexToDec(hex)
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-                _searchItems.value = results.distinctBy { it.serialNumber }
+                _searchItems.value = results
+                _visibleCount.value = 50
                 saveToStorage(context)
-                Log.d("SearchListVM", "Loaded ${_searchItems.value.size} serial numbers")
             } catch (e: Exception) {
                 Log.e("SearchListVM", "Error loading CSV", e)
+            } finally {
+                _isLoading.value = false
             }
         }
+    }
+
+    private fun getValue(row: List<String>, index: Int): String? {
+        return if (index != -1 && row.size > index) row[index].ifBlank { null } else null
     }
 
     fun checkScannedCode(context: Context, fullCode: String) {
@@ -276,6 +356,6 @@ class SearchListViewModel : ViewModel() {
         _searchItems.value = emptyList()
         _lastScannedResult.value = null
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit().remove(prefKey).apply()
+        prefs.edit { remove(prefKey) }
     }
 }

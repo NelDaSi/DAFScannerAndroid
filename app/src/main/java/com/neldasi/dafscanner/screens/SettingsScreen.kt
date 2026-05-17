@@ -4,7 +4,9 @@
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
-import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -29,14 +31,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.rounded.Calculate
+import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FilterNone
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.ScreenLockRotation
-import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.TextFormat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -60,6 +65,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,8 +87,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.components.UpdateDialog
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.extras.UpdateManager
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
 import com.neldasi.dafscanner.viewmodels.SettingsViewModel
 
@@ -99,6 +107,18 @@ fun SettingsScreen(
     var screenAlwaysOn by remember { mutableStateOf(value = false) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
     var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
+    var fontSizeScale by remember { mutableStateOf(SettingsRepository.getFontSizeScale(context)) }
+
+    val updateInfo by viewModel.updateInfo.collectAsState()
+    val isCheckingUpdates by viewModel.isCheckingUpdates.collectAsState()
+    val updateMessage by viewModel.updateMessage.collectAsState()
+
+    LaunchedEffect(updateMessage) {
+        updateMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearUpdateMessage()
+        }
+    }
 
     LaunchedEffect(Unit) {
         vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
@@ -117,12 +137,6 @@ fun SettingsScreen(
         onScreenAlwaysOnChange = {
             screenAlwaysOn = it
             prefs.edit { putBoolean("screenAlwaysOn", it) }
-            val activity = (context as? Activity)
-            if (it) {
-                activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            } else {
-                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
         },
         continuousScanEnabled = continuousScanEnabled,
         onContinuousScanChange = {
@@ -134,7 +148,24 @@ fun SettingsScreen(
             currentTheme = it
             SettingsRepository.setTheme(context, it)
         },
-        onClearAllData = { viewModel.clearAllData() }
+        fontSizeScale = fontSizeScale,
+        onFontSizeChange = {
+            fontSizeScale = it
+            SettingsRepository.setFontSizeScale(context, it)
+        },
+        onClearAllData = {
+            viewModel.clearAllData()
+            // Reset local UI state to default values immediately
+            vibrateEnabled = false
+            screenAlwaysOn = false
+            continuousScanEnabled = false
+            currentTheme = "DAF"
+            fontSizeScale = 1.0f
+        },
+        isCheckingUpdates = isCheckingUpdates,
+        updateInfo = updateInfo,
+        onCheckForUpdates = { viewModel.checkForUpdates() },
+        onDismissUpdate = { viewModel.dismissUpdateDialog() },
     )
 }
 
@@ -149,18 +180,29 @@ fun SettingsScreenContent(
     onContinuousScanChange: (Boolean) -> Unit,
     currentTheme: String,
     onThemeChange: (String) -> Unit,
-    onClearAllData: () -> Unit
+    fontSizeScale: Float,
+    onFontSizeChange: (Float) -> Unit,
+    onClearAllData: () -> Unit,
+    isCheckingUpdates: Boolean,
+    updateInfo: UpdateManager.ReleaseInfo?,
+    onCheckForUpdates: () -> Unit,
+    onDismissUpdate: () -> Unit,
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    
-    val allowedTypes = remember { mutableStateListOf<String>().apply { addAll(SettingsRepository.loadAllowedTypes(context)) } }
+
+    val allowedTypes = remember { mutableStateListOf<String>() }
     val defaultAllowedTypes = setOf("2245293", "2245295", "2261325", "2150001", "2342199", "2342201", "2012566")
+
+    LaunchedEffect(Unit) {
+        allowedTypes.addAll(SettingsRepository.loadAllowedTypes(context))
+    }
     
     var showAddDialog by remember { mutableStateOf(value = false) }
     var newType by remember { mutableStateOf(value = "") }
     var showClearAllDialog by remember { mutableStateOf(value = false) }
     var showThemeDialog by remember { mutableStateOf(value = false) }
+    var showFontSizeDialog by remember { mutableStateOf(value = false) }
     var showConverterDialog by remember { mutableStateOf(value = false) }
 
     Scaffold(
@@ -176,7 +218,11 @@ fun SettingsScreenContent(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
@@ -212,10 +258,20 @@ fun SettingsScreenContent(
                             subtitle = when (currentTheme) {
                                 "LIGHT" -> stringResource(R.string.theme_light)
                                 "DARK" -> stringResource(R.string.theme_dark)
-                                "DAF" -> "DAF Theme"
+                                "DAF" -> stringResource(R.string.theme_daf)
                                 else -> stringResource(R.string.theme_system)
                             },
                             onClick = { showThemeDialog = true }
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.TextFormat,
+                            title = stringResource(R.string.font_size_label),
+                            subtitle = when (fontSizeScale) {
+                                0.85f -> stringResource(R.string.font_size_small)
+                                1.15f -> stringResource(R.string.font_size_large)
+                                else -> stringResource(R.string.font_size_medium)
+                            },
+                            onClick = { showFontSizeDialog = true }
                         )
                         SettingsSwitchItem(
                             icon = Icons.Rounded.NotificationsActive,
@@ -224,22 +280,38 @@ fun SettingsScreenContent(
                             onCheckedChange = onVibrateChange
                         )
                         SettingsSwitchItem(
-                            icon = Icons.Rounded.SystemUpdateAlt,
+                            icon = Icons.Rounded.FilterNone,
                             title = stringResource(R.string.multi_scan_mode_label),
                             checked = continuousScanEnabled,
                             onCheckedChange = onContinuousScanChange
                         )
                         SettingsSwitchItem(
-                            icon = Icons.Rounded.ScreenLockRotation,
+                            icon = Icons.Rounded.Smartphone,
                             title = stringResource(R.string.screen_always_on_label),
                             checked = screenAlwaysOn,
                             onCheckedChange = onScreenAlwaysOnChange
                         )
                         SettingsClickableItem(
+                            icon = Icons.Rounded.CameraAlt,
+                            title = stringResource(R.string.camera_permission_settings),
+                            subtitle = stringResource(R.string.camera_permission_settings_desc),
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                intent.data = Uri.fromParts("package", context.packageName, null)
+                                context.startActivity(intent)
+                            }
+                        )
+                        SettingsClickableItem(
                             icon = Icons.Rounded.Calculate,
-                            title = "HEX <-> DEC Converter",
-                            subtitle = "Tool to convert serial numbers",
+                            title = stringResource(R.string.converter_title),
+                            subtitle = stringResource(R.string.converter_desc),
                             onClick = { showConverterDialog = true }
+                        )
+                        SettingsClickableItem(
+                            icon = Icons.Rounded.SystemUpdateAlt,
+                            title = if (isCheckingUpdates) stringResource(R.string.checking_updates) else stringResource(R.string.check_for_updates),
+                            subtitle = stringResource(R.string.check_github_desc),
+                            onClick = onCheckForUpdates
                         )
                     }
                 }
@@ -247,7 +319,7 @@ fun SettingsScreenContent(
 
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                var expanded by remember { mutableStateOf(false) }
+                var expanded by remember { mutableStateOf(value = false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -292,7 +364,7 @@ fun SettingsScreenContent(
                                 isDefault = type in defaultAllowedTypes,
                                 onDelete = {
                                     allowedTypes.remove(type)
-                                    saveAllowedTypes(context, allowedTypes)
+                                    SettingsRepository.saveAllowedTypes(context, allowedTypes)
                                 }
                             )
                         }
@@ -300,43 +372,43 @@ fun SettingsScreenContent(
                 }
             }
 
-//            item {
-//                Spacer(modifier = Modifier.height(24.dp))
-//                Card(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .clickable { showClearAllDialog = true },
-//                    shape = RoundedCornerShape(24.dp),
-//                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
-//                ) {
-//                    Row(
-//                        modifier = Modifier.padding(20.dp),
-//                        verticalAlignment = Alignment.CenterVertically,
-//                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-//                    ) {
-//                        Icon(
-//                            Icons.Rounded.DeleteOutline,
-//                            contentDescription = null,
-//                            tint = MaterialTheme.colorScheme.error,
-//                            modifier = Modifier.size(28.dp)
-//                        )
-//                        Column(modifier = Modifier.weight(1f)) {
-//                            Text(
-//                                text = stringResource(R.string.settings_clear_all),
-//                                color = MaterialTheme.colorScheme.error,
-//                                fontWeight = FontWeight.Bold,
-//                                style = MaterialTheme.typography.titleMedium
-//                            )
-//                            Text(
-//                                text = stringResource(R.string.settings_clear_all_desc),
-//                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
-//                                style = MaterialTheme.typography.bodySmall
-//                            )
-//                        }
-//                    }
-//                }
-//                Spacer(modifier = Modifier.height(40.dp))
-//            }
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showClearAllDialog = true },
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_clear_all),
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_clear_all_desc),
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(40.dp))
+            }
             item {
                 val packageInfo = remember {
                     try {
@@ -346,7 +418,8 @@ fun SettingsScreenContent(
                     }
                 }
                 val versionText = packageInfo?.let {
-                    "v${it.versionName} (${it.versionCode})"
+                    val vCode = androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it)
+                    "v${it.versionName} ($vCode)"
                 } ?: "v1.0 (1)"
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -379,7 +452,7 @@ fun SettingsScreenContent(
                         onClick = {
                             if (newType.isNotBlank()) {
                                 allowedTypes.add(newType)
-                                saveAllowedTypes(context, allowedTypes)
+                                SettingsRepository.saveAllowedTypes(context, allowedTypes)
                                 newType = ""
                                 showAddDialog = false
                             } else {
@@ -408,6 +481,9 @@ fun SettingsScreenContent(
                     Button(
                         onClick = {
                             onClearAllData()
+                            // Clear and reset allowedTypes locally
+                            allowedTypes.clear()
+                            allowedTypes.addAll(defaultAllowedTypes)
                             Toast.makeText(context, R.string.yes, Toast.LENGTH_SHORT).show()
                             showClearAllDialog = false
                         },
@@ -425,6 +501,37 @@ fun SettingsScreenContent(
             )
         }
 
+        if (showFontSizeDialog) {
+            AlertDialog(
+                onDismissRequest = { showFontSizeDialog = false },
+                title = { Text(stringResource(R.string.font_size_label), fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ThemeOption(
+                            title = stringResource(R.string.font_size_small),
+                            selected = fontSizeScale == 0.85f,
+                            onClick = { onFontSizeChange(0.85f); showFontSizeDialog = false }
+                        )
+                        ThemeOption(
+                            title = stringResource(R.string.font_size_medium),
+                            selected = fontSizeScale == 1.0f,
+                            onClick = { onFontSizeChange(1.0f); showFontSizeDialog = false }
+                        )
+                        ThemeOption(
+                            title = stringResource(R.string.font_size_large),
+                            selected = fontSizeScale == 1.15f,
+                            onClick = { onFontSizeChange(1.15f); showFontSizeDialog = false }
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFontSizeDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
         if (showThemeDialog) {
             AlertDialog(
                 onDismissRequest = { showThemeDialog = false },
@@ -432,7 +539,7 @@ fun SettingsScreenContent(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         ThemeOption(
-                            title = "DAF Theme",
+                            title = stringResource(R.string.theme_daf),
                             selected = currentTheme == "DAF",
                             onClick = { onThemeChange("DAF"); showThemeDialog = false }
                         )
@@ -467,7 +574,7 @@ fun SettingsScreenContent(
 
             AlertDialog(
                 onDismissRequest = { showConverterDialog = false },
-                title = { Text("HEX <-> DEC Converter", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.converter_title), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         OutlinedTextField(
@@ -480,8 +587,8 @@ fun SettingsScreenContent(
                                     "Error"
                                 }
                             },
-                            label = { Text("HEX Value") },
-                            placeholder = { Text("e.g. 01C821") },
+                            label = { Text(stringResource(R.string.hex_label)) },
+                            placeholder = { Text(stringResource(R.string.hex_placeholder)) },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -504,8 +611,8 @@ fun SettingsScreenContent(
                                     "Error"
                                 }
                             },
-                            label = { Text("DEC Value") },
-                            placeholder = { Text("e.g. 116769") },
+                            label = { Text(stringResource(R.string.dec_label)) },
+                            placeholder = { Text(stringResource(R.string.dec_placeholder)) },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -514,10 +621,14 @@ fun SettingsScreenContent(
                 },
                 confirmButton = {
                     Button(onClick = { showConverterDialog = false }) {
-                        Text("Close")
+                        Text(stringResource(R.string.close))
                     }
                 }
             )
+        }
+
+        updateInfo?.let { info ->
+            UpdateDialog(info = info, onDismiss = onDismissUpdate)
         }
     }
 }
@@ -671,12 +782,7 @@ private fun TypeItem(
     }
 }
 
-fun saveAllowedTypes(context: Context, types: List<String>) {
-    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-    prefs.edit { putStringSet("allowedTypes", types.toSet()) }
-}
-
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SettingsScreenPreview() {
     JetpackComposeTheme {
@@ -690,7 +796,13 @@ fun SettingsScreenPreview() {
             onContinuousScanChange = {},
             currentTheme = "SYSTEM",
             onThemeChange = {},
-            onClearAllData = {}
+            fontSizeScale = 1.0f,
+            onFontSizeChange = {},
+            onClearAllData = {},
+            isCheckingUpdates = false,
+            updateInfo = null,
+            onCheckForUpdates = {},
+            onDismissUpdate = {}
         )
     }
 }

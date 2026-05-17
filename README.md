@@ -17,7 +17,6 @@ A robust Data Matrix Code (dmc) Scanning and Verification application built with
   - Search and filter through your scanning history.
   - Multi-select and bulk delete functionality.
 - **Rich Data**: Attach photos to scans for better traceability.
-- **Emulator Friendly**: Includes a built-in simulator to generate test data when physical hardware isn't available.
 - **Modern UI**: Clean and responsive Material 3 interface built entirely with Jetpack Compose.
 
 ## 🛠 Tech Stack
@@ -41,7 +40,7 @@ A robust Data Matrix Code (dmc) Scanning and Verification application built with
 ### Installation
 1. Clone the repository.
 2. Open the project in Android Studio.
-3. Build and run on your device or emulator.
+3. Build and run on your device.
 
 ## 📊 Verification CSV Format
 To use the verification mode, import a CSV file (comma or semicolon delimited). The app searches for a column named **"Product ID"**.

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,17 +40,15 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -98,9 +97,9 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.components.UpdateDialog
 import com.neldasi.dafscanner.data.ScannedPart
 import com.neldasi.dafscanner.extras.ScanStorage
-import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.navigation.DetailRoute
@@ -122,6 +121,20 @@ fun MainScreen(
 ) {
     val scannedParts by viewModel.filteredParts.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
+
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
+    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!cameraPermissionState.status.isGranted) {
+            if (cameraPermissionState.status.shouldShowRationale) {
+                showPermissionRationaleDialog = true
+            } else {
+                cameraPermissionState.launchPermissionRequest()
+            }
+        }
+    }
 
     MainScreenContent(
         navController = navController,
@@ -131,7 +144,21 @@ fun MainScreen(
         onAddPart = { viewModel.addPart(it) },
         onDeleteSelected = { viewModel.deleteSelected(it) },
         onDeletePart = { viewModel.deletePart(it) },
+        cameraPermissionState = cameraPermissionState,
     ) { viewModel.exportToCsv() }
+
+    updateInfo?.let { info ->
+        UpdateDialog(info = info, onDismiss = { viewModel.dismissUpdateDialog() })
+    }
+
+    PermissionRationaleDialog(
+        show = showPermissionRationaleDialog,
+        onDismiss = { showPermissionRationaleDialog = false },
+        onConfirm = { 
+            showPermissionRationaleDialog = false
+            cameraPermissionState.launchPermissionRequest()
+        }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -144,12 +171,12 @@ fun MainScreenContent(
     onAddPart: (String) -> Unit,
     onDeleteSelected: (List<String>) -> Unit,
     onDeletePart: (ScannedPart) -> Unit,
+    cameraPermissionState: com.google.accompanist.permissions.PermissionState,
     onExportToCsv: suspend () -> File?,
 ) {
     val context = LocalContext.current
     val sharedPreferences = remember { ScanStorage.prefs(context) }
     val selectedCodes = remember { mutableStateListOf<String>() }
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     var showPermissionRationaleDialog by remember { mutableStateOf(value = false) }
@@ -157,6 +184,7 @@ fun MainScreenContent(
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
     val scope = rememberCoroutineScope()
+    val exportChooserTitle = stringResource(R.string.export_scanned_items)
 
     fun addCodeIfNew(code: String) {
         if (code.isBlank()) return
@@ -223,7 +251,7 @@ fun MainScreenContent(
                                 }
                             },
                         ) {
-                                Icon(Icons.Rounded.SelectAll, contentDescription = "Select All")
+                                Icon(Icons.Rounded.SelectAll, contentDescription = stringResource(R.string.select_all))
                             }
                             IconButton(
                                 onClick = {
@@ -258,6 +286,25 @@ fun MainScreenContent(
                         }
                         IconButton(onClick = { navController.navigate(SearchListRoute) }) {
                             Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.verify_serials_title))
+                        }
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    val file = onExportToCsv()
+                                    if (file != null) {
+                                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/csv"
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, exportChooserTitle))
+                                    }
+                                }
+                            },
+                            enabled = scannedParts.isNotEmpty()
+                        ) {
+                            Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.export_csv))
                         }
                         IconButton(onClick = { navController.navigate(SettingsRoute) }) {
                             Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_screen_title))
@@ -300,80 +347,74 @@ fun MainScreenContent(
 
             // Floating Search and Scan Bar
             if (!selectionMode) {
-                Surface(
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp
+                        .fillMaxWidth()
+                        .imePadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Surface(
+                        shape = RoundedCornerShape(32.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp,
+                        shadowElevation = 8.dp
                     ) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = onSearchQueryChange,
-                            placeholder = { 
-                                Text(
-                                    stringResource(R.string.search_serials_hint),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                ) 
-                            },
+                        Row(
                             modifier = Modifier
-                                .weight(1f),
-                            shape = RoundedCornerShape(24.dp),
-                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { onSearchQueryChange("") }) {
-                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search", tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        )
-
-                        FloatingActionButton(
-                            onClick = {
-                                if (isRunningOnEmulator()) {
-                                    // Simulate a valid code (Type: 2150001, Supplier: 88429, random Serial: 6 digits)
-                                    val simulatedCode = "215000188429${(100000..999999).random()}"
-                                    addCodeIfNew(simulatedCode)
-                                } else {
-                                    when (cameraPermissionState.status) {
-                                        PermissionStatus.Granted -> {
-                                            val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
-                                            navController.navigate(CameraRoute(isVerifyMode = false))
-                                        }
-                                        is PermissionStatus.Denied -> {
-                                            if (cameraPermissionState.status.shouldShowRationale) showPermissionRationaleDialog = true
-                                            else cameraPermissionState.launchPermissionRequest()
-                                        }
-                                    }
-                                }
-                            },
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary,
-                            shape = CircleShape,
-                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                .padding(8.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = onSearchQueryChange,
+                                placeholder = { 
+                                    Text(
+                                        stringResource(R.string.search_serials_hint),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    ) 
+                                },
+                                modifier = Modifier
+                                    .weight(1f),
+                                shape = RoundedCornerShape(24.dp),
+                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { onSearchQueryChange("") }) {
+                                            Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.clear_search), tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.Transparent,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+
+                            FloatingActionButton(
+                                onClick = {
+                                    if (cameraPermissionState.status.isGranted) {
+                                        val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
+                                        navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
+                                        navController.navigate(CameraRoute(isVerifyMode = false))
+                                    }
+                                },
+                                containerColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline,
+                                shape = CircleShape,
+                                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                            ) {
+                                Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.scan))
+                            }
                         }
                     }
                 }
@@ -383,12 +424,13 @@ fun MainScreenContent(
 
     // Dialogs...
     if (itemToDelete != null) {
+        val deleteTarget = itemToDelete!!
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
             title = { Text(stringResource(R.string.delete_item_title)) },
             text = { Text(stringResource(R.string.delete_item_text)) },
             confirmButton = {
-                TextButton(onClick = { onDeletePart(itemToDelete!!); itemToDelete = null }) {
+                TextButton(onClick = { onDeletePart(deleteTarget); itemToDelete = null }) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -518,7 +560,7 @@ private fun PartItem(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "HEX: ",
+                        stringResource(R.string.hex_prefix),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -532,7 +574,7 @@ private fun PartItem(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "DEC: ",
+                        stringResource(R.string.dec_prefix),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF388E3C)
@@ -571,7 +613,7 @@ private fun PartItem(
                 )
                 if (!part.note.isNullOrEmpty()) {
                     Text(
-                        text = "Has Note",
+                        text = stringResource(R.string.has_note),
                         style = MaterialTheme.typography.labelSmall,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.primary,
@@ -619,7 +661,7 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun MainScreenPreview() {
     val mockNavController = rememberNavController()
@@ -637,6 +679,7 @@ fun MainScreenPreview() {
             onAddPart = {},
             onDeleteSelected = {},
             onDeletePart = {},
+            cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
         ) { null }
     }
 }

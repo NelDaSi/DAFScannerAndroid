@@ -1,49 +1,66 @@
 package com.neldasi.dafscanner
 
+import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.neldasi.dafscanner.extras.SettingsRepository
+import com.neldasi.dafscanner.extras.findActivity
 import com.neldasi.dafscanner.navigation.AppNavigation
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
-import android.content.Context
-import android.content.SharedPreferences
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (SettingsRepository.shouldKeepScreenOn(this)) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
             var theme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
-            
-            DisposableEffect(context) {
-                val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                val listener = SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
-                    if (key == "appTheme") {
-                        theme = p.getString("appTheme", "SYSTEM") ?: "SYSTEM"
+            var fontSizeScale by remember { mutableFloatStateOf(SettingsRepository.getFontSizeScale(context)) }
+            var screenAlwaysOn by remember { mutableStateOf(SettingsRepository.shouldKeepScreenOn(context)) }
+
+            // Reactive Screen On Management
+            LaunchedEffect(screenAlwaysOn) {
+                val activity = context.findActivity()
+                if (screenAlwaysOn) {
+                    activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+
+            val listener = remember {
+                SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+                    when (key) {
+                        "appTheme" -> theme = p.getString("appTheme", "SYSTEM") ?: "SYSTEM"
+                        "fontSizeScale" -> fontSizeScale = p.getFloat("fontSizeScale", 1.0f)
+                        "screenAlwaysOn" -> screenAlwaysOn = p.getBoolean("screenAlwaysOn", false)
                     }
                 }
+            }
+
+            DisposableEffect(context) {
+                val prefs = context.getSharedPreferences("prefs", MODE_PRIVATE)
                 prefs.registerOnSharedPreferenceChangeListener(listener)
                 onDispose {
                     prefs.unregisterOnSharedPreferenceChangeListener(listener)
                 }
             }
 
-            JetpackComposeTheme(theme = theme) {
+            JetpackComposeTheme(theme = theme, fontSizeScale = fontSizeScale) {
                 AppNavigation()
             }
         }

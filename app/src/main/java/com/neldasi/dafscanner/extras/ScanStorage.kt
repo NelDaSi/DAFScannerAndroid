@@ -17,15 +17,11 @@ object ScanStorage {
     }
 
     /**
-     * Clear the pending queue and other settings.
+     * Factory reset: Clear all shared preferences.
      */
     fun clearAll(prefs: SharedPreferences) {
         prefs.edit {
-            remove(Keys.PENDING_SCANS)
-            remove("vibrateEnabled")
-            remove("continuousScanEnabled")
-            remove("screenAlwaysOn")
-            remove("allowedTypes")
+            clear()
         }
     }
 

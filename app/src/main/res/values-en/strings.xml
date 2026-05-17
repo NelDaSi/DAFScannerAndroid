@@ -40,12 +40,15 @@
     <string name="scan">Scan</string>
     <string name="no_items_scanned">No items scanned yet.</string>
     <string name="camera_permission_required">Camera permission is required to scan items.</string>
+    <string name="camera_permission_denied">Camera permission was denied. Scanning is disabled.</string>
+    <string name="camera_permission_settings">Manage Camera Permission</string>
+    <string name="camera_permission_settings_desc">Adjust camera permission in system settings</string>
     <string name="scanned_item">Scanned item</string>
     <string name="unknown">Unknown</string>
 
     <!-- Clear-all confirmation -->
-    <string name="clear_confirm_title">Confirm clear all</string>
-    <string name="clear_confirm_text">Are you sure you want to remove all scanned items?</string>
+    <string name="clear_confirm_title">Reset App?</string>
+    <string name="clear_confirm_text">Are you sure you want to clear all data, settings, and images? This action cannot be undone.</string>
 
     <!-- Common buttons -->
     <string name="yes">Yes</string>
@@ -105,13 +108,18 @@
     <string name="flashlight_off_desc">Flashlight off</string>
     <string name="empty_title">Empty</string>
     <string name="empty_subtitle">Press the scan button to start</string>
-    <string name="settings_clear_all">Clear all scanned items</string>
-    <string name="settings_clear_all_desc">Remove all saved scans from the device</string>
+    <string name="settings_clear_all">Reset App</string>
+    <string name="settings_clear_all_desc">Clear all data, settings, and images (Factory Reset)</string>
 
     <string name="theme_setting_title">App theme</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_system">System default</string>
+
+    <string name="font_size_label">Font Size</string>
+    <string name="font_size_small">Small</string>
+    <string name="font_size_medium">Medium</string>
+    <string name="font_size_large">Large</string>
 
     <!-- SearchListScreen Strings -->
     <string name="verify_serials_title">Verify Serial Numbers</string>
@@ -130,4 +138,69 @@
     <string name="share_summary_chooser">Share Summary</string>
     <string name="verification_summary_title">DAF Scanner - Verification Summary</string>
     <string name="verification_summary_subject">Verification Summary - %1$d/%2$d</string>
+
+    <string name="converter_title">HEX <![CDATA[<->]]> DEC Converter</string>
+    <string name="hex_label">HEX Value</string>
+    <string name="hex_placeholder">e.g. 01C821</string>
+    <string name="dec_label">DEC Value</string>
+    <string name="dec_placeholder">e.g. 116769</string>
+    <string name="close">Close</string>
+    <string name="new_update_available">New Update Available!</string>
+    <string name="version_available">Version %1$s is available.</string>
+    <string name="update_now">Update Now</string>
+    <string name="later">Later</string>
+    <string name="enter_note_placeholder">Enter additional information…</string>
+    <string name="theme_daf">DAF Theme</string>
+    <string name="checking_updates">Checking for updates…</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="check_github_desc">Check GitHub for a new version</string>
+    <string name="converter_desc">Tool to convert serial numbers</string>
+
+    <string name="status_found">FOUND</string>
+    <string name="status_missing">MISSING</string>
+    <string name="found_section">✅ FOUND (%1$d)</string>
+    <string name="missing_section">❌ MISSING (%1$d)</string>
+    <string name="export_scanned_items">Export Scanned Items</string>
+    <string name="select_all">Select All</string>
+    <string name="clear_search">Clear search</string>
+    <string name="export_csv">Export CSV</string>
+    <string name="hex_prefix">HEX: </string>
+    <string name="dec_prefix">DEC: </string>
+    <string name="has_note">Has Note</string>
+    <string name="serial_hex">Serial (HEX)</string>
+    <string name="serial_dec">Serial (DEC)</string>
+    <string name="already_scanned">ALREADY SCANNED</string>
+    <string name="first_seen">First seen: %1$s</string>
+    <string name="duplicate_code">DUPLICATE CODE</string>
+    <string name="match_found">MATCH FOUND</string>
+    <string name="no_match">NO MATCH</string>
+    <string name="dismiss">DISMISS</string>
+    <string name="dismiss_countdown">DISMISS (%1$d)</string>
+    <string name="last_scan_label">Last scan: %1$s</string>
+    <string name="camera_error">Failed to open camera.</string>
+    <string name="copy_type">Copy Type</string>
+    <string name="type_copied">Type copied to clipboard</string>
+    <string name="next_scan_in">Next scan in: %1$d</string>
+    <string name="tap_to_skip">Tap anywhere to scan now</string>
+    <string name="add_to_allowed">Add to Allowed Types</string>
+    <string name="found_at_label">Found at:</string>
+    <string name="production_label">Production:</string>
+    <string name="machine_label">Machine: %1$s</string>
+    <string name="output_material_label">Material: %1$s</string>
+    <string name="start_label">Start: %1$s %2$s</string>
+    <string name="complete_label">Complete: %1$s %2$s</string>
+    <string name="date_time_label">Date: %1$s %2$s - %3$s</string>
+    <string name="continuous_scan_on">Multi-scan ON</string>
+    <string name="continuous_scan_off">Multi-scan OFF</string>
+    <string name="vibration_on">Vibration ON</string>
+    <string name="vibration_off">Vibration OFF</string>
+    <string name="screen_always_on_on">Screen always ON enabled</string>
+    <string name="screen_always_on_off">Screen always ON disabled</string>
+    <string name="sort_machine">Machine</string>
+    <string name="sort_type">Type</string>
+    <string name="sort_found_time">Found Time</string>
+    <string name="sort_production_time">Production Time</string>
+    <string name="sort_default">Default</string>
+    <string name="search_items">Search items…</string>
+    <string name="loading">Loading…</string>
 </resources>

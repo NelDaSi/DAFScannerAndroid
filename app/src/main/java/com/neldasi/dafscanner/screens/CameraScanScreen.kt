@@ -1,6 +1,8 @@
 package com.neldasi.dafscanner.screens
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -16,37 +18,86 @@ import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.FilterNone
+import androidx.compose.material.icons.rounded.FlashOff
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -57,9 +108,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
-import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
-import com.neldasi.dafscanner.extras.isRunningOnEmulator
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
@@ -74,6 +123,8 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
+import androidx.compose.ui.platform.LocalLocale
 
 
 data class ScanFeedback(
@@ -117,25 +168,17 @@ fun CameraScanScreen(
     var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean("vibrateEnabled", false)) }
     var continuousScanEnabled by remember { mutableStateOf(prefs.getBoolean("continuousScanEnabled", false)) }
     var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean("screenAlwaysOn", false)) }
+    val cameraErrorString = stringResource(R.string.camera_error)
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
-    val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context) }
+    val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context).toMutableStateList() }
 
-    // Keep screen on logic
-    LaunchedEffect(screenAlwaysOn) {
-        val activity = context as? Activity
-        if (screenAlwaysOn) {
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-    
     var showNotAllowedDialog by remember { mutableStateOf(value = false) }
+    var scannedNotAllowedType by remember { mutableStateOf("") }
     var cameraProvider: ProcessCameraProvider? by remember { mutableStateOf(value = null) }
     var scannedResult by remember { mutableStateOf<String?>(value = null) }
     var cameraError by remember { mutableStateOf<String?>(value = null) }
@@ -147,10 +190,20 @@ fun CameraScanScreen(
 
     // State for Feedback and Cooldowns
     var verifyResult by remember { mutableStateOf<ScanFeedback?>(null) }
-    var countdown by remember { mutableIntStateOf(0) }
+    var continuousCooldown by remember { mutableIntStateOf(0) }
+    var cooldownJob: kotlinx.coroutines.Job? by remember { mutableStateOf(null) }
     val verifyScope = rememberCoroutineScope()
     var isPaused by remember { mutableStateOf(false) }
     
+    // Custom Toast State
+    var toastMessage by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            delay(2000)
+            toastMessage = null
+        }
+    }
+
     // To prevent a new scan from immediately triggering its own duplicate warning
     var lastProcessedCode by remember { mutableStateOf<String?>(null) }
     var lastProcessedTimestamp by remember { mutableLongStateOf(0L) }
@@ -161,7 +214,7 @@ fun CameraScanScreen(
     val sessionScanned = remember { mutableStateMapOf<String, Long>() }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
-    val transformableState = rememberTransformableState { zoomChange, _, _ ->
+    val transformableState = rememberTransformableState { _, zoomChange, _, _ ->
         val newZoom = (zoomRatio * zoomChange).coerceIn(1f, 10f)
         zoomRatio = newZoom
         camera?.cameraControl?.setZoomRatio(newZoom)
@@ -180,16 +233,29 @@ fun CameraScanScreen(
 
     LaunchedEffect(scannedResult) {
         scannedResult?.let { value ->
-            // 1. Debounce rapid-fire scans of the exact same code in Continuous Mode
             val now = System.currentTimeMillis()
+            
+            // 1. Debounce rapid-fire scans of the exact same code in Continuous Mode
             if (continuousScanEnabled && value == lastProcessedCode && (now - lastProcessedTimestamp) < 2000) {
                 scannedResult = null
+                isPaused = false
                 return@let
+            }
+
+            // 2. NEW/VALID SCAN: Trigger vibration feedback here instead of analyzer
+            if (vibrateEnabled) {
+                val vibrator = context.getSystemService(android.os.Vibrator::class.java)
+                vibrator?.vibrate(
+                    android.os.VibrationEffect.createOneShot(
+                        100L,
+                        android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                    )
+                )
             }
 
             lastSerial = extractSerial(value)
 
-            // 2. Flash visual feedback
+            // 3. Flash visual feedback
             if (value != lastFlashedCode) {
                 lastFlashedCode = value
                 flashScope.launch {
@@ -201,7 +267,7 @@ fun CameraScanScreen(
                 }
             }
 
-            // 3. Process the scan based on mode
+            // 4. Process the scan based on mode
             if (isVerifyMode) {
                 val serial = extractSerial(value)
                 if (searchViewModel != null) {
@@ -225,19 +291,6 @@ fun CameraScanScreen(
 
                 isPaused = true
                 navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                
-                countdown = 3
-                verifyScope.launch {
-                    while (countdown > 0) {
-                        delay(1000)
-                        if (verifyResult?.serial == serial) countdown-- else break
-                    }
-                    if (verifyResult?.serial == serial) {
-                        verifyResult = null
-                        isPaused = false
-                        scannedResult = null
-                    }
-                }
             } else {
                 // Main Scanning Mode logic
                 val sessionTimestamp = sessionScanned[value]
@@ -249,19 +302,6 @@ fun CameraScanScreen(
                     val serial = extractSerial(value)
                     verifyResult = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp)
                     isPaused = true
-                    
-                    countdown = 3
-                    verifyScope.launch {
-                        while (countdown > 0) {
-                            delay(1000)
-                            if (verifyResult?.serial == serial) countdown-- else break
-                        }
-                        if (verifyResult?.serial == serial) {
-                            verifyResult = null
-                            isPaused = false
-                            scannedResult = null
-                        }
-                    }
                 } else {
                     // NEW SCAN SUCCESS
                     lastProcessedCode = value
@@ -271,10 +311,22 @@ fun CameraScanScreen(
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
                         appendPendingScan(context, value)
                         sessionScanned[value] = now
-                        scannedResult = null
+                        
+                        // Give it a small pause so it doesn't immediately scan the same thing again
+                        continuousCooldown = 2
+                        cooldownJob = verifyScope.launch {
+                            while (continuousCooldown > 0) {
+                                delay(1000)
+                                continuousCooldown--
+                            }
+                            scannedResult = null
+                            isPaused = false
+                        }
                     } else {
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                        navController.popBackStack()
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
                     }
                 }
             }
@@ -289,7 +341,7 @@ fun CameraScanScreen(
         flashAlpha = flashAlpha.value,
         transformableState = transformableState,
         verifyResult = verifyResult,
-        countdown = countdown,
+        continuousCooldown = continuousCooldown,
         isVerifyMode = isVerifyMode,
         vibrateEnabled = vibrateEnabled,
         continuousScanEnabled = continuousScanEnabled,
@@ -297,14 +349,17 @@ fun CameraScanScreen(
         onToggleVibrate = {
             vibrateEnabled = !vibrateEnabled
             prefs.edit { putBoolean("vibrateEnabled", vibrateEnabled) }
+            toastMessage = if (vibrateEnabled) R.string.vibration_on else R.string.vibration_off
         },
         onToggleContinuous = {
             continuousScanEnabled = !continuousScanEnabled
             prefs.edit { putBoolean("continuousScanEnabled", continuousScanEnabled) }
+            toastMessage = if (continuousScanEnabled) R.string.continuous_scan_on else R.string.continuous_scan_off
         },
         onToggleScreenOn = {
             screenAlwaysOn = !screenAlwaysOn
             prefs.edit { putBoolean("screenAlwaysOn", screenAlwaysOn) }
+            toastMessage = if (screenAlwaysOn) R.string.screen_always_on_on else R.string.screen_always_on_off
         },
         onToggleTorch = {
             val newState = !isTorchOn
@@ -314,70 +369,70 @@ fun CameraScanScreen(
         },
         onClose = {
             searchViewModel?.clearResult()
-            navController.popBackStack()
+            if (navController.previousBackStackEntry != null) {
+                navController.popBackStack()
+            }
         },
         onDismissVerify = {
             verifyResult = null
             isPaused = false
             scannedResult = null
         },
-        onSimulateScan = {
-            if (!isPaused) {
-                val simulatedCode = "215000188429${(100000..999999).random()}"
-                scannedResult = simulatedCode
-            }
-        }
+        onDismissCooldown = {
+            cooldownJob?.cancel()
+            continuousCooldown = 0
+            scannedResult = null
+            isPaused = false
+        },
+        toastMessage = toastMessage,
     ) { ctx ->
-        if (isRunningOnEmulator()) {
-            // In emulator, we don't start CameraX to avoid errors/black screen
-            // or we could let it start if it works, but usually it's just a black screen.
-            // Let's just provide a dummy view.
-            android.view.View(ctx)
-        } else {
-            val previewView = PreviewView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-            }
-            previewViewRef = previewView
-            cameraProviderFuture.addListener({
-                try {
-                    val provider = cameraProviderFuture.get()
-                    cameraProvider = provider
-                    val preview = Preview.Builder()
-                        .setResolutionSelector(ResolutionSelector.Builder()
-                            .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_16_9, AspectRatioStrategy.FALLBACK_RULE_AUTO))
-                            .build())
-                        .build().also { it.surfaceProvider = previewView.surfaceProvider }
+        val previewView = PreviewView(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+        previewViewRef = previewView
+        cameraProviderFuture.addListener({
+            try {
+                val provider = cameraProviderFuture.get()
+                cameraProvider = provider
+                val preview = Preview.Builder()
+                    .setResolutionSelector(ResolutionSelector.Builder()
+                        .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_16_9, AspectRatioStrategy.FALLBACK_RULE_AUTO))
+                        .build())
+                    .build().also { it.surfaceProvider = previewView.surfaceProvider }
 
-                    val analyzer = buildImageAnalyzer(cameraExecutor, context, vibrateEnabled) { scannedValue ->
-                        if (!isPaused) {
-                            if (scannedValue.take(7) in allowedTypes) {
-                                if (scannedResult == null) scannedResult = scannedValue
-                            } else {
-                                showNotAllowedDialog = true
+                val analyzer = buildImageAnalyzer(
+                    cameraExecutor = cameraExecutor,
+                    shouldProcess = { !isPaused && scannedResult == null },
+                    onScannedValue = { scannedValue ->
+                        val type = scannedValue.take(7)
+                        if (type in allowedTypes) {
+                            if (scannedResult == null && !isPaused) {
+                                isPaused = true
+                                scannedResult = scannedValue
                             }
+                        } else {
+                            scannedNotAllowedType = type
+                            showNotAllowedDialog = true
+                            isPaused = true
                         }
                     }
-                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                    provider.unbindAll()
-                    val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
-                    camera = boundCamera
-                    try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
-                    try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
-                    isCameraReady = true
-                    requestCenterFocus(previewView, boundCamera)
-                } catch (_: Exception) {
-                    cameraError = "Failed to open camera."
-                    isCameraReady = false
-                }
-            }, ContextCompat.getMainExecutor(ctx))
-            previewView
-        }
-    }
-
-    if (isRunningOnEmulator()) {
-        isCameraReady = true
+                )
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                provider.unbindAll()
+                val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
+                camera = boundCamera
+                try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
+                try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
+                isCameraReady = true
+                requestCenterFocus(previewView, boundCamera)
+            } catch (_: Exception) {
+                cameraError = cameraErrorString
+                isCameraReady = false
+            }
+        }, ContextCompat.getMainExecutor(ctx))
+        previewView
     }
 
     LaunchedEffect(isCameraReady, camera) {
@@ -390,12 +445,67 @@ fun CameraScanScreen(
 
     if (showNotAllowedDialog) {
         AlertDialog(
-            onDismissRequest = { showNotAllowedDialog = false },
+            onDismissRequest = { showNotAllowedDialog = false; isPaused = false },
             title = { Text(stringResource(R.string.unsupported_code_title)) },
-            text = { Text(stringResource(R.string.unsupported_code_text)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.unsupported_code_text))
+                    Spacer(Modifier.height(16.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.type_code_label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = scannedNotAllowedType,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Type Code", scannedNotAllowedType)
+                                clipboard.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(context, R.string.type_copied, android.widget.Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.copy_type))
+                            }
+                        }
+                    }
+                }
+            },
             confirmButton = {
-                Button(onClick = { showNotAllowedDialog = false }) {
-                    Text(stringResource(R.string.ok))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            allowedTypes.add(scannedNotAllowedType)
+                            SettingsRepository.saveAllowedTypes(context, allowedTypes)
+                            showNotAllowedDialog = false
+                            isPaused = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_to_allowed))
+                    }
+                    OutlinedButton(
+                        onClick = { showNotAllowedDialog = false; isPaused = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.ok))
+                    }
                 }
             }
         )
@@ -411,7 +521,7 @@ fun CameraScanScreenContent(
     flashAlpha: Float,
     transformableState: androidx.compose.foundation.gestures.TransformableState,
     verifyResult: ScanFeedback? = null,
-    countdown: Int = 0,
+    continuousCooldown: Int = 0,
     isVerifyMode: Boolean = false,
     vibrateEnabled: Boolean = false,
     continuousScanEnabled: Boolean = false,
@@ -422,26 +532,70 @@ fun CameraScanScreenContent(
     onToggleTorch: () -> Unit,
     onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
-    onSimulateScan: () -> Unit = {},
+    onDismissCooldown: () -> Unit = {},
+    toastMessage: Int? = null,
     onAndroidViewFactory: (Context) -> android.view.View,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .transformable(state = transformableState)
-            .then(if (isRunningOnEmulator()) Modifier.clickable(onClick = onSimulateScan) else Modifier)
+            .then(
+                if (continuousCooldown > 0) {
+                    Modifier.clickable(onClick = onDismissCooldown)
+                } else {
+                    Modifier
+                }
+            )
     ) {
-        AndroidView(factory = onAndroidViewFactory, modifier = Modifier.fillMaxSize())
+        AndroidView(
+            factory = onAndroidViewFactory, 
+            modifier = Modifier.fillMaxSize(),
+            update = { view -> view.keepScreenOn = screenAlwaysOn }
+        )
 
         // Flash overlay
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = flashAlpha)))
 
         CameraOverlay(isCameraReady = isCameraReady, errorMessage = cameraError)
 
-        TopScannerBar(
+        LastScanBar(
             serial = lastSerial,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 24.dp, end = 24.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 80.dp, start = 24.dp, end = 24.dp)
         )
+
+        AnimatedVisibility(
+            visible = continuousCooldown > 0,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier.align(Alignment.Center).padding(top = 320.dp)
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.next_scan_in, continuousCooldown),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         if (verifyResult != null) {
             val backgroundColor = when {
@@ -481,7 +635,7 @@ fun CameraScanScreenContent(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             ) {
                                 Text(
-                                    "ALREADY SCANNED",
+                                    stringResource(R.string.already_scanned),
                                     color = Color.White,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelLarge,
@@ -491,12 +645,13 @@ fun CameraScanScreenContent(
                             
                             verifyResult.scanTimestamp?.let { ts ->
                                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-                                val locale = configuration.locales[0] ?: Locale.getDefault()
+                                // Accessing locales through LocalConfiguration ensures recomposition on change
+                                val locale = configuration.locales[0] ?: LocalLocale.current.platformLocale
                                 val dateStr = remember(ts, locale) {
                                     SimpleDateFormat("dd MMM, HH:mm", locale).format(Date(ts))
                                 }
                                 Text(
-                                    text = "First seen: $dateStr",
+                                    text = stringResource(R.string.first_seen, dateStr),
                                     color = Color.White.copy(alpha = 0.8f),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
@@ -508,9 +663,9 @@ fun CameraScanScreenContent(
 
                     Text(
                         text = when {
-                            verifyResult.alreadyScanned && !isVerifyMode -> "DUPLICATE CODE"
-                            verifyResult.isMatch -> "MATCH FOUND"
-                            else -> "NO MATCH"
+                            verifyResult.alreadyScanned && !isVerifyMode -> stringResource(R.string.duplicate_code)
+                            verifyResult.isMatch -> stringResource(R.string.match_found)
+                            else -> stringResource(R.string.no_match)
                         },
                         color = Color.White,
                         style = MaterialTheme.typography.displaySmall,
@@ -519,13 +674,13 @@ fun CameraScanScreenContent(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "HEX: ${verifyResult.serial}",
+                        text = "${stringResource(R.string.hex_prefix)}${verifyResult.serial}",
                         color = Color.White,
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "DEC: ${try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
+                        text = "${stringResource(R.string.dec_prefix)}${try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
@@ -540,26 +695,12 @@ fun CameraScanScreenContent(
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
                         Text(
-                            text = if (countdown > 0) "DISMISS ($countdown)" else "DISMISS",
+                            text = stringResource(R.string.dismiss),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
                     }
                 }
-            }
-        }
-
-        if (isRunningOnEmulator()) {
-            Surface(
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 100.dp),
-                color = MaterialTheme.colorScheme.tertiaryContainer,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    "Emulator Mode: Click screen to simulate scan",
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.labelLarge
-                )
             }
         }
 
@@ -573,13 +714,38 @@ fun CameraScanScreenContent(
             screenAlwaysOn = screenAlwaysOn,
             onToggleScreenOn = onToggleScreenOn,
             onClose = onClose,
+            isVerifyMode = isVerifyMode,
             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
         )
+
+        // Custom Toast Overlay
+        AnimatedVisibility(
+            visible = toastMessage != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 180.dp)
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.8f),
+                shape = RoundedCornerShape(24.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+            ) {
+                Text(
+                    text = toastMessage?.let { stringResource(it) } ?: "",
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun TopScannerBar(
+private fun LastScanBar(
     serial: String?,
     modifier: Modifier = Modifier
 ) {
@@ -609,7 +775,7 @@ private fun TopScannerBar(
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = serial ?: "",
+                    text = stringResource(R.string.last_scan_label, serial ?: ""),
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
@@ -730,6 +896,7 @@ private fun BottomScannerBar(
     screenAlwaysOn: Boolean,
     onToggleScreenOn: () -> Unit,
     onClose: () -> Unit,
+    isVerifyMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -757,13 +924,15 @@ private fun BottomScannerBar(
                     onClick = onToggleTorch
                 )
                 
-                // Continuous Scan
-                ScannerOptionButton(
-                    icon = Icons.Rounded.SystemUpdateAlt,
-                    isActive = continuousScanEnabled,
-                    activeColor = MaterialTheme.colorScheme.primary,
-                    onClick = onToggleContinuous
-                )
+                // Continuous Scan (Hidden in Verify Mode)
+                if (!isVerifyMode) {
+                    ScannerOptionButton(
+                        icon = Icons.Rounded.FilterNone,
+                        isActive = continuousScanEnabled,
+                        activeColor = MaterialTheme.colorScheme.primary,
+                        onClick = onToggleContinuous
+                    )
+                }
 
                 // Vibrate
                 ScannerOptionButton(
@@ -775,7 +944,7 @@ private fun BottomScannerBar(
 
                 // Screen Always On
                 ScannerOptionButton(
-                    icon = Icons.Rounded.ScreenLockRotation,
+                    icon = Icons.Rounded.Smartphone,
                     isActive = screenAlwaysOn,
                     activeColor = MaterialTheme.colorScheme.primary,
                     onClick = onToggleScreenOn
@@ -784,9 +953,9 @@ private fun BottomScannerBar(
 
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.1f), CircleShape)
+                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f), CircleShape)
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(24.dp))
             }
         }
     }
@@ -826,8 +995,7 @@ private fun appendPendingScan(context: Context, code: String) {
 
 private fun buildImageAnalyzer(
     cameraExecutor: ExecutorService,
-    context: Context,
-    vibrateEnabled: Boolean,
+    shouldProcess: () -> Boolean,
     onScannedValue: (String) -> Unit
 ): ImageAnalysis {
     val options = BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX).build()
@@ -835,7 +1003,11 @@ private fun buildImageAnalyzer(
     return ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
         .also { analysis ->
             analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                processImageProxy(barcodeScanner, imageProxy, context, vibrateEnabled, onScannedValue)
+                if (shouldProcess()) {
+                    processImageProxy(barcodeScanner, imageProxy, onScannedValue)
+                } else {
+                    imageProxy.close()
+                }
             }
         }
 }
@@ -854,11 +1026,10 @@ fun CameraScanScreenPreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _ -> },
+            transformableState = rememberTransformableState { _, _, _, _ -> },
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
-            onSimulateScan = {},
         ) { android.view.View(it) }
     }
 }
@@ -873,7 +1044,7 @@ fun CameraScanScreenDuplicatePreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _ -> },
+            transformableState = rememberTransformableState { _, _, _, _ -> },
             verifyResult = ScanFeedback(
                 serial = "01C821",
                 isMatch = false,
@@ -883,7 +1054,6 @@ fun CameraScanScreenDuplicatePreview() {
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
-            onSimulateScan = {},
         ) { android.view.View(it) }
     }
 }

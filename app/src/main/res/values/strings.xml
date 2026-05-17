@@ -40,12 +40,15 @@
     <string name="scan">Scannen</string>
     <string name="no_items_scanned">Nog geen items gescand.</string>
     <string name="camera_permission_required">Camera machtiging vereist om items te scannen.</string>
+    <string name="camera_permission_denied">Camera machtiging is geweigerd. Scannen is niet mogelijk.</string>
+    <string name="camera_permission_settings">Camera machtiging beheren</string>
+    <string name="camera_permission_settings_desc">Pas de camera machtiging aan in de systeeminstellingen</string>
     <string name="scanned_item">Gescand item</string>
     <string name="unknown">Onbekend</string>
 
     <!-- Clear-all confirmation -->
-    <string name="clear_confirm_title">Bevestig alles wissen</string>
-    <string name="clear_confirm_text">Weet je zeker dat je alle gescande items wilt verwijderen?</string>
+    <string name="clear_confirm_title">App resetten?</string>
+    <string name="clear_confirm_text">Weet je zeker dat je alle gegevens, instellingen en afbeeldingen wilt wissen? Dit kan niet ongedaan worden gemaakt.</string>
 
     <!-- Common buttons -->
     <string name="yes">Ja</string>
@@ -105,13 +108,18 @@
     <string name="flashlight_off_desc">Zaklamp uit</string>
     <string name="empty_title">Leeg</string>
     <string name="empty_subtitle">Druk op de scan-knop om te beginnen</string>
-    <string name="settings_clear_all">Alle gescande items wissen</string>
-    <string name="settings_clear_all_desc">Verwijder alle opgeslagen scans van het apparaat</string>
+    <string name="settings_clear_all">App resetten</string>
+    <string name="settings_clear_all_desc">Wis alle gegevens, instellingen en afbeeldingen (fabrieksinstellingen)</string>
 
     <string name="theme_setting_title">App thema</string>
     <string name="theme_light">Licht</string>
     <string name="theme_dark">Donker</string>
     <string name="theme_system">Systeemstandaard</string>
+
+    <string name="font_size_label">Lettergrootte</string>
+    <string name="font_size_small">Klein</string>
+    <string name="font_size_medium">Normaal</string>
+    <string name="font_size_large">Groot</string>
 
     <!-- SearchListScreen Strings -->
     <string name="verify_serials_title">Serienummers verifiëren</string>
@@ -130,4 +138,69 @@
     <string name="share_summary_chooser">Samenvatting delen</string>
     <string name="verification_summary_title">DAF Scanner - Verificatieoverzicht</string>
     <string name="verification_summary_subject">Verificatieoverzicht - %1$d/%2$d</string>
+
+    <string name="converter_title">HEX <![CDATA[<->]]> DEC Converter</string>
+    <string name="hex_label">HEX Waarde</string>
+    <string name="hex_placeholder">bijv. 01C821</string>
+    <string name="dec_label">DEC Waarde</string>
+    <string name="dec_placeholder">bijv. 116769</string>
+    <string name="close">Sluiten</string>
+    <string name="new_update_available">Nieuwe update beschikbaar!</string>
+    <string name="version_available">Versie %1$s is beschikbaar.</string>
+    <string name="update_now">Nu updaten</string>
+    <string name="later">Later</string>
+    <string name="enter_note_placeholder">Voer extra informatie in…</string>
+    <string name="theme_daf">DAF Thema</string>
+    <string name="checking_updates">Controleren op updates…</string>
+    <string name="check_for_updates">Controleren op updates</string>
+    <string name="check_github_desc">Check GitHub voor een nieuwe versie</string>
+    <string name="converter_desc">Tool om serienummers te converteren</string>
+
+    <string name="status_found">GEVONDEN</string>
+    <string name="status_missing">ONTBREEKT</string>
+    <string name="found_section">✅ GEVONDEN (%1$d)</string>
+    <string name="missing_section">❌ ONTBREEKT (%1$d)</string>
+    <string name="export_scanned_items">Gescande items exporteren</string>
+    <string name="select_all">Alles selecteren</string>
+    <string name="clear_search">Zoekopdracht wissen</string>
+    <string name="export_csv">CSV Exporteren</string>
+    <string name="hex_prefix">HEX: </string>
+    <string name="dec_prefix">DEC: </string>
+    <string name="has_note">Heeft notitie</string>
+    <string name="serial_hex">Serie (HEX)</string>
+    <string name="serial_dec">Serie (DEC)</string>
+    <string name="already_scanned">ALREEDS GESCAND</string>
+    <string name="first_seen">Eerste keer: %1$s</string>
+    <string name="duplicate_code">DUBBELE CODE</string>
+    <string name="match_found">MATCH GEVONDEN</string>
+    <string name="no_match">GEEN MATCH</string>
+    <string name="dismiss">SLUITEN</string>
+    <string name="dismiss_countdown">SLUITEN (%1$d)</string>
+    <string name="last_scan_label">Laatste scan: %1$s</string>
+    <string name="camera_error">Kan camera niet openen.</string>
+    <string name="copy_type">Type kopiëren</string>
+    <string name="type_copied">Type naar klembord gekopieerd</string>
+    <string name="next_scan_in">Volgende scan over: %1$d</string>
+    <string name="tap_to_skip">Tik overal om nu te scannen</string>
+    <string name="add_to_allowed">Toevoegen aan toegestane types</string>
+    <string name="found_at_label">Gevonden om:</string>
+    <string name="production_label">Productie:</string>
+    <string name="machine_label">Machine: %1$s</string>
+    <string name="output_material_label">Materiaal: %1$s</string>
+    <string name="start_label">Start: %1$s %2$s</string>
+    <string name="complete_label">Klaar: %1$s %2$s</string>
+    <string name="date_time_label">Datum: %1$s %2$s - %3$s</string>
+    <string name="continuous_scan_on">Multi-scan aan</string>
+    <string name="continuous_scan_off">Multi-scan uit</string>
+    <string name="vibration_on">Trillen aan</string>
+    <string name="vibration_off">Trillen uit</string>
+    <string name="screen_always_on_on">Scherm altijd aan geactiveerd</string>
+    <string name="screen_always_on_off">Scherm altijd aan gedeactiveerd</string>
+    <string name="sort_machine">Machine</string>
+    <string name="sort_type">Type</string>
+    <string name="sort_found_time">Tijd gevonden</string>
+    <string name="sort_production_time">Tijd productie</string>
+    <string name="sort_default">Standaard</string>
+    <string name="search_items">Items zoeken…</string>
+    <string name="loading">Laden…</string>
 </resources>
