@@ -8,6 +8,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -183,6 +185,7 @@ fun MainScreenContent(
     var showSettingsDialog by remember { mutableStateOf(value = false) }
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
+    var isSearchActive by remember { mutableStateOf(searchQuery.isNotEmpty()) }
     val scope = rememberCoroutineScope()
     val exportChooserTitle = stringResource(R.string.export_scanned_items)
 
@@ -364,41 +367,64 @@ fun MainScreenContent(
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(8.dp)
-                                .fillMaxWidth(),
+                                .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = onSearchQueryChange,
-                                placeholder = { 
-                                    Text(
-                                        stringResource(R.string.search_serials_hint),
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                    ) 
-                                },
-                                modifier = Modifier
-                                    .weight(1f),
-                                shape = RoundedCornerShape(24.dp),
-                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            AnimatedVisibility(
+                                visible = isSearchActive,
+                                enter = fadeIn(animationSpec = tween(600)) + expandHorizontally(
+                                    animationSpec = tween(600),
+                                    expandFrom = Alignment.End
+                                ),
+                                exit = fadeOut(animationSpec = tween(600)) + shrinkHorizontally(
+                                    animationSpec = tween(600),
+                                    shrinkTowards = Alignment.End
+                                )
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = onSearchQueryChange,
+                                    placeholder = { 
+                                        Text(
+                                            stringResource(R.string.search_serials_hint),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        ) 
+                                    },
+                                    modifier = Modifier.fillMaxWidth(0.75f),
+                                    shape = RoundedCornerShape(24.dp),
+                                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { 
+                                            onSearchQueryChange("")
+                                            isSearchActive = false
+                                        }) {
                                             Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.clear_search), tint = MaterialTheme.colorScheme.primary)
                                         }
-                                    }
-                                },
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    },
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color.Transparent,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
                                 )
-                            )
+                            }
+
+                            if (!isSearchActive) {
+                                FloatingActionButton(
+                                    onClick = { isSearchActive = true },
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search_serials_hint))
+                                }
+                            }
 
                             FloatingActionButton(
                                 onClick = {
