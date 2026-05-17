@@ -17,6 +17,9 @@ object SettingsRoute
 object SearchListRoute
 
 @Serializable
+object ConverterRoute
+
+@Serializable
 data class DetailRoute(
     val fullCode: String,
     val timestamp: Long,

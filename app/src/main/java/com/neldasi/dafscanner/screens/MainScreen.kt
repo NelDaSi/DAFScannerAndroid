@@ -114,6 +114,7 @@ import com.neldasi.dafscanner.data.ScannedPart
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.navigation.CameraRoute
+import com.neldasi.dafscanner.navigation.ConverterRoute
 import com.neldasi.dafscanner.navigation.DetailRoute
 import com.neldasi.dafscanner.navigation.NavKeys
 import com.neldasi.dafscanner.navigation.SearchListRoute
@@ -193,7 +194,6 @@ fun MainScreenContent(
 
     var showPermissionRationaleDialog by remember { mutableStateOf(value = false) }
     var showSettingsDialog by remember { mutableStateOf(value = false) }
-    var showConverterDialog by remember { mutableStateOf(value = false) }
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
     var isSearchActive by remember { mutableStateOf(searchQuery.isNotEmpty()) }
@@ -434,7 +434,7 @@ fun MainScreenContent(
                                 }
 
                                 FloatingActionButton(
-                                    onClick = { showConverterDialog = true },
+                                    onClick = { navController.navigate(ConverterRoute) },
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     contentColor = MaterialTheme.colorScheme.primary,
                                     shape = CircleShape,
@@ -501,145 +501,6 @@ fun MainScreenContent(
     )
 
     PermissionSettingsDialog(show = showSettingsDialog, onDismiss = { showSettingsDialog = false }, context = context)
-
-    if (showConverterDialog) {
-        var hexVal by remember { mutableStateOf("") }
-        var decVal by remember { mutableStateOf("") }
-        val clipboardManager = LocalClipboardManager.current
-
-        AlertDialog(
-            onDismissRequest = { showConverterDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Rounded.Calculate,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(Modifier.size(12.dp))
-                    Text(
-                        stringResource(R.string.converter_title),
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                }
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    // HEX Field
-                    OutlinedTextField(
-                        value = hexVal,
-                        onValueChange = { input ->
-                            val filtered = input.uppercase().filter { it in "0123456789ABCDEF" }
-                            hexVal = filtered
-                            decVal = try {
-                                if (filtered.isEmpty()) "" else filtered.toLong(16).toString()
-                            } catch (_: Exception) { "Error" }
-                        },
-                        label = { Text(stringResource(R.string.hex_label), fontWeight = FontWeight.Bold) },
-                        placeholder = { Text(stringResource(R.string.hex_placeholder)) },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        leadingIcon = {
-                            Text(
-                                "0x",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        },
-                        trailingIcon = {
-                            Row {
-                                if (hexVal.isNotEmpty()) {
-                                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(hexVal)) }) {
-                                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                                IconButton(onClick = {
-                                    clipboardManager.getText()?.let { text ->
-                                        val pasted = text.text.uppercase().filter { it in "0123456789ABCDEF" }
-                                        hexVal = pasted
-                                        decVal = try {
-                                            if (pasted.isEmpty()) "" else pasted.toLong(16).toString()
-                                        } catch (_: Exception) { "Error" }
-                                    }
-                                }) {
-                                    Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
-                    )
-
-                    Icon(
-                        Icons.Rounded.SwapVert,
-                        contentDescription = null,
-                        modifier = Modifier.align(Alignment.CenterHorizontally).size(32.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                    )
-
-                    // DEC Field
-                    OutlinedTextField(
-                        value = decVal,
-                        onValueChange = { input ->
-                            val filtered = input.filter { it.isDigit() }
-                            decVal = filtered
-                            hexVal = try {
-                                if (filtered.isEmpty()) "" else filtered.toLong().toString(16).uppercase()
-                            } catch (_: Exception) { "Error" }
-                        },
-                        label = { Text(stringResource(R.string.dec_label), fontWeight = FontWeight.Bold) },
-                        placeholder = { Text(stringResource(R.string.dec_placeholder)) },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        trailingIcon = {
-                            Row {
-                                if (decVal.isNotEmpty()) {
-                                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(decVal)) }) {
-                                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                                IconButton(onClick = {
-                                    clipboardManager.getText()?.let { text ->
-                                        val pasted = text.text.filter { it.isDigit() }
-                                        decVal = pasted
-                                        hexVal = try {
-                                            if (pasted.isEmpty()) "" else pasted.toLong().toString(16).uppercase()
-                                        } catch (_: Exception) { "Error" }
-                                    }
-                                }) {
-                                    Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFE31E24), // DAF Red
-                            focusedLabelColor = Color(0xFFE31E24)
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showConverterDialog = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text(stringResource(R.string.close), fontWeight = FontWeight.Bold)
-                }
-            }
-        )
-    }
 }
 
 @Composable

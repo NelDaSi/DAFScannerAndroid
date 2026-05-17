@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.neldasi.dafscanner.screens.CameraScanScreen
+import com.neldasi.dafscanner.screens.ConverterScreen
 import com.neldasi.dafscanner.screens.DetailScreen
 import com.neldasi.dafscanner.screens.MainScreen
 import com.neldasi.dafscanner.screens.SearchListScreen
@@ -21,6 +22,9 @@ fun AppNavigation() {
     NavHost(navController = navController, startDestination = MainRoute) {
         composable<MainRoute> {
             MainScreen(navController)
+        }
+        composable<ConverterRoute> {
+            ConverterScreen(navController)
         }
         composable<CameraRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<CameraRoute>()
