@@ -206,7 +206,7 @@ fun DetailScreenContent(
                                     appendLine(shareBatchLabel.format(it.batchNumber))
                                     appendLine()
                                 }
-                                val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+                                val formattedDate = SimpleDateFormat("dd MMM yyyy, HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
                                 appendLine(shareScannedAtLabel.format(formattedDate))
                                 if (note.isNotBlank()) appendLine(shareNoteLabel.format(note))
                             }
@@ -363,7 +363,7 @@ fun DetailScreenContent(
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             val formattedDate = remember(timestamp) {
-                                SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(timestamp))
+                                SimpleDateFormat("dd MMM yyyy, HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
                             }
                             
                             parsed?.let {

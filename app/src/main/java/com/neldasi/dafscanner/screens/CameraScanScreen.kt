@@ -684,7 +684,7 @@ fun CameraScanScreenContent(
                                 // Accessing locales through LocalConfiguration ensures recomposition on change
                                 val locale = configuration.locales[0] ?: LocalLocale.current.platformLocale
                                 val dateStr = remember(ts, locale) {
-                                    SimpleDateFormat("dd MMM, HH:mm", locale).format(Date(ts))
+                                    SimpleDateFormat("dd MMM, HH:mm:ss", locale).format(Date(ts))
                                 }
                                 Text(
                                     text = stringResource(R.string.first_seen, dateStr),
