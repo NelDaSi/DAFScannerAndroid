@@ -203,4 +203,9 @@
     <string name="sort_default">Default</string>
     <string name="search_items">Search items…</string>
     <string name="loading">Loading…</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_scanning">Scanning Behavior</string>
+    <string name="settings_section_general">General</string>
+    <string name="settings_section_data">Data Management</string>
+    <string name="settings_section_system">System</string>
 </resources>

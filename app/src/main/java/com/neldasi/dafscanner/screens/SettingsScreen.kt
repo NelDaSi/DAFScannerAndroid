@@ -3,12 +3,12 @@
 
 package com.neldasi.dafscanner.screens
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
-import android.view.WindowManager
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -17,6 +17,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +51,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +69,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,7 +110,7 @@ fun SettingsScreen(
     var screenAlwaysOn by remember { mutableStateOf(value = false) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
     var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
-    var fontSizeScale by remember { mutableStateOf(SettingsRepository.getFontSizeScale(context)) }
+    var fontSizeScale by remember { mutableFloatStateOf(SettingsRepository.getFontSizeScale(context)) }
 
     val updateInfo by viewModel.updateInfo.collectAsState()
     val isCheckingUpdates by viewModel.isCheckingUpdates.collectAsState()
@@ -209,7 +212,7 @@ fun SettingsScreenContent(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_screen_title), fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.settings_screen_title), fontWeight = FontWeight.ExtraBold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     scrolledContainerColor = MaterialTheme.colorScheme.primary,
@@ -235,185 +238,209 @@ fun SettingsScreenContent(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            item {
-                Text(
-                    stringResource(R.string.scanner_settings_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
 
             item {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        SettingsClickableItem(
-                            icon = Icons.Rounded.Palette,
-                            title = stringResource(R.string.theme_setting_title),
-                            subtitle = when (currentTheme) {
-                                "LIGHT" -> stringResource(R.string.theme_light)
-                                "DARK" -> stringResource(R.string.theme_dark)
-                                "DAF" -> stringResource(R.string.theme_daf)
-                                else -> stringResource(R.string.theme_system)
-                            },
-                            onClick = { showThemeDialog = true }
-                        )
-                        SettingsClickableItem(
-                            icon = Icons.Rounded.TextFormat,
-                            title = stringResource(R.string.font_size_label),
-                            subtitle = when (fontSizeScale) {
-                                0.85f -> stringResource(R.string.font_size_small)
-                                1.15f -> stringResource(R.string.font_size_large)
-                                else -> stringResource(R.string.font_size_medium)
-                            },
-                            onClick = { showFontSizeDialog = true }
-                        )
-                        SettingsSwitchItem(
-                            icon = Icons.Rounded.NotificationsActive,
-                            title = stringResource(R.string.vibrate_on_scan_label),
-                            checked = vibrateEnabled,
-                            onCheckedChange = onVibrateChange
-                        )
-                        SettingsSwitchItem(
-                            icon = Icons.Rounded.FilterNone,
-                            title = stringResource(R.string.multi_scan_mode_label),
-                            checked = continuousScanEnabled,
-                            onCheckedChange = onContinuousScanChange
-                        )
-                        SettingsSwitchItem(
-                            icon = Icons.Rounded.Smartphone,
-                            title = stringResource(R.string.screen_always_on_label),
-                            checked = screenAlwaysOn,
-                            onCheckedChange = onScreenAlwaysOnChange
-                        )
-                        SettingsClickableItem(
-                            icon = Icons.Rounded.CameraAlt,
-                            title = stringResource(R.string.camera_permission_settings),
-                            subtitle = stringResource(R.string.camera_permission_settings_desc),
-                            onClick = {
-                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                intent.data = Uri.fromParts("package", context.packageName, null)
-                                context.startActivity(intent)
-                            }
-                        )
-                        SettingsClickableItem(
-                            icon = Icons.Rounded.Calculate,
-                            title = stringResource(R.string.converter_title),
-                            subtitle = stringResource(R.string.converter_desc),
-                            onClick = { showConverterDialog = true }
-                        )
-                        SettingsClickableItem(
-                            icon = Icons.Rounded.SystemUpdateAlt,
-                            title = if (isCheckingUpdates) stringResource(R.string.checking_updates) else stringResource(R.string.check_for_updates),
-                            subtitle = stringResource(R.string.check_github_desc),
-                            onClick = onCheckForUpdates
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                var expanded by remember { mutableStateOf(value = false) }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        stringResource(R.string.allowed_types_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
+                SettingsSection(title = stringResource(R.string.settings_section_appearance)) {
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.Palette,
+                        title = stringResource(R.string.theme_setting_title),
+                        subtitle = when (currentTheme) {
+                            "LIGHT" -> stringResource(R.string.theme_light)
+                            "DARK" -> stringResource(R.string.theme_dark)
+                            "DAF" -> stringResource(R.string.theme_daf)
+                            else -> stringResource(R.string.theme_system)
+                        },
+                        onClick = { showThemeDialog = true }
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { expanded = !expanded }) {
-                            Icon(
-                                imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                    SettingsDivider()
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.TextFormat,
+                        title = stringResource(R.string.font_size_label),
+                        subtitle = when (fontSizeScale) {
+                            0.85f -> stringResource(R.string.font_size_small)
+                            1.15f -> stringResource(R.string.font_size_large)
+                            else -> stringResource(R.string.font_size_medium)
+                        },
+                        onClick = { showFontSizeDialog = true }
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(title = stringResource(R.string.settings_section_scanning)) {
+                    SettingsSwitchItem(
+                        icon = Icons.Rounded.NotificationsActive,
+                        title = stringResource(R.string.vibrate_on_scan_label),
+                        checked = vibrateEnabled,
+                        onCheckedChange = onVibrateChange
+                    )
+                    SettingsDivider()
+                    SettingsSwitchItem(
+                        icon = Icons.Rounded.FilterNone,
+                        title = stringResource(R.string.multi_scan_mode_label),
+                        checked = continuousScanEnabled,
+                        onCheckedChange = onContinuousScanChange
+                    )
+                    SettingsDivider()
+                    SettingsSwitchItem(
+                        icon = Icons.Rounded.Smartphone,
+                        title = stringResource(R.string.screen_always_on_label),
+                        checked = screenAlwaysOn,
+                        onCheckedChange = onScreenAlwaysOnChange
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(title = stringResource(R.string.settings_section_general)) {
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.Calculate,
+                        title = stringResource(R.string.converter_title),
+                        subtitle = stringResource(R.string.converter_desc),
+                        onClick = { showConverterDialog = true }
+                    )
+                    SettingsDivider()
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.CameraAlt,
+                        title = stringResource(R.string.camera_permission_settings),
+                        subtitle = stringResource(R.string.camera_permission_settings_desc),
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            intent.data = Uri.fromParts("package", context.packageName, null)
+                            context.startActivity(intent)
                         }
-                        FloatingActionButton(
-                            onClick = { showAddDialog = true },
-                            modifier = Modifier.size(40.dp),
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary,
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_type))
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(title = stringResource(R.string.settings_section_system)) {
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.SystemUpdateAlt,
+                        title = if (isCheckingUpdates) stringResource(R.string.checking_updates) else stringResource(R.string.check_for_updates),
+                        subtitle = stringResource(R.string.check_github_desc),
+                        onClick = onCheckForUpdates
+                    )
+                }
+            }
+
+            item {
+                var expanded by remember { mutableStateOf(value = false) }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            stringResource(R.string.allowed_types_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { expanded = !expanded }) {
+                                Icon(
+                                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            FloatingActionButton(
+                                onClick = { showAddDialog = true },
+                                modifier = Modifier.size(36.dp),
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape = RoundedCornerShape(10.dp),
+                                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_type), modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
-                }
 
-                AnimatedVisibility(
-                    visible = expanded,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        allowedTypes.forEach { type ->
-                            TypeItem(
-                                type = type,
-                                isDefault = type in defaultAllowedTypes,
-                                onDelete = {
-                                    allowedTypes.remove(type)
-                                    SettingsRepository.saveAllowedTypes(context, allowedTypes)
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                allowedTypes.forEachIndexed { index, type ->
+                                    TypeItem(
+                                        type = type,
+                                        isDefault = type in defaultAllowedTypes,
+                                        onDelete = {
+                                            allowedTypes.remove(type)
+                                            SettingsRepository.saveAllowedTypes(context, allowedTypes)
+                                        }
+                                    )
+                                    if (index < allowedTypes.size - 1) {
+                                        SettingsDivider()
+                                    }
                                 }
-                            )
+                            }
                         }
                     }
                 }
             }
 
             item {
-                Spacer(modifier = Modifier.height(24.dp))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showClearAllDialog = true },
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
-                ) {
+                SettingsSection(title = stringResource(R.string.settings_section_data)) {
                     Row(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { showClearAllDialog = true }
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Icon(
-                            Icons.Rounded.Delete,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        Surface(
+                            modifier = Modifier.size(40.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.padding(8.dp).size(24.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(R.string.settings_clear_all),
+                                style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = stringResource(R.string.settings_clear_all_desc),
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                             )
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
             item {
                 val packageInfo = remember {
                     try {
                         context.packageManager.getPackageInfo(context.packageName, 0)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         null
                     }
                 }
@@ -634,6 +661,43 @@ fun SettingsScreenContent(
 }
 
 @Composable
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+        )
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(4.dp),
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
+}
+
+@Composable
 private fun ThemeOption(
     title: String,
     selected: Boolean,
@@ -741,47 +805,45 @@ private fun TypeItem(
     isDefault: Boolean,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                type,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-            if (!isDefault) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Rounded.Delete,
-                        contentDescription = stringResource(R.string.delete),
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            } else {
-                Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    shape = CircleShape
-                ) {
-                    Text(
-                        "Default",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
+        Text(
+            type,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium
+        )
+        if (!isDefault) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        } else {
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = CircleShape
+            ) {
+                Text(
+                    "Default",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
         }
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.S)
 @Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun SettingsScreenPreview() {
