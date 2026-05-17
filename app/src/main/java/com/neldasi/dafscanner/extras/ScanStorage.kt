@@ -25,19 +25,21 @@ object ScanStorage {
         }
     }
 
+    data class PendingScan(val code: String, val timestamp: Long)
+
     /**
      * Consume and clear pending queue.
-     * Returns a de-duped list of codes that were pending.
+     * Returns a de-duped list of scans (code + timestamp) that were pending.
      */
-    fun consumePendingQueue(prefs: SharedPreferences): List<String> {
+    fun consumePendingQueue(prefs: SharedPreferences): List<PendingScan> {
         val pending = prefs.getString(Keys.PENDING_SCANS, null) ?: return emptyList()
-        val result = mutableListOf<String>()
+        val result = mutableListOf<PendingScan>()
         try {
-            val arr = Gson().fromJson(pending, Array<String>::class.java)
+            val arr = Gson().fromJson(pending, Array<PendingScan>::class.java)
             val seen = mutableSetOf<String>()
-            arr?.forEach { code ->
-                if (seen.add(code)) {
-                    result.add(code)
+            arr?.forEach { scan ->
+                if (seen.add(scan.code)) {
+                    result.add(scan)
                 }
             }
         } catch (_: Exception) {

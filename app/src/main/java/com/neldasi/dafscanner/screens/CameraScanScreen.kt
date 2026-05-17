@@ -312,7 +312,8 @@ fun CameraScanScreen(
                     
                     if (continuousScanEnabled) {
                         navController.previousBackStackEntry?.savedStateHandle?.set(NavKeys.SCANNED_RESULT, value)
-                        appendPendingScan(context, value)
+                        navController.previousBackStackEntry?.savedStateHandle?.set("SCANNED_TIMESTAMP", now)
+                        appendPendingScan(context, value, now)
                         sessionScanned[value] = now
                         
                         // Give it a small pause so it doesn't immediately scan the same thing again
@@ -1019,14 +1020,15 @@ private fun ScannerOptionButton(
     }
 }
 
-private fun appendPendingScan(context: Context, code: String) {
+private fun appendPendingScan(context: Context, code: String, timestamp: Long) {
     val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     val existing = prefs.getString("pending_scans", null)
-    val array = try {
-        if (existing.isNullOrBlank()) org.json.JSONArray() else org.json.JSONArray(existing)
-    } catch (_: Exception) { org.json.JSONArray() }
-    array.put(code)
-    prefs.edit { putString("pending_scans", array.toString()) }
+    val list = try {
+        if (existing.isNullOrBlank()) mutableListOf() 
+        else com.google.gson.Gson().fromJson(existing, Array<com.neldasi.dafscanner.extras.ScanStorage.PendingScan>::class.java).toMutableList()
+    } catch (_: Exception) { mutableListOf() }
+    list.add(com.neldasi.dafscanner.extras.ScanStorage.PendingScan(code, timestamp))
+    prefs.edit { putString("pending_scans", com.google.gson.Gson().toJson(list)) }
 }
 
 private fun buildImageAnalyzer(

@@ -89,14 +89,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _searchQuery.value = query
     }
 
-    fun addPart(code: String) {
+    fun addPart(code: String, timestamp: Long? = null) {
         viewModelScope.launch {
             if (code.isBlank()) return@launch
             val existing = repository.getPartByCode(code)
             if (existing == null) {
                 val newPart = ScannedPart(
                     fullCode = code,
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = timestamp ?: System.currentTimeMillis(),
                 )
                 repository.insert(newPart)
             }

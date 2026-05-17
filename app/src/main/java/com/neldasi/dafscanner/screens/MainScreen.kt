@@ -159,7 +159,7 @@ fun MainScreen(
         scannedParts = scannedParts,
         searchQuery = searchQuery,
         onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
-        onAddPart = { viewModel.addPart(it) },
+        onAddPart = { code, ts -> viewModel.addPart(code, ts) },
         onDeleteSelected = { viewModel.deleteSelected(it) },
         onDeletePart = { viewModel.deletePart(it) },
         cameraPermissionState = cameraPermissionState,
@@ -186,7 +186,7 @@ fun MainScreenContent(
     scannedParts: List<ScannedPart>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    onAddPart: (String) -> Unit,
+    onAddPart: (String, Long?) -> Unit,
     onDeleteSelected: (List<String>) -> Unit,
     onDeletePart: (ScannedPart) -> Unit,
     cameraPermissionState: com.google.accompanist.permissions.PermissionState,
@@ -205,27 +205,33 @@ fun MainScreenContent(
     val scope = rememberCoroutineScope()
     val exportChooserTitle = stringResource(R.string.export_scanned_items)
 
-    fun addCodeIfNew(code: String) {
+    fun addCodeIfNew(code: String, timestamp: Long? = null) {
         if (code.isBlank()) return
         if (scannedParts.any { it.fullCode == code }) return
-        onAddPart(code)
+        onAddPart(code, timestamp)
     }
 
     LaunchedEffect(Unit) {
         fun consumePendingFromPrefs(exclude: Set<String>) {
-            ScanStorage.consumePendingQueue(sharedPreferences).forEach { code ->
-                if (!exclude.contains(code)) {
-                    try { addCodeIfNew(code) } catch (_: Exception) {}
+            ScanStorage.consumePendingQueue(sharedPreferences).forEach { scan ->
+                if (!exclude.contains(scan.code)) {
+                    try { addCodeIfNew(scan.code, scan.timestamp) } catch (_: Exception) {}
                 }
             }
         }
 
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
             val consumed = mutableSetOf<String>()
-            backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)?.let {
-                addCodeIfNew(it)
-                consumed.add(it)
+            val result = backStackEntry.savedStateHandle.get<String>(NavKeys.SCANNED_RESULT)
+            val ts = backStackEntry.savedStateHandle.get<Long>("SCANNED_TIMESTAMP")
+            
+            if (result != null) {
+                addCodeIfNew(result, ts)
+                consumed.add(result)
+                backStackEntry.savedStateHandle.remove<String>(NavKeys.SCANNED_RESULT)
+                backStackEntry.savedStateHandle.remove<Long>("SCANNED_TIMESTAMP")
             }
+
             backStackEntry.savedStateHandle.remove<List<String>>("SCANNED_RESULTS")?.let { list ->
                 list.forEach {
                     addCodeIfNew(it)
@@ -797,7 +803,7 @@ fun MainScreenPreview() {
             scannedParts = mockItems,
             searchQuery = "",
             onSearchQueryChange = {},
-            onAddPart = {},
+            onAddPart = { _, _ -> },
             onDeleteSelected = {},
             onDeletePart = {},
             cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
