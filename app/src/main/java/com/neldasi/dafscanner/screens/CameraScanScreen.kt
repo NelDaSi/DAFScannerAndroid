@@ -72,6 +72,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -108,6 +109,8 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.ui.theme.DafBlue
+import com.neldasi.dafscanner.ui.theme.DafRed
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
@@ -446,47 +449,60 @@ fun CameraScanScreen(
     if (showNotAllowedDialog) {
         AlertDialog(
             onDismissRequest = { showNotAllowedDialog = false; isPaused = false },
-            title = { Text(stringResource(R.string.unsupported_code_title)) },
+            icon = {
+                Icon(
+                    Icons.Rounded.Warning,
+                    contentDescription = null,
+                    tint = DafRed,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            title = {
+                Text(
+                    stringResource(R.string.unsupported_code_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            },
             text = {
-                Column {
-                    Text(stringResource(R.string.unsupported_code_text))
-                    Spacer(Modifier.height(16.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.unsupported_code_text),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(24.dp))
+
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.type_code_label),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = scannedNotAllowedType,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            IconButton(onClick = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText("Type Code", scannedNotAllowedType)
-                                clipboard.setPrimaryClip(clip)
-                                android.widget.Toast.makeText(context, R.string.type_copied, android.widget.Toast.LENGTH_SHORT).show()
-                            }) {
-                                Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.copy_type))
-                            }
+                            Text(
+                                text = stringResource(R.string.type_code_label),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = DafBlue
+                            )
+                            Text(
+                                text = scannedNotAllowedType,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             },
             confirmButton = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Button(
                         onClick = {
                             allowedTypes.add(scannedNotAllowedType)
@@ -494,17 +510,37 @@ fun CameraScanScreen(
                             showNotAllowedDialog = false
                             isPaused = false
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DafBlue)
                     ) {
                         Icon(Icons.Rounded.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.add_to_allowed))
+                        Text(stringResource(R.string.add_to_allowed), fontWeight = FontWeight.Bold)
                     }
+
                     OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Type Code", scannedNotAllowedType)
+                            clipboard.setPrimaryClip(clip)
+                            android.widget.Toast.makeText(context, R.string.type_copied, android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, DafBlue),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DafBlue)
+                    ) {
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.copy_type), fontWeight = FontWeight.Bold)
+                    }
+
+                    TextButton(
                         onClick = { showNotAllowedDialog = false; isPaused = false },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.ok))
+                        Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.outline)
                     }
                 }
             }
