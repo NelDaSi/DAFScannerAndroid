@@ -6,9 +6,10 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
@@ -94,7 +96,6 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
@@ -287,9 +288,6 @@ fun MainScreenContent(
                         ) {
                             Icon(Icons.Rounded.DeleteOutline, contentDescription = stringResource(R.string.delete_selected))
                         }
-                        IconButton(onClick = { navController.navigate(SearchListRoute) }) {
-                            Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.verify_serials_title))
-                        }
                         IconButton(
                             onClick = {
                                 scope.launch {
@@ -424,22 +422,32 @@ fun MainScreenContent(
                                 ) {
                                     Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search_serials_hint))
                                 }
-                            }
 
-                            FloatingActionButton(
-                                onClick = {
-                                    if (cameraPermissionState.status.isGranted) {
-                                        val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
-                                        navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
-                                        navController.navigate(CameraRoute(isVerifyMode = false))
-                                    }
-                                },
-                                containerColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline,
-                                shape = CircleShape,
-                                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                            ) {
-                                Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.scan))
+                                FloatingActionButton(
+                                    onClick = { navController.navigate(SearchListRoute) },
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                ) {
+                                    Icon(Icons.Rounded.FileOpen, contentDescription = stringResource(R.string.verify_serials_title))
+                                }
+
+                                FloatingActionButton(
+                                    onClick = {
+                                        if (cameraPermissionState.status.isGranted) {
+                                            val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
+                                            navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
+                                            navController.navigate(CameraRoute(isVerifyMode = false))
+                                        }
+                                    },
+                                    containerColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (cameraPermissionState.status.isGranted) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                ) {
+                                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = stringResource(R.string.scan))
+                                }
                             }
                         }
                     }
@@ -687,6 +695,7 @@ private fun PermissionSettingsDialog(show: Boolean, onDismiss: () -> Unit, conte
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.S)
 @Preview(showBackground = true, apiLevel = 36)
 @Composable
 fun MainScreenPreview() {
