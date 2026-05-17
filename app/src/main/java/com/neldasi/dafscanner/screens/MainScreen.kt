@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.rounded.AddAPhoto
@@ -42,6 +43,8 @@ import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.FileOpen
@@ -53,6 +56,7 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -83,10 +87,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -498,57 +505,137 @@ fun MainScreenContent(
     if (showConverterDialog) {
         var hexVal by remember { mutableStateOf("") }
         var decVal by remember { mutableStateOf("") }
+        val clipboardManager = LocalClipboardManager.current
 
         AlertDialog(
             onDismissRequest = { showConverterDialog = false },
-            title = { Text(stringResource(R.string.converter_title), fontWeight = FontWeight.Bold) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.Calculate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Text(
+                        stringResource(R.string.converter_title),
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    // HEX Field
                     OutlinedTextField(
                         value = hexVal,
                         onValueChange = { input ->
-                            hexVal = input.uppercase().filter { it in "0123456789ABCDEF" }
+                            val filtered = input.uppercase().filter { it in "0123456789ABCDEF" }
+                            hexVal = filtered
                             decVal = try {
-                                if (hexVal.isEmpty()) "" else hexVal.toLong(16).toString()
-                            } catch (_: Exception) {
-                                "Error"
+                                if (filtered.isEmpty()) "" else filtered.toLong(16).toString()
+                            } catch (_: Exception) { "Error" }
+                        },
+                        label = { Text(stringResource(R.string.hex_label), fontWeight = FontWeight.Bold) },
+                        placeholder = { Text(stringResource(R.string.hex_placeholder)) },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = {
+                            Text(
+                                "0x",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            Row {
+                                if (hexVal.isNotEmpty()) {
+                                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(hexVal)) }) {
+                                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                IconButton(onClick = {
+                                    clipboardManager.getText()?.let { text ->
+                                        val pasted = text.text.uppercase().filter { it in "0123456789ABCDEF" }
+                                        hexVal = pasted
+                                        decVal = try {
+                                            if (pasted.isEmpty()) "" else pasted.toLong(16).toString()
+                                        } catch (_: Exception) { "Error" }
+                                    }
+                                }) {
+                                    Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(20.dp))
+                                }
                             }
                         },
-                        label = { Text(stringResource(R.string.hex_label)) },
-                        placeholder = { Text(stringResource(R.string.hex_placeholder)) },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
                     )
 
                     Icon(
                         Icons.Rounded.SwapVert,
                         contentDescription = null,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        tint = MaterialTheme.colorScheme.primary
+                        modifier = Modifier.align(Alignment.CenterHorizontally).size(32.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                     )
 
+                    // DEC Field
                     OutlinedTextField(
                         value = decVal,
                         onValueChange = { input ->
-                            decVal = input.filter { it.isDigit() }
+                            val filtered = input.filter { it.isDigit() }
+                            decVal = filtered
                             hexVal = try {
-                                if (decVal.isEmpty()) "" else decVal.toLong().toString(16).uppercase()
-                            } catch (_: Exception) {
-                                "Error"
+                                if (filtered.isEmpty()) "" else filtered.toLong().toString(16).uppercase()
+                            } catch (_: Exception) { "Error" }
+                        },
+                        label = { Text(stringResource(R.string.dec_label), fontWeight = FontWeight.Bold) },
+                        placeholder = { Text(stringResource(R.string.dec_placeholder)) },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        trailingIcon = {
+                            Row {
+                                if (decVal.isNotEmpty()) {
+                                    IconButton(onClick = { clipboardManager.setText(AnnotatedString(decVal)) }) {
+                                        Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                IconButton(onClick = {
+                                    clipboardManager.getText()?.let { text ->
+                                        val pasted = text.text.filter { it.isDigit() }
+                                        decVal = pasted
+                                        hexVal = try {
+                                            if (pasted.isEmpty()) "" else pasted.toLong().toString(16).uppercase()
+                                        } catch (_: Exception) { "Error" }
+                                    }
+                                }) {
+                                    Icon(Icons.Rounded.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(20.dp))
+                                }
                             }
                         },
-                        label = { Text(stringResource(R.string.dec_label)) },
-                        placeholder = { Text(stringResource(R.string.dec_placeholder)) },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFE31E24), // DAF Red
+                            focusedLabelColor = Color(0xFFE31E24)
+                        ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
             },
             confirmButton = {
-                Button(onClick = { showConverterDialog = false }) {
-                    Text(stringResource(R.string.close))
+                TextButton(
+                    onClick = { showConverterDialog = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(stringResource(R.string.close), fontWeight = FontWeight.Bold)
                 }
             }
         )
