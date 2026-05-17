@@ -122,7 +122,7 @@
     <string name="font_size_large">Large</string>
 
     <!-- SearchListScreen Strings -->
-    <string name="verify_serials_title">Verify Serial Numbers</string>
+    <string name="verify_serials_title">Uitzoek Aktie</string>
     <string name="scanned_progress">Scanned %1$d / %2$d</string>
     <string name="clear_list_title">Clear List?</string>
     <string name="clear_list_text">This will remove all imported serial numbers and reset your progress. This action cannot be undone.</string>

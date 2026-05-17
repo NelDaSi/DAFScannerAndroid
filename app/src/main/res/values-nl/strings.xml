@@ -122,7 +122,7 @@
     <string name="font_size_large">Groot</string>
 
     <!-- SearchListScreen Strings -->
-    <string name="verify_serials_title">Serienummers verifiëren</string>
+    <string name="verify_serials_title">Uitzoek Aktie</string>
     <string name="scanned_progress">Gescand %1$d / %2$d</string>
     <string name="clear_list_title">Lijst wissen?</string>
     <string name="clear_list_text">Dit verwijdert alle geïmporteerde serienummers en reset je voortgang. Dit kan niet ongedaan worden gemaakt.</string>
