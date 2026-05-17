@@ -242,7 +242,11 @@ fun SettingsScreenContent(
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
             item {
-                SettingsSection(title = stringResource(R.string.settings_section_appearance)) {
+                SettingsSection(
+                    title = stringResource(R.string.settings_section_appearance),
+                    collapsible = true,
+                    initialExpanded = true
+                ) {
                     SettingsClickableItem(
                         icon = Icons.Rounded.Palette,
                         title = stringResource(R.string.theme_setting_title),
@@ -269,7 +273,11 @@ fun SettingsScreenContent(
             }
 
             item {
-                SettingsSection(title = stringResource(R.string.settings_section_scanning)) {
+                SettingsSection(
+                    title = stringResource(R.string.settings_section_scanning),
+                    collapsible = true,
+                    initialExpanded = false
+                ) {
                     SettingsSwitchItem(
                         icon = Icons.Rounded.NotificationsActive,
                         title = stringResource(R.string.vibrate_on_scan_label),
@@ -289,32 +297,6 @@ fun SettingsScreenContent(
                         title = stringResource(R.string.screen_always_on_label),
                         checked = screenAlwaysOn,
                         onCheckedChange = onScreenAlwaysOnChange
-                    )
-                }
-            }
-
-            item {
-                SettingsSection(title = stringResource(R.string.settings_section_general)) {
-                    SettingsClickableItem(
-                        icon = Icons.Rounded.CameraAlt,
-                        title = stringResource(R.string.camera_permission_settings),
-                        subtitle = stringResource(R.string.camera_permission_settings_desc),
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            intent.data = Uri.fromParts("package", context.packageName, null)
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-            }
-
-            item {
-                SettingsSection(title = stringResource(R.string.settings_section_system)) {
-                    SettingsClickableItem(
-                        icon = Icons.Rounded.SystemUpdateAlt,
-                        title = if (isCheckingUpdates) stringResource(R.string.checking_updates) else stringResource(R.string.check_for_updates),
-                        subtitle = stringResource(R.string.check_github_desc),
-                        onClick = onCheckForUpdates
                     )
                 }
             }
@@ -389,7 +371,29 @@ fun SettingsScreenContent(
             }
 
             item {
-                SettingsSection(title = stringResource(R.string.settings_section_data)) {
+                SettingsSection(
+                    title = stringResource(R.string.settings_section_system),
+                    collapsible = true,
+                    initialExpanded = true
+                ) {
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.CameraAlt,
+                        title = stringResource(R.string.camera_permission_settings),
+                        subtitle = stringResource(R.string.camera_permission_settings_desc),
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            intent.data = Uri.parse("package:${context.packageName}")
+                            context.startActivity(intent)
+                        }
+                    )
+                    SettingsDivider()
+                    SettingsClickableItem(
+                        icon = Icons.Rounded.SystemUpdateAlt,
+                        title = if (isCheckingUpdates) stringResource(R.string.checking_updates) else stringResource(R.string.check_for_updates),
+                        subtitle = stringResource(R.string.check_github_desc),
+                        onClick = onCheckForUpdates
+                    )
+                    SettingsDivider()
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -426,7 +430,6 @@ fun SettingsScreenContent(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
             item {
                 val packageInfo = remember {
@@ -596,27 +599,54 @@ fun SettingsScreenContent(
 @Composable
 private fun SettingsSection(
     title: String,
+    collapsible: Boolean = false,
+    initialExpanded: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    var expanded by remember { mutableStateOf(initialExpanded) }
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
-        )
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            ),
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = collapsible) { expanded = !expanded }
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.padding(4.dp),
-                content = content
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
             )
+            if (collapsible) {
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = !collapsible || expanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(4.dp),
+                    content = content
+                )
+            }
         }
     }
 }
