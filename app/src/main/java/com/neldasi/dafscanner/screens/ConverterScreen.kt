@@ -65,6 +65,7 @@ fun ConverterScreenContent(
     var hexVal by remember { mutableStateOf("") }
     var decVal by remember { mutableStateOf("") }
     var showClearDialog by remember { mutableStateOf(false) }
+    var showDuplicateDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
@@ -76,13 +77,34 @@ fun ConverterScreenContent(
 
     DisposableEffect(Unit) {
         onDispose {
-            if (currentHex.isNotEmpty() && currentDec != "Error") {
+            if (currentHex.length == 6 && currentDec != "Error") {
                 val isAlreadyLastSaved = currentHistory.firstOrNull()?.hex == currentHex
                 if (!isAlreadyLastSaved) {
                     onAddToHistory(currentHex, currentDec)
                 }
             }
         }
+    }
+
+    if (showDuplicateDialog) {
+        AlertDialog(
+            onDismissRequest = { showDuplicateDialog = false },
+            title = { Text("Already in History") },
+            text = { Text("This value (${hexVal}) is already in your history. Do you want to add it again?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onAddToHistory(hexVal, decVal)
+                    showDuplicateDialog = false
+                }) {
+                    Text("Add Anyway")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDuplicateDialog = false }) {
+                    Text("Dismiss")
+                }
+            }
+        )
     }
 
     if (showClearDialog) {
@@ -202,14 +224,19 @@ fun ConverterScreenContent(
                     modifier = Modifier
                         .padding(16.dp)
                         .imePadding(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    val handleAdd = {
-                        val isDuplicate = history.any { it.hex == hexVal }
-                        onAddToHistory(hexVal, decVal)
-                        if (isDuplicate) {
+                    val handleAdd: () -> Unit = {
+                        if (hexVal.length == 6) {
+                            val isDuplicate = history.any { it.hex == hexVal }
+                            if (isDuplicate) {
+                                showDuplicateDialog = true
+                            } else {
+                                onAddToHistory(hexVal, decVal)
+                            }
+                        } else {
                             scope.launch {
-                                snackbarHostState.showSnackbar("Value already in history, adding again")
+                                snackbarHostState.showSnackbar("HEX value must be 6 characters long")
                             }
                         }
                     }
@@ -224,12 +251,15 @@ fun ConverterScreenContent(
                             value = hexVal,
                             onValueChange = { input ->
                                 val filtered = input.uppercase().filter { it in "0123456789ABCDEF" }
-                                hexVal = filtered
-                                decVal = try {
-                                    if (filtered.isEmpty()) "" else filtered.toLong(16).toString()
-                                } catch (_: Exception) { "Error" }
+                                if (filtered.length <= 6) {
+                                    hexVal = filtered
+                                    decVal = try {
+                                        if (filtered.isEmpty()) "" else filtered.toLong(16).toString()
+                                    } catch (_: Exception) { "Error" }
+                                }
                             },
                             label = { Text(stringResource(R.string.hex_label)) },
+                            placeholder = { Text("6-digit HEX (e.g. 1A2B3C)") },
                             modifier = Modifier.weight(1f),
                             leadingIcon = { Text("0x", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)) },
                             trailingIcon = {
@@ -241,7 +271,7 @@ fun ConverterScreenContent(
                                     }
                                     IconButton(onClick = {
                                         clipboardManager.getText()?.let { text ->
-                                            val pasted = text.text.uppercase().filter { it in "0123456789ABCDEF" }
+                                            val pasted = text.text.uppercase().filter { it in "0123456789ABCDEF" }.take(6)
                                             hexVal = pasted
                                             decVal = try {
                                                 if (pasted.isEmpty()) "" else pasted.toLong(16).toString()
@@ -253,6 +283,15 @@ fun ConverterScreenContent(
                                 }
                             },
                             singleLine = true,
+                            isError = hexVal.isNotEmpty() && hexVal.length != 6,
+                            supportingText = {
+                                Text(
+                                    text = "${hexVal.length}/6 characters",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Ascii,
                                 imeAction = ImeAction.Next
@@ -264,10 +303,10 @@ fun ConverterScreenContent(
 
                         IconButton(
                             onClick = handleAdd,
-                            enabled = hexVal.isNotEmpty() && decVal != "Error",
+                            enabled = hexVal.length == 6 && decVal != "Error",
                             modifier = Modifier
                                 .background(
-                                    if (hexVal.isNotEmpty() && decVal != "Error") MaterialTheme.colorScheme.primaryContainer 
+                                    if (hexVal.length == 6 && decVal != "Error") MaterialTheme.colorScheme.primaryContainer 
                                     else MaterialTheme.colorScheme.surfaceVariant,
                                     RoundedCornerShape(12.dp)
                                 )
@@ -275,23 +314,31 @@ fun ConverterScreenContent(
                             Icon(
                                 Icons.Rounded.PlaylistAdd, 
                                 contentDescription = "Save to history",
-                                tint = if (hexVal.isNotEmpty() && decVal != "Error") MaterialTheme.colorScheme.onPrimaryContainer 
+                                tint = if (hexVal.length == 6 && decVal != "Error") MaterialTheme.colorScheme.onPrimaryContainer 
                                        else MaterialTheme.colorScheme.secondary
                             )
                         }
                     }
 
+                    Spacer(Modifier.height(4.dp))
+
                     // DEC Input
+                    val maxDec = 16777215L
                     OutlinedTextField(
                         value = decVal,
                         onValueChange = { input ->
                             val filtered = input.filter { it.isDigit() }
-                            decVal = filtered
-                            hexVal = try {
-                                if (filtered.isEmpty()) "" else filtered.toLong().toString(16).uppercase()
-                            } catch (_: Exception) { "Error" }
+                            val numeric = filtered.toLongOrNull() ?: 0L
+                            
+                            if (numeric <= maxDec) {
+                                decVal = filtered
+                                hexVal = try {
+                                    if (filtered.isEmpty()) "" else filtered.toLong().toString(16).uppercase().padStart(6, '0')
+                                } catch (_: Exception) { "Error" }
+                            }
                         },
                         label = { Text(stringResource(R.string.dec_label)) },
+                        placeholder = { Text("Max: 16,777,215") },
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                             Row {
@@ -303,9 +350,12 @@ fun ConverterScreenContent(
                                 IconButton(onClick = {
                                     clipboardManager.getText()?.let { text ->
                                         val pasted = text.text.filter { it.isDigit() }
-                                        decVal = pasted
+                                        val numeric = pasted.toLongOrNull() ?: 0L
+                                        val capped = if (numeric > maxDec) maxDec.toString() else pasted
+                                        
+                                        decVal = capped
                                         hexVal = try {
-                                            if (pasted.isEmpty()) "" else pasted.toLong().toString(16).uppercase()
+                                            if (capped.isEmpty()) "" else capped.toLong().toString(16).uppercase().padStart(6, '0')
                                         } catch (_: Exception) { "Error" }
                                     }
                                 }) {
@@ -314,6 +364,17 @@ fun ConverterScreenContent(
                             }
                         },
                         singleLine = true,
+                        isError = (decVal.toLongOrNull() ?: 0L) > maxDec,
+                        supportingText = {
+                            if ((decVal.toLongOrNull() ?: 0L) > 0) {
+                                Text(
+                                    text = if ((decVal.toLongOrNull() ?: 0L) > maxDec) "Value exceeds 6-digit HEX limit" else "Within range",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Done
