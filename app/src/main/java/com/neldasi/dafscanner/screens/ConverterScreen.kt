@@ -37,7 +37,11 @@ data class ConversionRecord(
 
 @Composable
 fun ConverterScreen(navController: NavController) {
-    ConverterScreenContent(onBackClick = { navController.popBackStack() })
+    ConverterScreenContent(onBackClick = { 
+        if (navController.previousBackStackEntry != null) {
+            navController.popBackStack()
+        }
+    })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
