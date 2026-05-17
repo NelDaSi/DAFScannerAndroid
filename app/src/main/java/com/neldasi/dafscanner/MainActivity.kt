@@ -1,6 +1,7 @@
 package com.neldasi.dafscanner
 
 import android.content.SharedPreferences
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -16,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.neldasi.dafscanner.extras.LockScreenOrientation
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.findActivity
 import com.neldasi.dafscanner.navigation.AppNavigation
@@ -28,6 +30,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
+            
+            // Lock to portrait mode
+            LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+
             var theme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
             var fontSizeScale by remember { mutableFloatStateOf(SettingsRepository.getFontSizeScale(context)) }
             var screenAlwaysOn by remember { mutableStateOf(SettingsRepository.shouldKeepScreenOn(context)) }
