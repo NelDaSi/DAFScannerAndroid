@@ -59,6 +59,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             // 1. Delete all database entries
             repository.deleteAll()
             
+            // Delete conversion history
+            AppDatabase.getDatabase(getApplication()).conversionDao().deleteAll()
+            
             // 2. Clear all SharedPreferences
             val prefs = ScanStorage.prefs(getApplication())
             ScanStorage.clearAll(prefs)

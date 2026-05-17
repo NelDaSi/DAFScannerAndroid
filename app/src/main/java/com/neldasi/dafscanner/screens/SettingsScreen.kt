@@ -506,7 +506,7 @@ fun SettingsScreenContent(
                             // Clear and reset allowedTypes locally
                             allowedTypes.clear()
                             allowedTypes.addAll(defaultAllowedTypes)
-                            Toast.makeText(context, R.string.yes, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, R.string.reset_complete, Toast.LENGTH_SHORT).show()
                             showClearAllDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),

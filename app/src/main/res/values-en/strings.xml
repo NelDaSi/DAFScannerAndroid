@@ -208,4 +208,5 @@
     <string name="settings_section_general">General</string>
     <string name="settings_section_data">Data Management</string>
     <string name="settings_section_system">System</string>
+    <string name="reset_complete">Wiped! 🧹</string>
 </resources>
