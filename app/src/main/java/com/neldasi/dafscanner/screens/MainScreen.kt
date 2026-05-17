@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.rounded.AddAPhoto
+import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -184,6 +186,7 @@ fun MainScreenContent(
 
     var showPermissionRationaleDialog by remember { mutableStateOf(value = false) }
     var showSettingsDialog by remember { mutableStateOf(value = false) }
+    var showConverterDialog by remember { mutableStateOf(value = false) }
     var itemToDelete by remember { mutableStateOf<ScannedPart?>(value = null) }
     var selectionMode by remember { mutableStateOf(value = false) }
     var isSearchActive by remember { mutableStateOf(searchQuery.isNotEmpty()) }
@@ -424,6 +427,16 @@ fun MainScreenContent(
                                 }
 
                                 FloatingActionButton(
+                                    onClick = { showConverterDialog = true },
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Calculate, contentDescription = stringResource(R.string.converter_title))
+                                }
+
+                                FloatingActionButton(
                                     onClick = { navController.navigate(SearchListRoute) },
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     contentColor = MaterialTheme.colorScheme.primary,
@@ -481,6 +494,65 @@ fun MainScreenContent(
     )
 
     PermissionSettingsDialog(show = showSettingsDialog, onDismiss = { showSettingsDialog = false }, context = context)
+
+    if (showConverterDialog) {
+        var hexVal by remember { mutableStateOf("") }
+        var decVal by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showConverterDialog = false },
+            title = { Text(stringResource(R.string.converter_title), fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    OutlinedTextField(
+                        value = hexVal,
+                        onValueChange = { input ->
+                            hexVal = input.uppercase().filter { it in "0123456789ABCDEF" }
+                            decVal = try {
+                                if (hexVal.isEmpty()) "" else hexVal.toLong(16).toString()
+                            } catch (_: Exception) {
+                                "Error"
+                            }
+                        },
+                        label = { Text(stringResource(R.string.hex_label)) },
+                        placeholder = { Text(stringResource(R.string.hex_placeholder)) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Icon(
+                        Icons.Rounded.SwapVert,
+                        contentDescription = null,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+
+                    OutlinedTextField(
+                        value = decVal,
+                        onValueChange = { input ->
+                            decVal = input.filter { it.isDigit() }
+                            hexVal = try {
+                                if (decVal.isEmpty()) "" else decVal.toLong().toString(16).uppercase()
+                            } catch (_: Exception) {
+                                "Error"
+                            }
+                        },
+                        label = { Text(stringResource(R.string.dec_label)) },
+                        placeholder = { Text(stringResource(R.string.dec_placeholder)) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showConverterDialog = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
+    }
 }
 
 @Composable
