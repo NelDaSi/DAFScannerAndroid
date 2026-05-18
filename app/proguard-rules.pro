@@ -1,21 +1,29 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Room entities and DAOs
+# Room uses reflection to instantiate these classes and access fields
+-keep class com.neldasi.dafscanner.data.** { *; }
+-keepclassmembers class com.neldasi.dafscanner.data.** { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Gson models
+# These must be kept because Gson uses reflection to map JSON keys to field names.
+# If R8 renames these fields, JSON parsing will fail.
+-keep class com.neldasi.dafscanner.viewmodels.SearchItem { *; }
+-keep class com.neldasi.dafscanner.extras.ScanStorage$PendingScan { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# General ProGuard/R8 attributes
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Kotlin Serialization (if used via reflection or for safety with @Serializable)
+-keepclassmembernames class * {
+    @kotlinx.serialization.SerialName <fields>;
+}
+
+# Preserve line numbers for stack traces
+-renamesourcefileattribute SourceFile
+
+# Android XR / SceneCore
+# These classes are provided by the system on XR devices.
+-dontwarn com.android.extensions.xr.**
+-dontwarn com.google.androidxr.**
+-dontwarn com.google.imp.splitengine.**
