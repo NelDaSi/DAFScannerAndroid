@@ -131,10 +131,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         file.bufferedWriter().use { out ->
             out.write("TypeCode;SupplierCode;EngineFormat;SerialHex;SerialDec;BatchNumber;Timestamp;Note;FullCode\n")
             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            
+            // Helper to remove semicolons and newlines that would break CSV structure
+            fun String?.sanitize(): String = this?.replace(";", " ")?.replace("\n", " ")?.replace("\r", " ")?.trim() ?: ""
+
             parts.forEach { part ->
                 val parsed = parseScannedCode(part.fullCode)
                 val date = dateFormat.format(Date(part.timestamp))
-                out.write("${parsed?.typeCode ?: ""};${parsed?.supplierCode ?: ""};${parsed?.format?.name ?: ""};${parsed?.serialHex ?: ""};${parsed?.serialDecimal ?: ""};${parsed?.batchNumber ?: ""};$date;${part.note ?: ""};${part.fullCode}\n")
+                
+                val line = buildString {
+                    append(parsed?.typeCode.sanitize()).append(";")
+                    append(parsed?.supplierCode.sanitize()).append(";")
+                    append(parsed?.format?.name.sanitize()).append(";")
+                    append(parsed?.serialHex.sanitize()).append(";")
+                    append(parsed?.serialDecimal.sanitize()).append(";")
+                    append(parsed?.batchNumber.sanitize()).append(";")
+                    append(date).append(";")
+                    append(part.note.sanitize()).append(";")
+                    append(part.fullCode.sanitize())
+                }
+                out.write("$line\n")
             }
         }
         file

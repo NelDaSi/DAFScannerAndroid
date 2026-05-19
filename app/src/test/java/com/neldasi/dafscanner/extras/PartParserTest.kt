@@ -54,7 +54,7 @@ class PartParserTest {
         assertEquals("2473073", parsed?.typeCode)
         assertEquals("88280", parsed?.supplierCode)
         assertEquals("00272B", parsed?.serialHex)
-        assertEquals("10027", parsed?.serialDecimal)
+        assertEquals("0010027", parsed?.serialDecimal)
     }
 
     @Test
@@ -66,6 +66,19 @@ class PartParserTest {
         assertEquals(EngineFormat.P14, parsed?.format)
         assertEquals("2473071", parsed?.typeCode)
         assertEquals("002785", parsed?.serialHex)
-        assertEquals("10117", parsed?.serialDecimal)
+        assertEquals("0010117", parsed?.serialDecimal)
+    }
+
+    @Test
+    fun testP14_with_74_marker() {
+        // Example provided by user: 259964588280828335740000088
+        val code = "259964588280828335740000088"
+        val parsed = parseScannedCode(code)
+        
+        assertNotNull(parsed)
+        assertEquals(EngineFormat.P14, parsed?.format)
+        assertEquals("2599645", parsed?.typeCode)
+        assertEquals("000058", parsed?.serialHex) // 88 dec = 58 hex, padded to 6 chars
+        assertEquals("0000088", parsed?.serialDecimal)
     }
 }

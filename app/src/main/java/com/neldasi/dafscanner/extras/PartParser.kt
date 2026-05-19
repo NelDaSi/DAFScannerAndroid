@@ -24,36 +24,53 @@ data class ParsedPart(
 }
 
 fun parseScannedCode(code: String): ParsedPart? {
-    if (code.length < 18) return null
+    val trimmedCode = code.trim()
+    if (trimmedCode.length < 18) return null
 
     return try {
-        val type = code.substring(0, 7)
-        val supplier = code.substring(7, 12)
+        val type = trimmedCode.substring(0, 7)
+        val supplier = trimmedCode.substring(7, 12)
 
         when {
             // 1. MX11: Contains 'K'
-            code.contains("K") -> {
-                val hex = code.substring(12, 18).uppercase(Locale.ROOT)
+            trimmedCode.contains("K") -> {
+                val hex = trimmedCode.substring(12, 18).uppercase(Locale.ROOT)
                 val decimal = hex.toLong(16).toString()
                 ParsedPart(
-                    rawCode = code,
+                    rawCode = trimmedCode,
                     format = EngineFormat.MX11,
                     typeCode = type,
                     supplierCode = supplier,
                     serialHex = hex,
                     serialDecimal = decimal,
-                    batchNumber = code.substring(18),
+                    batchNumber = trimmedCode.substring(18),
                 )
             }
 
-            // 2. MX13: Contains "0074" or "74" marker logic, or length suggests old format with hex at 12-18
-            (code.indexOf("0074", 18) != -1) || (code.indexOf("74", 18) != -1) -> {
-                val hex = code.substring(12, 18).uppercase(Locale.ROOT)
+            // 2. P14: Newest format. Priority for 27 chars + Numeric only.
+            (trimmedCode.length == 27) && trimmedCode.all { it.isDigit() } -> {
+                val decimalStr = trimmedCode.substring(trimmedCode.length - 7)
+                val decimalVal = decimalStr.toLong()
+                val hex = decimalVal.toString(16).uppercase(Locale.ROOT).padStart(6, '0')
+                
+                ParsedPart(
+                    rawCode = trimmedCode,
+                    format = EngineFormat.P14,
+                    typeCode = type,
+                    supplierCode = supplier,
+                    serialHex = hex,
+                    serialDecimal = decimalStr,
+                    batchNumber = trimmedCode.substring(12, 20),
+                )
+            }
+
+            // 3. MX13: Contains "0074" marker logic or older 29-char structure
+            (trimmedCode.indexOf("0074", 12) != -1) || (trimmedCode.length >= 29) -> {
+                val hex = trimmedCode.substring(12, 18).uppercase(Locale.ROOT)
                 val decimal = try {
-                    // Try to extract the decimal serial after the 0074 marker if possible
-                    val markerIndex = code.indexOf("0074", 18)
+                    val markerIndex = trimmedCode.indexOf("0074", 18)
                     if (markerIndex != -1) {
-                        code.substring(markerIndex + 4).toLong().toString()
+                        trimmedCode.substring(markerIndex + 4).trimStart('0').ifBlank { "0" }
                     } else {
                         hex.toLong(16).toString()
                     }
@@ -62,7 +79,7 @@ fun parseScannedCode(code: String): ParsedPart? {
                 }
 
                 ParsedPart(
-                    rawCode = code,
+                    rawCode = trimmedCode,
                     format = EngineFormat.MX13,
                     typeCode = type,
                     supplierCode = supplier,
@@ -72,35 +89,18 @@ fun parseScannedCode(code: String): ParsedPart? {
                 )
             }
 
-            // 3. P14: Newest format. Numeric only and serial at the end.
-            (code.length == 27) && code.all { it.isDigit() } -> {
-                val decimalStr = code.substring(code.length - 7)
-                val decimalVal = decimalStr.toLong()
-                val hex = decimalVal.toString(16).uppercase(Locale.ROOT).padStart(6, '0')
-                
-                ParsedPart(
-                    rawCode = code,
-                    format = EngineFormat.P14,
-                    typeCode = type,
-                    supplierCode = supplier,
-                    serialHex = hex,
-                    serialDecimal = decimalVal.toString(),
-                    batchNumber = code.substring(12, 20),
-                )
-            }
-
             // Fallback for codes that don't strictly match but are >= 18
             else -> {
-                val hex = code.substring(12, 18).uppercase(Locale.ROOT)
+                val hex = trimmedCode.substring(12, 18).uppercase(Locale.ROOT)
                 val decimal = try { hex.toLong(16).toString() } catch (_: Exception) { "N/A" }
                 ParsedPart(
-                    rawCode = code,
+                    rawCode = trimmedCode,
                     format = EngineFormat.UNKNOWN,
                     typeCode = type,
                     supplierCode = supplier,
                     serialHex = hex,
                     serialDecimal = decimal,
-                    batchNumber = if (code.length > 18) code.substring(18) else "",
+                    batchNumber = if (trimmedCode.length > 18) trimmedCode.substring(18) else "",
                 )
             }
         }
