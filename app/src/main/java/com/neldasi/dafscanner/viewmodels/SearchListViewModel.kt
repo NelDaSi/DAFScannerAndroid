@@ -252,12 +252,17 @@ class SearchListViewModel : ViewModel() {
                     for (rowIdx in 0 until minOf(rows.size, 100)) {
                         val row = rows[rowIdx]
                         val normalized = row.map { it.normalize() }
-                        val pIdIdx = normalized.indexOfFirst { it.contains("product id") }
+                        
+                        // Look for Product ID or Transport Number
+                        val pIdIdx = normalized.indexOfFirst { 
+                            it.contains("product id") || it.contains("transport number") || it.contains("part id")
+                        }
+                        
                         if (pIdIdx != -1) {
                             headerRowIndex = rowIdx
                             productIdIndex = pIdIdx
-                            machineIndex = normalized.indexOfFirst { it == "machine" }
-                            outputMatIndex = normalized.indexOfFirst { it == "output material" }
+                            machineIndex = normalized.indexOfFirst { it == "machine" || it == "workstation" || it == "station" }
+                            outputMatIndex = normalized.indexOfFirst { it == "output material" || it == "model" || it == "material" }
                             startDateIndex = normalized.indexOfFirst { it.contains("start date") }
                             startTimeIndex = normalized.indexOfFirst { it.contains("start time") }
                             completeDateIndex = normalized.indexOfFirst { it.contains("complete date") }
@@ -272,19 +277,21 @@ class SearchListViewModel : ViewModel() {
 
                     for (r in startIdx until rows.size) {
                         val row = rows[r]
-                        val pIdIdx = if (productIdIndex != -1) productIdIndex else 0
-                        if (row.size > pIdIdx) {
+                        val pIdIdx = productIdIndex
+                        if (pIdIdx != -1 && row.size > pIdIdx) {
                             val productId = row[pIdIdx]
-                            if (productId.isNotBlank()) {
-                                val hex = if (productId.length >= 6) productId.takeLast(6) else productId
+                            if (productId.isNotBlank() && productId.length >= 18) {
+                                val parsed = parseScannedCode(productId)
+                                val hex = parsed?.serialHex ?: productId.takeLast(6)
+                                
                                 if (!processedSerials.contains(hex)) {
-                                    val type = if (productId.length >= 7) productId.take(7) else "UNKNOWN"
+                                    val type = parsed?.typeCode ?: productId.take(7)
                                     
                                     itemsList.add(
                                         SearchItem(
                                             typeCode = type,
                                             serialNumber = hex,
-                                            decSerial = hexToDec(hex),
+                                            decSerial = parsed?.serialDecimal ?: hexToDec(hex),
                                             machine = getValue(row, machineIndex),
                                             outputMaterial = getValue(row, outputMatIndex),
                                             startDate = getValue(row, startDateIndex),
