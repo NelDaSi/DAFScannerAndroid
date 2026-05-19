@@ -105,7 +105,7 @@ class SearchListViewModel : ViewModel() {
         _visibleCount,
     ) { items, count ->
         count < items.size
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), initialValue = false)
 
     val totalCount: StateFlow<Int> = _filteredAndSortedItems
         .map { it.size }
@@ -199,7 +199,7 @@ class SearchListViewModel : ViewModel() {
                         val c = allText[i]
                         if (inQuotes) {
                             if (c == '"') {
-                                if ((i + 1 < allText.length) && (allText[i+1] == '"')) {
+                                if (((i + 1) < allText.length) && (allText[i+1] == '"')) {
                                     currentField.append('"')
                                     i++
                                 } else {
@@ -222,7 +222,7 @@ class SearchListViewModel : ViewModel() {
                                         currentRow.clear()
                                         currentField.setLength(0)
                                     }
-                                    if (c == '\r' && i + 1 < allText.length && allText[i+1] == '\n') {
+                                    if ((c == '\r') && (i + 1 < allText.length) && (allText[i+1] == '\n')) {
                                         i++
                                     }
                                 }
@@ -298,7 +298,7 @@ class SearchListViewModel : ViewModel() {
                                             startTime = getValue(row, startTimeIndex),
                                             completeDate = getValue(row, completeDateIndex),
                                             completeTime = getValue(row, completeTimeIndex),
-                                        )
+                                        ),
                                     )
                                     processedSerials.add(hex)
                                 }

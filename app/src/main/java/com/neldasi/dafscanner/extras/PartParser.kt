@@ -73,7 +73,7 @@ fun parseScannedCode(code: String): ParsedPart? {
             }
 
             // 3. P14: Newest format. Numeric only and serial at the end.
-            code.length == 27 && code.all { it.isDigit() } -> {
+            (code.length == 27) && code.all { it.isDigit() } -> {
                 val decimalStr = code.substring(code.length - 7)
                 val decimalVal = decimalStr.toLong()
                 val hex = decimalVal.toString(16).uppercase(Locale.ROOT).padStart(6, '0')
