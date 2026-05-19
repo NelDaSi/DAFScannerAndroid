@@ -124,6 +124,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -135,7 +136,7 @@ data class ScanFeedback(
     val isMatch: Boolean,
     val alreadyScanned: Boolean,
     val scanTimestamp: Long? = null,
-    val parsedPart: ParsedPart? = null
+    val parsedPart: ParsedPart? = null,
 )
 
 // Helper to trigger autofocus at center of preview
@@ -164,7 +165,7 @@ private fun requestCenterFocus(previewView: PreviewView, camera: Camera?) {
 fun CameraScanScreen(
     navController: NavController,
     isVerifyMode: Boolean = false,
-    searchViewModel: SearchListViewModel? = null
+    searchViewModel: SearchListViewModel? = null,
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("prefs", Context.MODE_PRIVATE) }
@@ -218,7 +219,7 @@ fun CameraScanScreen(
     val sessionScanned = remember { mutableStateMapOf<String, Long>() }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
-    val transformableState = rememberTransformableState { zoomChange, _, _ ->
+    val transformableState = rememberTransformableState { zoomChange, centroid, _ ->
         val newZoom = (zoomRatio * zoomChange).coerceIn(1f, 10f)
         zoomRatio = newZoom
         camera?.cameraControl?.setZoomRatio(newZoom)
@@ -252,8 +253,8 @@ fun CameraScanScreen(
                 vibrator?.vibrate(
                     android.os.VibrationEffect.createOneShot(
                         100L,
-                        android.os.VibrationEffect.DEFAULT_AMPLITUDE
-                    )
+                        android.os.VibrationEffect.DEFAULT_AMPLITUDE,
+                    ),
                 )
             }
 
@@ -423,7 +424,7 @@ fun CameraScanScreen(
                             showNotAllowedDialog = true
                             isPaused = true
                         }
-                    }
+                    },
                 )
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
                 provider.unbindAll()
@@ -457,7 +458,7 @@ fun CameraScanScreen(
                     Icons.Rounded.Warning,
                     contentDescription = null,
                     tint = DafRed,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(40.dp),
                 )
             },
             title = {
@@ -465,7 +466,7 @@ fun CameraScanScreen(
                     stringResource(R.string.unsupported_code_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             },
             text = {
@@ -473,29 +474,29 @@ fun CameraScanScreen(
                     Text(
                         stringResource(R.string.unsupported_code_text),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(24.dp))
 
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
                                 text = stringResource(R.string.type_code_label),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = DafBlue
+                                color = DafBlue,
                             )
                             Text(
                                 text = scannedNotAllowedType,
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -504,7 +505,7 @@ fun CameraScanScreen(
             confirmButton = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Button(
                         onClick = {
@@ -515,7 +516,7 @@ fun CameraScanScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = DafBlue)
+                        colors = ButtonDefaults.buttonColors(containerColor = DafBlue),
                     ) {
                         Icon(Icons.Rounded.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
@@ -532,7 +533,7 @@ fun CameraScanScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, DafBlue),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DafBlue)
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DafBlue),
                     ) {
                         Icon(Icons.Rounded.ContentCopy, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
@@ -541,12 +542,12 @@ fun CameraScanScreen(
 
                     TextButton(
                         onClick = { showNotAllowedDialog = false; isPaused = false },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.outline)
                     }
                 }
-            }
+            },
         )
     }
 }
@@ -585,12 +586,12 @@ fun CameraScanScreenContent(
                 } else {
                     Modifier
                 }
-            )
+            ),
     ) {
         AndroidView(
             factory = onAndroidViewFactory, 
             modifier = Modifier.fillMaxSize(),
-            update = { view -> view.keepScreenOn = screenAlwaysOn }
+            update = { view -> view.keepScreenOn = screenAlwaysOn },
         )
 
         // Flash overlay
@@ -602,35 +603,35 @@ fun CameraScanScreenContent(
             serial = lastSerial,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 80.dp, start = 24.dp, end = 24.dp)
+                .padding(top = 80.dp, start = 24.dp, end = 24.dp),
         )
 
         AnimatedVisibility(
             visible = continuousCooldown > 0,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
-            modifier = Modifier.align(Alignment.Center).padding(top = 320.dp)
+            modifier = Modifier.align(Alignment.Center).padding(top = 320.dp),
         ) {
             Surface(
                 color = Color.Black.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = stringResource(R.string.next_scan_in, continuousCooldown),
                         color = Color.White,
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -648,11 +649,11 @@ fun CameraScanScreenContent(
                     .fillMaxSize()
                     .background(backgroundColor.copy(alpha = 0.9f))
                     .clickable { onDismissVerify() },
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
+                    modifier = Modifier.padding(32.dp),
                 ) {
                     Icon(
                         when {
@@ -662,7 +663,7 @@ fun CameraScanScreenContent(
                         },
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(100.dp)
+                        modifier = Modifier.size(100.dp),
                     )
                     Spacer(Modifier.height(16.dp))
                     
@@ -671,21 +672,21 @@ fun CameraScanScreenContent(
                             Surface(
                                 color = Color.Black.copy(alpha = 0.4f),
                                 shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.padding(bottom = 8.dp)
+                                modifier = Modifier.padding(bottom = 8.dp),
                             ) {
                                 Text(
                                     stringResource(R.string.already_scanned),
                                     color = Color.White,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
                                 )
                             }
                             
                             verifyResult.scanTimestamp?.let { ts ->
                                 val configuration = LocalConfiguration.current
                                 // Accessing locales through LocalConfiguration ensures recomposition on change
-                                val locale = configuration.locales[0]
+                                val locale = configuration.locales[0] ?: Locale.getDefault()
                                 val dateStr = remember(ts, locale) {
                                     SimpleDateFormat("dd MMM, HH:mm:ss", locale).format(Date(ts))
                                 }
@@ -693,7 +694,7 @@ fun CameraScanScreenContent(
                                     text = stringResource(R.string.first_seen, dateStr),
                                     color = Color.White.copy(alpha = 0.8f),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
                                 )
                                 Spacer(Modifier.height(8.dp))
                             }
@@ -709,34 +710,34 @@ fun CameraScanScreenContent(
                         color = Color.White,
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "${stringResource(R.string.hex_prefix)}${verifyResult.serial}",
                         color = Color.White,
                         style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Black,
                     )
                     Text(
                         text = "${stringResource(R.string.dec_prefix)}${verifyResult.parsedPart?.decSerial ?: try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                     
                     verifyResult.parsedPart?.let {
                         Spacer(Modifier.height(8.dp))
                         Surface(
                             color = Color.White.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
                         ) {
                             Text(
                                 text = it.format.name,
                                 color = Color.White,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
@@ -747,12 +748,12 @@ fun CameraScanScreenContent(
                         onClick = onDismissVerify,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = backgroundColor),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
                         Text(
                             text = stringResource(R.string.dismiss),
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
                         )
                     }
                 }
@@ -770,7 +771,7 @@ fun CameraScanScreenContent(
             onToggleScreenOn = onToggleScreenOn,
             onClose = onClose,
             isVerifyMode = isVerifyMode,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
         )
 
         // Custom Toast Overlay
@@ -780,19 +781,19 @@ fun CameraScanScreenContent(
             exit = fadeOut() + shrinkVertically(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 180.dp)
+                .padding(bottom = 180.dp),
         ) {
             Surface(
                 color = Color.Black.copy(alpha = 0.8f),
                 shape = RoundedCornerShape(24.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
             ) {
                 Text(
                     text = toastMessage?.let { stringResource(it) } ?: "",
                     color = Color.White,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -802,31 +803,31 @@ fun CameraScanScreenContent(
 @Composable
 private fun LastScanBar(
     serial: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
         visible = serial != null,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
-        modifier = modifier
+        modifier = modifier,
     ) {
         Surface(
             tonalElevation = 8.dp,
             shadowElevation = 12.dp,
             shape = RoundedCornerShape(24.dp),
             color = Color.Black.copy(alpha = 0.8f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Icon(
                     Icons.Rounded.QrCodeScanner,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
@@ -834,7 +835,7 @@ private fun LastScanBar(
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -848,7 +849,7 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp
+                strokeWidth = 3.dp,
             )
         }
 
@@ -857,7 +858,7 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?) {
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen),
             ) {
                 val frameSize = 260.dp.toPx()
                 val left = (size.width - frameSize) / 2
@@ -871,7 +872,7 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?) {
                     color = Color.Transparent,
                     topLeft = Offset(left, top),
                     size = Size(frameSize, frameSize),
-                    blendMode = BlendMode.Clear
+                    blendMode = BlendMode.Clear,
                 )
             }
             
@@ -883,13 +884,13 @@ private fun CameraOverlay(isCameraReady: Boolean, errorMessage: String?) {
             Surface(
                 modifier = Modifier.align(Alignment.Center).padding(32.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = Color.Black.copy(alpha = 0.8f)
+                color = Color.Black.copy(alpha = 0.8f),
             ) {
                 Text(
                     text = it,
                     color = Color.White,
                     modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -903,7 +904,7 @@ private fun ScannerFrame(modifier: Modifier = Modifier) {
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(animation = tween(2000, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
-        label = "lineOffset"
+        label = "lineOffset",
     )
 
     Canvas(modifier = modifier) {
@@ -935,7 +936,7 @@ private fun ScannerFrame(modifier: Modifier = Modifier) {
             start = Offset(10.dp.toPx(), y),
             end = Offset(size.width - 10.dp.toPx(), y),
             strokeWidth = 2.dp.toPx(),
-            cap = StrokeCap.Round
+            cap = StrokeCap.Round,
         )
     }
 }
@@ -952,7 +953,7 @@ private fun BottomScannerBar(
     onToggleScreenOn: () -> Unit,
     onClose: () -> Unit,
     isVerifyMode: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.navigationBarsPadding(),
@@ -960,23 +961,23 @@ private fun BottomScannerBar(
         shadowElevation = 12.dp,
         shape = RoundedCornerShape(32.dp),
         color = Color.Black.copy(alpha = 0.85f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 // Torch
                 ScannerOptionButton(
                     icon = if (isTorchOn) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
                     isActive = isTorchOn,
                     activeColor = Color.Yellow,
-                    onClick = onToggleTorch
+                    onClick = onToggleTorch,
                 )
                 
                 // Continuous Scan (Hidden in Verify Mode)
@@ -985,7 +986,7 @@ private fun BottomScannerBar(
                         icon = Icons.Rounded.FilterNone,
                         isActive = continuousScanEnabled,
                         activeColor = MaterialTheme.colorScheme.primary,
-                        onClick = onToggleContinuous
+                        onClick = onToggleContinuous,
                     )
                 }
 
@@ -994,7 +995,7 @@ private fun BottomScannerBar(
                     icon = Icons.Rounded.NotificationsActive,
                     isActive = vibrateEnabled,
                     activeColor = MaterialTheme.colorScheme.primary,
-                    onClick = onToggleVibrate
+                    onClick = onToggleVibrate,
                 )
 
                 // Screen Always On
@@ -1002,13 +1003,13 @@ private fun BottomScannerBar(
                     icon = Icons.Rounded.Smartphone,
                     isActive = screenAlwaysOn,
                     activeColor = MaterialTheme.colorScheme.primary,
-                    onClick = onToggleScreenOn
+                    onClick = onToggleScreenOn,
                 )
             }
 
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f), CircleShape)
+                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f), CircleShape),
             ) {
                 Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(24.dp))
             }
@@ -1021,19 +1022,19 @@ private fun ScannerOptionButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isActive: Boolean,
     activeColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     IconButton(
         onClick = onClick,
         modifier = Modifier
             .size(48.dp)
-            .background(if (isActive) activeColor.copy(alpha = 0.2f) else Color.Transparent, CircleShape)
+            .background(if (isActive) activeColor.copy(alpha = 0.2f) else Color.Transparent, CircleShape),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = if (isActive) activeColor else Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -1052,7 +1053,7 @@ private fun appendPendingScan(context: Context, code: String, timestamp: Long) {
 private fun buildImageAnalyzer(
     cameraExecutor: ExecutorService,
     shouldProcess: () -> Boolean,
-    onScannedValue: (String) -> Unit
+    onScannedValue: (String) -> Unit,
 ): ImageAnalysis {
     val options = BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX).build()
     val barcodeScanner = BarcodeScanning.getClient(options)
@@ -1083,7 +1084,7 @@ fun CameraScanScreenPreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _ -> },
+            transformableState = rememberTransformableState { _, centroid, _ -> },
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
@@ -1102,12 +1103,12 @@ fun CameraScanScreenDuplicatePreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _ -> },
+            transformableState = rememberTransformableState { _, centroid, _ -> },
             verifyResult = ScanFeedback(
                 serial = "01C821",
                 isMatch = false,
                 alreadyScanned = true,
-                scanTimestamp = System.currentTimeMillis() - 3600000
+                scanTimestamp = System.currentTimeMillis() - 3600000,
             ),
             isVerifyMode = false,
             onToggleTorch = {},

@@ -31,7 +31,7 @@ data class SearchItem(
     val startDate: String? = null,
     val startTime: String? = null,
     val completeDate: String? = null,
-    val completeTime: String? = null
+    val completeTime: String? = null,
 )
 
 enum class SearchSortOption {
@@ -39,7 +39,7 @@ enum class SearchSortOption {
     MACHINE,
     TYPE,
     FOUND_TIME,
-    PRODUCTION_TIME
+    PRODUCTION_TIME,
 }
 
 data class ScanMatchResult(
@@ -57,7 +57,7 @@ class SearchListViewModel : ViewModel() {
     private val _sortOption = MutableStateFlow(SearchSortOption.DEFAULT)
     val sortOption = _sortOption.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(value = false)
     val isLoading = _isLoading.asStateFlow()
 
     private val _visibleCount = MutableStateFlow(50)
@@ -65,7 +65,7 @@ class SearchListViewModel : ViewModel() {
     private val _filteredAndSortedItems = combine(
         _searchItems,
         _searchQuery,
-        _sortOption
+        _sortOption,
     ) { items, query, sort ->
         val filtered = if (query.isBlank()) {
             items
@@ -95,14 +95,14 @@ class SearchListViewModel : ViewModel() {
 
     val filteredItems: StateFlow<List<SearchItem>> = combine(
         _filteredAndSortedItems,
-        _visibleCount
+        _visibleCount,
     ) { items, count ->
         items.take(count)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val hasMoreItems: StateFlow<Boolean> = combine(
         _filteredAndSortedItems,
-        _visibleCount
+        _visibleCount,
     ) { items, count ->
         count < items.size
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -199,7 +199,7 @@ class SearchListViewModel : ViewModel() {
                         val c = allText[i]
                         if (inQuotes) {
                             if (c == '"') {
-                                if (i + 1 < allText.length && allText[i+1] == '"') {
+                                if ((i + 1 < allText.length) && (allText[i+1] == '"')) {
                                     currentField.append('"')
                                     i++
                                 } else {
@@ -297,7 +297,7 @@ class SearchListViewModel : ViewModel() {
                                             startDate = getValue(row, startDateIndex),
                                             startTime = getValue(row, startTimeIndex),
                                             completeDate = getValue(row, completeDateIndex),
-                                            completeTime = getValue(row, completeTimeIndex)
+                                            completeTime = getValue(row, completeTimeIndex),
                                         )
                                     )
                                     processedSerials.add(hex)
@@ -341,7 +341,7 @@ class SearchListViewModel : ViewModel() {
                 val nextOrder = (currentItems.maxOfOrNull { it.scanOrder ?: 0 } ?: 0) + 1
                 updatedItems[itemIndex] = item.copy(
                     scanTimestamp = System.currentTimeMillis(),
-                    scanOrder = nextOrder
+                    scanOrder = nextOrder,
                 )
                 _searchItems.value = updatedItems
                 saveToStorage(context)
