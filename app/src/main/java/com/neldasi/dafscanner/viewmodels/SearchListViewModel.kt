@@ -57,21 +57,48 @@ class SearchListViewModel : ViewModel() {
     private val _sortOption = MutableStateFlow(SearchSortOption.DEFAULT)
     val sortOption = _sortOption.asStateFlow()
 
+    private val _machineFilter = MutableStateFlow<String?>(null)
+    val machineFilter = _machineFilter.asStateFlow()
+
+    private val _typeFilter = MutableStateFlow<String?>(null)
+    val typeFilter = _typeFilter.asStateFlow()
+
     private val _isLoading = MutableStateFlow(value = false)
     val isLoading = _isLoading.asStateFlow()
 
     private val _visibleCount = MutableStateFlow(50)
 
+    val availableMachines: StateFlow<List<String>> = _searchItems
+        .map { items -> items.mapNotNull { it.machine }.distinct().sorted() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val availableTypes: StateFlow<List<String>> = _searchItems
+        .map { items -> items.map { it.typeCode }.distinct().sorted() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _filteredAndSortedItems = combine(
         _searchItems,
         _searchQuery,
         _sortOption,
-    ) { items, query, sort ->
-        val filtered = if (query.isBlank()) {
-            items
-        } else {
+        _machineFilter,
+        _typeFilter,
+    ) { items, query, sort, mFilter, tFilter ->
+        var filtered = items
+
+        // Apply Machine Filter
+        if (mFilter != null) {
+            filtered = filtered.filter { it.machine == mFilter }
+        }
+
+        // Apply Type Filter
+        if (tFilter != null) {
+            filtered = filtered.filter { it.typeCode == tFilter }
+        }
+
+        // Apply Search Query
+        if (query.isNotBlank()) {
             val q = query.lowercase()
-            items.filter { item ->
+            filtered = filtered.filter { item ->
                 item.serialNumber.lowercase().contains(q) ||
                 item.decSerial.lowercase().contains(q) ||
                 item.typeCode.lowercase().contains(q) ||
@@ -92,6 +119,10 @@ class SearchListViewModel : ViewModel() {
             }
         }
     }
+
+    // Expose the full filtered list for sharing purposes
+    val allFilteredItems: StateFlow<List<SearchItem>> = _filteredAndSortedItems
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val filteredItems: StateFlow<List<SearchItem>> = combine(
         _filteredAndSortedItems,
@@ -128,6 +159,16 @@ class SearchListViewModel : ViewModel() {
     fun onSortOptionChange(option: SearchSortOption) {
         _sortOption.value = option
         _visibleCount.value = 50 // Reset pagination on sort
+    }
+
+    fun onMachineFilterChange(machine: String?) {
+        _machineFilter.value = machine
+        _visibleCount.value = 50
+    }
+
+    fun onTypeFilterChange(type: String?) {
+        _typeFilter.value = type
+        _visibleCount.value = 50
     }
 
     fun loadMore() {
@@ -362,6 +403,8 @@ class SearchListViewModel : ViewModel() {
     fun clearList(context: Context) {
         _searchItems.value = emptyList()
         _lastScannedResult.value = null
+        _machineFilter.value = null
+        _typeFilter.value = null
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         prefs.edit { remove(prefKey) }
     }

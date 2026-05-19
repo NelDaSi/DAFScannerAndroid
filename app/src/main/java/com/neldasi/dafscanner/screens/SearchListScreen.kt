@@ -7,6 +7,12 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +41,8 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.FileUpload
+import androidx.compose.material.icons.rounded.FilterAlt
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.PrecisionManufacturing
 import androidx.compose.material.icons.rounded.QrCodeScanner
@@ -52,6 +61,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -105,8 +115,13 @@ fun SearchListScreen(
 ) {
     val context = LocalContext.current
     val searchItems by viewModel.filteredItems.collectAsStateWithLifecycle()
+    val allFilteredItems by viewModel.allFilteredItems.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
+    val machineFilter by viewModel.machineFilter.collectAsStateWithLifecycle()
+    val typeFilter by viewModel.typeFilter.collectAsStateWithLifecycle()
+    val availableMachines by viewModel.availableMachines.collectAsStateWithLifecycle()
+    val availableTypes by viewModel.availableTypes.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val hasMoreItems by viewModel.hasMoreItems.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
@@ -114,6 +129,7 @@ fun SearchListScreen(
     
     var showDeleteConfirmation by remember { mutableStateOf(value = false) }
     var showShareOptions by remember { mutableStateOf(value = false) }
+    var isSearchActive by remember { mutableStateOf(searchQuery.isNotEmpty()) }
 
     val statusFound = stringResource(R.string.status_found)
     val statusMissing = stringResource(R.string.status_missing)
@@ -150,8 +166,16 @@ fun SearchListScreen(
         searchItems = searchItems,
         searchQuery = searchQuery,
         onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        isSearchActive = isSearchActive,
+        onSearchActiveChange = { isSearchActive = it },
         sortOption = sortOption,
         onSortOptionChange = { viewModel.onSortOptionChange(it) },
+        machineFilter = machineFilter,
+        onMachineFilterChange = { viewModel.onMachineFilterChange(it) },
+        typeFilter = typeFilter,
+        onTypeFilterChange = { viewModel.onTypeFilterChange(it) },
+        availableMachines = availableMachines,
+        availableTypes = availableTypes,
         isLoading = isLoading,
         onLoadMore = { viewModel.loadMore() },
         showDeleteConfirmation = showDeleteConfirmation,
@@ -174,19 +198,19 @@ fun SearchListScreen(
         totalCount = totalCount,
         scannedCount = scannedCount,
         onShareCsv = {
-            if (searchItems.isEmpty()) return@SearchListContent
+            if (allFilteredItems.isEmpty()) return@SearchListContent
             
             val sb = StringBuilder()
-            sb.append("Order;Status;HEX;DEC;Type;Scan Time\n")
+            sb.append("Order;Status;HEX;DEC;Type;Machine;Scan Time\n")
             
             val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            searchItems.forEach { item ->
+            allFilteredItems.forEach { item ->
                 val isFound = item.scanTimestamp != null
                 val status = if (isFound) statusFound else statusMissing
                 val order = item.scanOrder?.toString() ?: "-"
                 val time = if (item.scanTimestamp != null) timeFormatter.format(Date(item.scanTimestamp)) else "-"
                 
-                sb.append("$order;$status;${item.serialNumber};${item.decSerial};${item.typeCode};$time\n")
+                sb.append("$order;$status;${item.serialNumber};${item.decSerial};${item.typeCode};${item.machine ?: "-"};$time\n")
             }
             
             try {
@@ -208,15 +232,25 @@ fun SearchListScreen(
             }
         },
         onShareSummary = {
-            if (searchItems.isEmpty()) return@SearchListContent
+            if (allFilteredItems.isEmpty()) return@SearchListContent
             
-            val total = searchItems.size
-            val foundItems = searchItems.filter { it.scanTimestamp != null }.sortedBy { it.scanOrder }
-            val missingItems = searchItems.filter { it.scanTimestamp == null }
+            val total = allFilteredItems.size
+            val foundItems = allFilteredItems.filter { it.scanTimestamp != null }.sortedBy { it.scanOrder }
+            val missingItems = allFilteredItems.filter { it.scanTimestamp == null }
             
             val sb = StringBuilder()
             val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             sb.append(summaryTitle + "\n")
+            
+            // Add filter info to summary if applicable
+            if (machineFilter != null || typeFilter != null) {
+                sb.append("Filtered by: ")
+                val filters = mutableListOf<String>()
+                machineFilter?.let { filters.add("Machine: $it") }
+                typeFilter?.let { filters.add("Type: $it") }
+                sb.append(filters.joinToString(", ") + "\n")
+            }
+
             sb.append(progressLabel.format(foundItems.size, total) + "\n\n")
             
             if (foundItems.isNotEmpty()) {
@@ -251,8 +285,16 @@ fun SearchListContent(
     searchItems: List<SearchItem>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
+    isSearchActive: Boolean,
+    onSearchActiveChange: (Boolean) -> Unit,
     sortOption: SearchSortOption,
     onSortOptionChange: (SearchSortOption) -> Unit,
+    machineFilter: String?,
+    onMachineFilterChange: (String?) -> Unit,
+    typeFilter: String?,
+    onTypeFilterChange: (String?) -> Unit,
+    availableMachines: List<String>,
+    availableTypes: List<String>,
     isLoading: Boolean,
     onLoadMore: () -> Unit,
     showDeleteConfirmation: Boolean,
@@ -271,6 +313,8 @@ fun SearchListContent(
 ) {
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showMachineMenu by remember { mutableStateOf(false) }
+    var showTypeMenu by remember { mutableStateOf(false) }
 
     if (showDeleteConfirmation) {
         AlertDialog(
@@ -357,7 +401,8 @@ fun SearchListContent(
                     }
                 },
                 actions = {
-                    if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
+                    if (searchItems.isNotEmpty() || searchQuery.isNotEmpty() || machineFilter != null || typeFilter != null) {
+                        // Sort Menu
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
                                 Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort")
@@ -382,24 +427,13 @@ fun SearchListContent(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = onScanClick,
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
-                ) {
-                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
-                }
-            }
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                if (searchItems.isEmpty() && searchQuery.isEmpty()) {
+                if (searchItems.isEmpty() && searchQuery.isEmpty() && machineFilter == null && typeFilter == null) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(
                             modifier = Modifier
@@ -438,29 +472,93 @@ fun SearchListContent(
                         }
                     }
                 } else {
-                    // Search Bar
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = onSearchQueryChange,
+                    // Filter Row
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        placeholder = { Text(stringResource(R.string.search_items)) },
-                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { onSearchQueryChange("") }) {
-                                    Icon(Icons.Rounded.Clear, contentDescription = "Clear")
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Machine Filter
+                        Box(modifier = Modifier.weight(1f)) {
+                            Surface(
+                                onClick = { showMachineMenu = true },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (machineFilter != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (machineFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.PrecisionManufacturing,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (machineFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = machineFilter ?: "All Machines",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (machineFilter != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
                                 }
                             }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                        )
-                    )
+                            DropdownMenu(expanded = showMachineMenu, onDismissRequest = { showMachineMenu = false }) {
+                                DropdownMenuItem(text = { Text("All Machines") }, onClick = { onMachineFilterChange(null); showMachineMenu = false })
+                                availableMachines.forEach { machine ->
+                                    DropdownMenuItem(
+                                        text = { Text(machine) },
+                                        onClick = { onMachineFilterChange(machine); showMachineMenu = false },
+                                        trailingIcon = { if (machine == machineFilter) Icon(Icons.Rounded.Check, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Type Filter
+                        Box(modifier = Modifier.weight(1f)) {
+                            Surface(
+                                onClick = { showTypeMenu = true },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (typeFilter != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (typeFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Inventory2,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (typeFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = typeFilter ?: "All Types",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = if (typeFilter != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            DropdownMenu(expanded = showTypeMenu, onDismissRequest = { showTypeMenu = false }) {
+                                DropdownMenuItem(text = { Text("All Types") }, onClick = { onTypeFilterChange(null); showTypeMenu = false })
+                                availableTypes.forEach { type ->
+                                    DropdownMenuItem(
+                                        text = { Text(type) },
+                                        onClick = { onTypeFilterChange(type); showTypeMenu = false },
+                                        trailingIcon = { if (type == typeFilter) Icon(Icons.Rounded.Check, contentDescription = null) }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
@@ -468,6 +566,14 @@ fun SearchListContent(
                             contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            if (searchItems.isEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                        Text("No results match your filters.", color = MaterialTheme.colorScheme.outline)
+                                    }
+                                }
+                            }
+
                             items(searchItems, key = { it.serialNumber }) { item ->
                                 val isScanned = item.scanTimestamp != null
                                 Card(
@@ -707,13 +813,13 @@ fun SearchListContent(
                             }
                         }
 
-                        if (searchItems.isNotEmpty() || searchQuery.isNotEmpty()) {
+                        if (searchItems.isNotEmpty() || searchQuery.isNotEmpty() || machineFilter != null || typeFilter != null) {
                             val scannedColor = if (scannedCount == totalCount && totalCount > 0) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
 
                             Surface(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
-                                    .padding(16.dp),
+                                    .padding(start = 16.dp, bottom = 100.dp), // Move up to avoid overlapping with bottom bar
                                 shape = RoundedCornerShape(16.dp),
                                 color = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 8.dp,
@@ -745,6 +851,97 @@ fun SearchListContent(
                                         },
                                         style = MaterialTheme.typography.titleMedium
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Floating Search and Scan Bar (MainScreen Style)
+            if (searchItems.isNotEmpty() || searchQuery.isNotEmpty() || machineFilter != null || typeFilter != null) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .imePadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(32.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp,
+                        shadowElevation = 8.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AnimatedVisibility(
+                                visible = isSearchActive,
+                                enter = fadeIn(animationSpec = tween(600)) + expandHorizontally(
+                                    animationSpec = tween(600),
+                                    expandFrom = Alignment.End
+                                ),
+                                exit = fadeOut(animationSpec = tween(600)) + shrinkHorizontally(
+                                    animationSpec = tween(600),
+                                    shrinkTowards = Alignment.End
+                                )
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = onSearchQueryChange,
+                                    placeholder = { 
+                                        Text(
+                                            stringResource(R.string.search_items),
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        ) 
+                                    },
+                                    modifier = Modifier.fillMaxWidth(0.75f),
+                                    shape = RoundedCornerShape(24.dp),
+                                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { 
+                                            onSearchQueryChange("")
+                                            onSearchActiveChange(false)
+                                        }) {
+                                            Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.clear_search), tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    },
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color.Transparent,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+
+                            if (!isSearchActive) {
+                                FloatingActionButton(
+                                    onClick = { onSearchActiveChange(true) },
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search_items))
+                                }
+
+                                FloatingActionButton(
+                                    onClick = onScanClick,
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                                    shape = CircleShape,
+                                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                ) {
+                                    Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Scan")
                                 }
                             }
                         }
@@ -798,6 +995,24 @@ private fun SortMenuItem(
     )
 }
 
+@Composable
+private fun FilterChip(label: String, onClear: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(16.dp),
+        onClick = onClear
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Spacer(Modifier.width(4.dp))
+            Icon(Icons.Rounded.Clear, contentDescription = null, modifier = Modifier.size(14.dp))
+        }
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.S)
 @Preview(showBackground = true, apiLevel = 36)
 @Composable
@@ -807,8 +1022,16 @@ fun SearchListEmptyPreview() {
             searchItems = emptyList(),
             searchQuery = "",
             onSearchQueryChange = {},
+            isSearchActive = false,
+            onSearchActiveChange = {},
             sortOption = SearchSortOption.DEFAULT,
             onSortOptionChange = {},
+            machineFilter = null,
+            onMachineFilterChange = {},
+            typeFilter = null,
+            onTypeFilterChange = {},
+            availableMachines = emptyList(),
+            availableTypes = emptyList(),
             isLoading = false,
             onLoadMore = {},
             showDeleteConfirmation = false,
@@ -874,8 +1097,16 @@ fun SearchListWithDataPreview() {
             searchItems = mockItems,
             searchQuery = "",
             onSearchQueryChange = {},
+            isSearchActive = false,
+            onSearchActiveChange = {},
             sortOption = SearchSortOption.DEFAULT,
             onSortOptionChange = {},
+            machineFilter = null,
+            onMachineFilterChange = {},
+            typeFilter = null,
+            onTypeFilterChange = {},
+            availableMachines = emptyList(),
+            availableTypes = emptyList(),
             isLoading = false,
             onLoadMore = {},
             showDeleteConfirmation = false,
