@@ -222,7 +222,7 @@ class SearchListViewModel : ViewModel() {
                                         currentRow.clear()
                                         currentField.setLength(0)
                                     }
-                                    if ((c == '\r') && (i + 1 < allText.length) && (allText[i+1] == '\n')) {
+                                    if ((c == '\r') && ((i + 1) < allText.length) && (allText[i+1] == '\n')) {
                                         i++
                                     }
                                 }
@@ -261,8 +261,8 @@ class SearchListViewModel : ViewModel() {
                         if (pIdIdx != -1) {
                             headerRowIndex = rowIdx
                             productIdIndex = pIdIdx
-                            machineIndex = normalized.indexOfFirst { it == "machine" || it == "workstation" || it == "station" }
-                            outputMatIndex = normalized.indexOfFirst { it == "output material" || it == "model" || it == "material" }
+                            machineIndex = normalized.indexOfFirst { (it == "machine") || (it == "workstation") || (it == "station") }
+                            outputMatIndex = normalized.indexOfFirst { (it == "output material") || (it == "model") || (it == "material") }
                             startDateIndex = normalized.indexOfFirst { it.contains("start date") }
                             startTimeIndex = normalized.indexOfFirst { it.contains("start time") }
                             completeDateIndex = normalized.indexOfFirst { it.contains("complete date") }
@@ -278,9 +278,9 @@ class SearchListViewModel : ViewModel() {
                     for (r in startIdx until rows.size) {
                         val row = rows[r]
                         val pIdIdx = productIdIndex
-                        if (pIdIdx != -1 && row.size > pIdIdx) {
+                        if ((pIdIdx != -1) && (row.size > pIdIdx)) {
                             val productId = row[pIdIdx]
-                            if (productId.isNotBlank() && productId.length >= 18) {
+                            if (productId.isNotBlank() && (productId.length >= 18)) {
                                 val parsed = parseScannedCode(productId)
                                 val hex = parsed?.serialHex ?: productId.takeLast(6)
                                 
@@ -319,7 +319,7 @@ class SearchListViewModel : ViewModel() {
     }
 
     private fun getValue(row: List<String>, index: Int): String? {
-        return if (index != -1 && row.size > index) row[index].ifBlank { null } else null
+        return if ((index != -1) && (row.size > index)) row[index].ifBlank { null } else null
     }
 
     fun checkScannedCode(context: Context, fullCode: String) {

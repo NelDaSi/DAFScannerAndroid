@@ -73,7 +73,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = emptyList(),
         )
 
         checkForUpdatesOnStartup()
@@ -83,8 +83,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             delay(2000) // Small delay to not interfere with startup
             val result = UpdateManager.checkForUpdates(getApplication())
-            if (result is UpdateManager.UpdateResult.NewUpdate) {
-                _updateInfo.value = result.info
+            (result as? UpdateManager.UpdateResult.NewUpdate)?.let {
+                _updateInfo.value = it.info
             }
         }
     }
