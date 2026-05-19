@@ -165,15 +165,15 @@ fun SearchListScreen(
     SearchListContent(
         searchItems = searchItems,
         searchQuery = searchQuery,
-        onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        onSearchQueryChange = { viewModel.onSearchQueryChange(context, it) },
         isSearchActive = isSearchActive,
         onSearchActiveChange = { isSearchActive = it },
         sortOption = sortOption,
-        onSortOptionChange = { viewModel.onSortOptionChange(it) },
+        onSortOptionChange = { viewModel.onSortOptionChange(context, it) },
         machineFilter = machineFilter,
-        onMachineFilterChange = { viewModel.onMachineFilterChange(it) },
+        onMachineFilterChange = { viewModel.onMachineFilterChange(context, it) },
         typeFilter = typeFilter,
-        onTypeFilterChange = { viewModel.onTypeFilterChange(it) },
+        onTypeFilterChange = { viewModel.onTypeFilterChange(context, it) },
         availableMachines = availableMachines,
         availableTypes = availableTypes,
         isLoading = isLoading,
@@ -387,7 +387,13 @@ fun SearchListContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.verify_serials_title)) },
+                title = {
+                    Text(
+                        stringResource(R.string.verify_serials_title),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     scrolledContainerColor = MaterialTheme.colorScheme.primary,
@@ -402,22 +408,6 @@ fun SearchListContent(
                 },
                 actions = {
                     if (searchItems.isNotEmpty() || searchQuery.isNotEmpty() || machineFilter != null || typeFilter != null) {
-                        // Sort Menu
-                        Box {
-                            IconButton(onClick = { showSortMenu = true }) {
-                                Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort")
-                            }
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false }
-                            ) {
-                                SortMenuItem(SearchSortOption.DEFAULT, R.string.sort_default, sortOption, onSortOptionChange) { showSortMenu = false }
-                                SortMenuItem(SearchSortOption.MACHINE, R.string.sort_machine, sortOption, onSortOptionChange) { showSortMenu = false }
-                                SortMenuItem(SearchSortOption.TYPE, R.string.sort_type, sortOption, onSortOptionChange) { showSortMenu = false }
-                                SortMenuItem(SearchSortOption.FOUND_TIME, R.string.sort_found_time, sortOption, onSortOptionChange) { showSortMenu = false }
-                                SortMenuItem(SearchSortOption.PRODUCTION_TIME, R.string.sort_production_time, sortOption, onSortOptionChange) { showSortMenu = false }
-                            }
-                        }
                         IconButton(onClick = { onShowShareOptionsChange(true) }) {
                             Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share))
                         }
@@ -472,98 +462,10 @@ fun SearchListContent(
                         }
                     }
                 } else {
-                    // Filter Row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Machine Filter
-                        Box(modifier = Modifier.weight(1f)) {
-                            Surface(
-                                onClick = { showMachineMenu = true },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (machineFilter != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (machineFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.PrecisionManufacturing,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                        tint = if (machineFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = machineFilter ?: "All Machines",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (machineFilter != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                            DropdownMenu(expanded = showMachineMenu, onDismissRequest = { showMachineMenu = false }) {
-                                DropdownMenuItem(text = { Text("All Machines") }, onClick = { onMachineFilterChange(null); showMachineMenu = false })
-                                availableMachines.forEach { machine ->
-                                    DropdownMenuItem(
-                                        text = { Text(machine) },
-                                        onClick = { onMachineFilterChange(machine); showMachineMenu = false },
-                                        trailingIcon = { if (machine == machineFilter) Icon(Icons.Rounded.Check, contentDescription = null) }
-                                    )
-                                }
-                            }
-                        }
-
-                        // Type Filter
-                        Box(modifier = Modifier.weight(1f)) {
-                            Surface(
-                                onClick = { showTypeMenu = true },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (typeFilter != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (typeFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Inventory2,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                        tint = if (typeFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = typeFilter ?: "All Types",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = if (typeFilter != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                            DropdownMenu(expanded = showTypeMenu, onDismissRequest = { showTypeMenu = false }) {
-                                DropdownMenuItem(text = { Text("All Types") }, onClick = { onTypeFilterChange(null); showTypeMenu = false })
-                                availableTypes.forEach { type ->
-                                    DropdownMenuItem(
-                                        text = { Text(type) },
-                                        onClick = { onTypeFilterChange(type); showTypeMenu = false },
-                                        trailingIcon = { if (type == typeFilter) Icon(Icons.Rounded.Check, contentDescription = null) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 140.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (searchItems.isEmpty()) {
@@ -812,48 +714,6 @@ fun SearchListContent(
                                 }
                             }
                         }
-
-                        if (searchItems.isNotEmpty() || searchQuery.isNotEmpty() || machineFilter != null || typeFilter != null) {
-                            val scannedColor = if (scannedCount == totalCount && totalCount > 0) Color(0xFF388E3C) else MaterialTheme.colorScheme.secondary
-
-                            Surface(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(start = 16.dp, bottom = 100.dp), // Move up to avoid overlapping with bottom bar
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                tonalElevation = 8.dp,
-                                shadowElevation = 8.dp,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.BarChart,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = buildAnnotatedString {
-                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Normal)) {
-                                                append(stringResource(R.string.progress_label))
-                                            }
-                                            withStyle(style = SpanStyle(color = scannedColor, fontWeight = FontWeight.ExtraBold)) {
-                                                append(scannedCount.toString())
-                                            }
-                                            withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)) {
-                                                append(" / $totalCount")
-                                            }
-                                        },
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -869,6 +729,41 @@ fun SearchListContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (totalCount > 0) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 4.dp,
+                            shadowElevation = 4.dp,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Rounded.BarChart,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                val countColor = if (scannedCount == totalCount && totalCount > 0) Color(0xFF2196F3) else Color(0xFFD32F2F)
+                                Text(
+                                    text = buildAnnotatedString {
+                                        append(stringResource(R.string.progress_label))
+                                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = countColor)) {
+                                            append(" $scannedCount")
+                                        }
+                                        append(" / $totalCount")
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
                     Surface(
                         shape = RoundedCornerShape(32.dp),
                         color = MaterialTheme.colorScheme.surface,
@@ -934,6 +829,99 @@ fun SearchListContent(
                                     Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search_items))
                                 }
 
+                                // Sort Menu
+                                Box {
+                                    FloatingActionButton(
+                                        onClick = { showSortMenu = true },
+                                        containerColor = if (sortOption != SearchSortOption.DEFAULT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = if (sortOption != SearchSortOption.DEFAULT) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape,
+                                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showSortMenu,
+                                        onDismissRequest = { showSortMenu = false },
+                                        modifier = Modifier.background(MaterialTheme.colorScheme.surface).width(220.dp)
+                                    ) {
+                                        DropdownHeader(stringResource(R.string.sort_by), Icons.AutoMirrored.Rounded.Sort)
+                                        SortMenuItem(SearchSortOption.DEFAULT, R.string.sort_default, Icons.Rounded.FilterList, sortOption, onSortOptionChange) { showSortMenu = false }
+                                        SortMenuItem(SearchSortOption.MACHINE, R.string.sort_machine, Icons.Rounded.PrecisionManufacturing, sortOption, onSortOptionChange) { showSortMenu = false }
+                                        SortMenuItem(SearchSortOption.TYPE, R.string.sort_type, Icons.Rounded.Inventory2, sortOption, onSortOptionChange) { showSortMenu = false }
+                                        SortMenuItem(SearchSortOption.FOUND_TIME, R.string.sort_found_time, Icons.Rounded.Schedule, sortOption, onSortOptionChange) { showSortMenu = false }
+                                        SortMenuItem(SearchSortOption.PRODUCTION_TIME, R.string.sort_production_time, Icons.Rounded.TableChart, sortOption, onSortOptionChange) { showSortMenu = false }
+                                    }
+                                }
+
+                                // Machine Filter
+                                Box {
+                                    FloatingActionButton(
+                                        onClick = { showMachineMenu = true },
+                                        containerColor = if (machineFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = if (machineFilter != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape,
+                                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.PrecisionManufacturing, contentDescription = "Machine Filter")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMachineMenu, 
+                                        onDismissRequest = { showMachineMenu = false },
+                                        modifier = Modifier.background(MaterialTheme.colorScheme.surface).width(220.dp)
+                                    ) {
+                                        DropdownHeader(stringResource(R.string.filter_by_machine), Icons.Rounded.PrecisionManufacturing)
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.all_machines), fontWeight = if (machineFilter == null) FontWeight.Bold else FontWeight.Normal) },
+                                            onClick = { onMachineFilterChange(null); showMachineMenu = false },
+                                            leadingIcon = { Icon(Icons.Rounded.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.outline) },
+                                            trailingIcon = { if (machineFilter == null) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                        )
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+                                        availableMachines.forEach { machine ->
+                                            DropdownMenuItem(
+                                                text = { Text(machine, style = MaterialTheme.typography.bodyMedium) },
+                                                onClick = { onMachineFilterChange(machine); showMachineMenu = false },
+                                                trailingIcon = { if (machine == machineFilter) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Type Filter
+                                Box {
+                                    FloatingActionButton(
+                                        onClick = { showTypeMenu = true },
+                                        containerColor = if (typeFilter != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = if (typeFilter != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape,
+                                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.Inventory2, contentDescription = "Type Filter")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showTypeMenu, 
+                                        onDismissRequest = { showTypeMenu = false },
+                                        modifier = Modifier.background(MaterialTheme.colorScheme.surface).width(220.dp)
+                                    ) {
+                                        DropdownHeader(stringResource(R.string.filter_by_type), Icons.Rounded.Inventory2)
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.all_types), fontWeight = if (typeFilter == null) FontWeight.Bold else FontWeight.Normal) },
+                                            onClick = { onTypeFilterChange(null); showTypeMenu = false },
+                                            leadingIcon = { Icon(Icons.Rounded.Clear, contentDescription = null, tint = MaterialTheme.colorScheme.outline) },
+                                            trailingIcon = { if (typeFilter == null) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                        )
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+                                        availableTypes.forEach { type ->
+                                            DropdownMenuItem(
+                                                text = { Text(type, style = MaterialTheme.typography.bodyMedium) },
+                                                onClick = { onTypeFilterChange(type); showTypeMenu = false },
+                                                trailingIcon = { if (type == typeFilter) Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                            )
+                                        }
+                                    }
+                                }
+
                                 FloatingActionButton(
                                     onClick = onScanClick,
                                     containerColor = MaterialTheme.colorScheme.secondary,
@@ -974,21 +962,64 @@ fun SearchListContent(
 }
 
 @Composable
+private fun DropdownHeader(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    }
+}
+
+@Composable
 private fun SortMenuItem(
     option: SearchSortOption,
     labelRes: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     currentOption: SearchSortOption,
     onOptionChange: (SearchSortOption) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isSelected = currentOption == option
     DropdownMenuItem(
-        text = { Text(stringResource(labelRes)) },
+        text = { 
+            Text(
+                stringResource(labelRes), 
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                style = MaterialTheme.typography.bodyMedium
+            ) 
+        },
         onClick = {
             onOptionChange(option)
             onDismiss()
         },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
         trailingIcon = {
-            if (currentOption == option) {
+            if (isSelected) {
                 Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
         }

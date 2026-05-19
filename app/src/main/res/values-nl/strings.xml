@@ -203,6 +203,11 @@
     <string name="sort_found_time">Tijd gevonden</string>
     <string name="sort_production_time">Tijd productie</string>
     <string name="sort_default">Standaard</string>
+    <string name="sort_by">Sorteren op</string>
+    <string name="filter_by_machine">Filteren op machine</string>
+    <string name="filter_by_type">Filteren op type</string>
+    <string name="all_machines">Alle machines</string>
+    <string name="all_types">Alle types</string>
     <string name="search_items">Items zoeken…</string>
     <string name="loading">Laden…</string>
     <string name="settings_section_appearance">Vormgeving</string>

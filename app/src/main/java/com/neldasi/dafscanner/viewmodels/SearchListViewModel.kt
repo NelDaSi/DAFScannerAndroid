@@ -69,7 +69,12 @@ class SearchListViewModel : ViewModel() {
     private val _visibleCount = MutableStateFlow(50)
 
     val availableMachines: StateFlow<List<String>> = _searchItems
-        .map { items -> items.mapNotNull { it.machine }.distinct().sorted() }
+        .map { items -> 
+            items.mapNotNull { it.machine }
+                .map { it.split(" ").first() }
+                .distinct()
+                .sorted() 
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val availableTypes: StateFlow<List<String>> = _searchItems
@@ -87,7 +92,7 @@ class SearchListViewModel : ViewModel() {
 
         // Apply Machine Filter
         if (mFilter != null) {
-            filtered = filtered.filter { it.machine == mFilter }
+            filtered = filtered.filter { it.machine?.split(" ")?.firstOrNull() == mFilter }
         }
 
         // Apply Type Filter
@@ -150,25 +155,50 @@ class SearchListViewModel : ViewModel() {
 
     private val gson = Gson()
     private val prefKey = "search_list_data"
+    private val queryKey = "search_query"
+    private val sortKey = "sort_option"
+    private val machineKey = "machine_filter"
+    private val typeKey = "type_filter"
 
-    fun onSearchQueryChange(query: String) {
+    fun onSearchQueryChange(context: Context, query: String) {
         _searchQuery.value = query
         _visibleCount.value = 50 // Reset pagination on search
+        saveFilters(context)
     }
 
-    fun onSortOptionChange(option: SearchSortOption) {
+    fun onSortOptionChange(context: Context, option: SearchSortOption) {
         _sortOption.value = option
         _visibleCount.value = 50 // Reset pagination on sort
+        saveFilters(context)
     }
 
-    fun onMachineFilterChange(machine: String?) {
+    fun onMachineFilterChange(context: Context, machine: String?) {
         _machineFilter.value = machine
         _visibleCount.value = 50
+        saveFilters(context)
     }
 
-    fun onTypeFilterChange(type: String?) {
+    fun onTypeFilterChange(context: Context, type: String?) {
         _typeFilter.value = type
         _visibleCount.value = 50
+        saveFilters(context)
+    }
+
+    private fun saveFilters(context: Context) {
+        val query = _searchQuery.value
+        val sort = _sortOption.value.name
+        val machine = _machineFilter.value
+        val type = _typeFilter.value
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            prefs.edit { 
+                putString(queryKey, query)
+                putString(sortKey, sort)
+                putString(machineKey, machine)
+                putString(typeKey, type)
+            }
+        }
     }
 
     fun loadMore() {
@@ -182,6 +212,8 @@ class SearchListViewModel : ViewModel() {
         _isLoading.value = true
         viewModelScope.launch {
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            
+            // Load items
             val json = prefs.getString(prefKey, null)
             if (json != null) {
                 try {
@@ -195,16 +227,35 @@ class SearchListViewModel : ViewModel() {
                     Log.e("SearchListVM", "Error loading from storage", e)
                 }
             }
+
+            // Load filters
+            _searchQuery.value = prefs.getString(queryKey, "") ?: ""
+            val savedSort = prefs.getString(sortKey, SearchSortOption.DEFAULT.name)
+            _sortOption.value = SearchSortOption.entries.find { it.name == savedSort } ?: SearchSortOption.DEFAULT
+            _machineFilter.value = prefs.getString(machineKey, null)
+            _typeFilter.value = prefs.getString(typeKey, null)
+
             _isLoading.value = false
         }
     }
 
     private fun saveToStorage(context: Context) {
         val currentItems = _searchItems.value
+        val query = _searchQuery.value
+        val sort = _sortOption.value.name
+        val machine = _machineFilter.value
+        val type = _typeFilter.value
+
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
             val json = gson.toJson(currentItems)
-            prefs.edit { putString(prefKey, json) }
+            prefs.edit { 
+                putString(prefKey, json)
+                putString(queryKey, query)
+                putString(sortKey, sort)
+                putString(machineKey, machine)
+                putString(typeKey, type)
+            }
         }
     }
 
@@ -403,9 +454,17 @@ class SearchListViewModel : ViewModel() {
     fun clearList(context: Context) {
         _searchItems.value = emptyList()
         _lastScannedResult.value = null
+        _searchQuery.value = ""
         _machineFilter.value = null
         _typeFilter.value = null
+        _sortOption.value = SearchSortOption.DEFAULT
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit { remove(prefKey) }
+        prefs.edit { 
+            remove(prefKey)
+            remove(queryKey)
+            remove(sortKey)
+            remove(machineKey)
+            remove(typeKey)
+        }
     }
 }

@@ -203,6 +203,11 @@
     <string name="sort_found_time">Found Time</string>
     <string name="sort_production_time">Production Time</string>
     <string name="sort_default">Default</string>
+    <string name="sort_by">Sort by</string>
+    <string name="filter_by_machine">Filter by Machine</string>
+    <string name="filter_by_type">Filter by Type</string>
+    <string name="all_machines">All Machines</string>
+    <string name="all_types">All Types</string>
     <string name="search_items">Search items…</string>
     <string name="loading">Loading…</string>
     <string name="settings_section_appearance">Appearance</string>
