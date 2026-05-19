@@ -145,6 +145,7 @@ fun DetailScreenContent(
     val shareTitle = stringResource(R.string.share_title)
     val shareTypeLabel = stringResource(R.string.share_type)
     val shareSupplierLabel = stringResource(R.string.share_supplier)
+    val shareEngineFormatLabel = stringResource(R.string.share_engine_format)
     val shareSerialLabel = stringResource(R.string.share_serial)
     val shareBatchLabel = stringResource(R.string.share_batch)
     val shareScannedAtLabel = stringResource(R.string.share_scanned_at)
@@ -204,6 +205,7 @@ fun DetailScreenContent(
                                 parsed?.let {
                                     appendLine(shareTypeLabel.format(it.typeCode))
                                     appendLine(shareSupplierLabel.format(it.supplierCode))
+                                    appendLine(shareEngineFormatLabel.format(it.format.name))
                                     appendLine(shareSerialLabel.format(it.serialNumber))
                                     appendLine(shareBatchLabel.format(it.batchNumber))
                                     appendLine()
@@ -371,6 +373,7 @@ fun DetailScreenContent(
                             parsed?.let {
                                 DetailRow(Icons.Rounded.Fingerprint, stringResource(R.string.type), it.typeCode)
                                 DetailRow(Icons.Rounded.Business, stringResource(R.string.supplier), it.supplierCode)
+                                DetailRow(Icons.Rounded.Category, stringResource(R.string.engine_format), it.format.name)
                                 DetailRow(Icons.Rounded.Tag, stringResource(R.string.serial_hex), it.serialNumber)
                                 DetailRow(Icons.Rounded.Dialpad, stringResource(R.string.serial_dec), it.decSerial)
                                 DetailRow(Icons.Rounded.Category, stringResource(R.string.batch), it.batchNumber)

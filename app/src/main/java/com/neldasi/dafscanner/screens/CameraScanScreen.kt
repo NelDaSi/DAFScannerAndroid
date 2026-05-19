@@ -95,8 +95,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -110,6 +110,7 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.extras.ParsedPart
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.parseScannedCode
 import com.neldasi.dafscanner.extras.processImageProxy
@@ -133,7 +134,8 @@ data class ScanFeedback(
     val serial: String,
     val isMatch: Boolean,
     val alreadyScanned: Boolean,
-    val scanTimestamp: Long? = null
+    val scanTimestamp: Long? = null,
+    val parsedPart: ParsedPart? = null
 )
 
 // Helper to trigger autofocus at center of preview
@@ -216,7 +218,7 @@ fun CameraScanScreen(
     val sessionScanned = remember { mutableStateMapOf<String, Long>() }
 
     var zoomRatio by remember { mutableFloatStateOf(1f) }
-    val transformableState = rememberTransformableState { _, zoomChange, _, _ ->
+    val transformableState = rememberTransformableState { zoomChange, _, _ ->
         val newZoom = (zoomRatio * zoomChange).coerceIn(1f, 10f)
         zoomRatio = newZoom
         camera?.cameraControl?.setZoomRatio(newZoom)
@@ -255,7 +257,8 @@ fun CameraScanScreen(
                 )
             }
 
-            lastSerial = extractSerial(value)
+            val parsed = parseScannedCode(value)
+            lastSerial = parsed?.serialNumber ?: extractSerial(value)
 
             // 3. Flash visual feedback
             if (value != lastFlashedCode) {
@@ -271,20 +274,20 @@ fun CameraScanScreen(
 
             // 4. Process the scan based on mode
             if (isVerifyMode) {
-                val serial = extractSerial(value)
+                val serial = parsed?.serialNumber ?: extractSerial(value)
                 if (searchViewModel != null) {
                     val currentItems = searchViewModel.searchItems.value
                     val matchItem = currentItems.find { it.serialNumber == serial }
                     val isMatch = matchItem != null
                     val alreadyScanned = matchItem?.scanTimestamp != null
                     searchViewModel.checkScannedCode(context, value)
-                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, matchItem?.scanTimestamp)
+                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, matchItem?.scanTimestamp, parsed)
                 } else {
                     val serialList = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SERIAL_LIST") ?: emptyList()
                     val scannedSerials = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SCANNED_SERIALS") ?: emptyList()
                     val isMatch = serialList.contains(serial)
                     val alreadyScanned = scannedSerials.contains(serial)
-                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned)
+                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, parsedPart = parsed)
                     if (isMatch && !alreadyScanned) {
                         val updatedScanned = scannedSerials + serial
                         navController.previousBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", updatedScanned)
@@ -301,8 +304,8 @@ fun CameraScanScreen(
                 
                 if (finalTimestamp != null) {
                     // DUPLICATE DETECTED
-                    val serial = extractSerial(value)
-                    verifyResult = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp)
+                    val serial = parsed?.serialNumber ?: extractSerial(value)
+                    verifyResult = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp, parsedPart = parsed)
                     isPaused = true
                 } else {
                     // NEW SCAN SUCCESS
@@ -680,9 +683,9 @@ fun CameraScanScreenContent(
                             }
                             
                             verifyResult.scanTimestamp?.let { ts ->
-                                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                                val configuration = LocalConfiguration.current
                                 // Accessing locales through LocalConfiguration ensures recomposition on change
-                                val locale = configuration.locales[0] ?: LocalLocale.current.platformLocale
+                                val locale = configuration.locales[0]
                                 val dateStr = remember(ts, locale) {
                                     SimpleDateFormat("dd MMM, HH:mm:ss", locale).format(Date(ts))
                                 }
@@ -716,11 +719,27 @@ fun CameraScanScreenContent(
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "${stringResource(R.string.dec_prefix)}${try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
+                        text = "${stringResource(R.string.dec_prefix)}${verifyResult.parsedPart?.decSerial ?: try { verifyResult.serial.toLong(16).toString() } catch(_:Exception) { "N/A" }}",
                         color = Color.White.copy(alpha = 0.9f),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
+                    
+                    verifyResult.parsedPart?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Surface(
+                            color = Color.White.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = it.format.name,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                     
                     Spacer(Modifier.height(48.dp))
                     
@@ -1064,7 +1083,7 @@ fun CameraScanScreenPreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _, _ -> },
+            transformableState = rememberTransformableState { _, _, _ -> },
             isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
@@ -1083,7 +1102,7 @@ fun CameraScanScreenDuplicatePreview() {
             lastSerial = "123456",
             isTorchOn = false,
             flashAlpha = 0f,
-            transformableState = rememberTransformableState { _, _, _, _ -> },
+            transformableState = rememberTransformableState { _, _, _ -> },
             verifyResult = ScanFeedback(
                 serial = "01C821",
                 isMatch = false,

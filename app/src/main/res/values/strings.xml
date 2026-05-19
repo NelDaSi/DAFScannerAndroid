@@ -5,6 +5,7 @@
     <string name="share_title">Onderdeeldetails</string>
     <string name="share_type">Type: %1$s</string>
     <string name="share_supplier">Leverancier: %1$s</string>
+    <string name="share_engine_format">Motorformaat: %1$s</string>
     <string name="share_serial">Serienummer: %1$s</string>
     <string name="share_batch">Batch: %1$s</string>
     <string name="share_scanned_at">Gescand op: %1$s</string>
@@ -25,6 +26,7 @@
 
     <string name="type">Type:</string>
     <string name="supplier">Leverancier:</string>
+    <string name="engine_format">Motorformaat:</string>
     <string name="serial">Serienummer:</string>
     <string name="batch">Batch:</string>
     <string name="scanned_at">Gescand op:</string>

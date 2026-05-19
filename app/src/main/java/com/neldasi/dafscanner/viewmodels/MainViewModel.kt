@@ -57,8 +57,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     parts
                 } else {
                     parts.filter { part ->
-                        val serial = parseScannedCode(part.fullCode)?.serialNumber ?: ""
-                        tokens.any { tok -> serial.contains(tok, ignoreCase = true) }
+                        val parsed = parseScannedCode(part.fullCode)
+                        val serialHex = parsed?.serialHex ?: ""
+                        val serialDec = parsed?.serialDecimal ?: ""
+                        val typeCode = parsed?.typeCode ?: ""
+                        
+                        tokens.any { tok -> 
+                            serialHex.contains(tok, ignoreCase = true) || 
+                            serialDec.contains(tok, ignoreCase = true) ||
+                            typeCode.contains(tok, ignoreCase = true)
+                        }
                     }
                 }
             }
@@ -121,12 +129,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val file = File(getApplication<Application>().cacheDir, "scanned_parts.csv")
         file.bufferedWriter().use { out ->
-            out.write("TypeCode;SupplierCode;SerialNumber;BatchNumber;Timestamp;Note;FullCode\n")
+            out.write("TypeCode;SupplierCode;EngineFormat;SerialHex;SerialDec;BatchNumber;Timestamp;Note;FullCode\n")
             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             parts.forEach { part ->
                 val parsed = parseScannedCode(part.fullCode)
                 val date = dateFormat.format(Date(part.timestamp))
-                out.write("${parsed?.typeCode ?: ""};${parsed?.supplierCode ?: ""};${parsed?.serialNumber ?: ""};${parsed?.batchNumber ?: ""};$date;${part.note ?: ""};${part.fullCode}\n")
+                out.write("${parsed?.typeCode ?: ""};${parsed?.supplierCode ?: ""};${parsed?.format?.name ?: ""};${parsed?.serialHex ?: ""};${parsed?.serialDecimal ?: ""};${parsed?.batchNumber ?: ""};$date;${part.note ?: ""};${part.fullCode}\n")
             }
         }
         file

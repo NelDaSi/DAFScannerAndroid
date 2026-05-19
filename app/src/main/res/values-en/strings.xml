@@ -5,6 +5,7 @@
     <string name="share_title">Part details</string>
     <string name="share_type">Type: %1$s</string>
     <string name="share_supplier">Supplier: %1$s</string>
+    <string name="share_engine_format">Engine Format: %1$s</string>
     <string name="share_serial">Serial number: %1$s</string>
     <string name="share_batch">Batch: %1$s</string>
     <string name="share_scanned_at">Scanned on: %1$s</string>
@@ -25,6 +26,7 @@
 
     <string name="type">Type:</string>
     <string name="supplier">Supplier:</string>
+    <string name="engine_format">Engine Format:</string>
     <string name="serial">Serial number:</string>
     <string name="batch">Batch:</string>
     <string name="scanned_at">Scanned on:</string>
