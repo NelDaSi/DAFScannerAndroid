@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import android.view.ViewGroup
 import androidx.annotation.RequiresApi
 import androidx.camera.core.AspectRatio
@@ -110,10 +111,11 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.extras.DafImageAnalyzer
 import com.neldasi.dafscanner.extras.ParsedPart
+import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.parseScannedCode
-import com.neldasi.dafscanner.extras.processImageProxy
 import com.neldasi.dafscanner.navigation.NavKeys
 import com.neldasi.dafscanner.ui.theme.DafBlue
 import com.neldasi.dafscanner.ui.theme.DafRed
@@ -168,17 +170,22 @@ fun CameraScanScreen(
     searchViewModel: SearchListViewModel? = null,
 ) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("prefs", Context.MODE_PRIVATE) }
+    val prefs = remember { ScanStorage.prefs(context) }
     
-    var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean("vibrateEnabled", false)) }
-    var continuousScanEnabled by remember { mutableStateOf(prefs.getBoolean("continuousScanEnabled", false)) }
-    var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean("screenAlwaysOn", false)) }
+    var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.VIBRATE_ENABLED, false)) }
+    var continuousScanEnabled by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.CONTINUOUS_SCAN_ENABLED, false)) }
+    var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, false)) }
     val cameraErrorString = stringResource(R.string.camera_error)
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     
+    val barcodeScanner = remember {
+        val options = BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX).build()
+        BarcodeScanning.getClient(options)
+    }
+
     var previewViewRef by remember { mutableStateOf<PreviewView?>(null) }
     val allowedTypes = remember { SettingsRepository.loadAllowedTypes(context).toMutableStateList() }
 
@@ -233,6 +240,7 @@ fun CameraScanScreen(
             lastFlashedCode = null
             cameraExecutor.shutdown()
             cameraProvider?.unbindAll()
+            barcodeScanner.close()
         }
     }
 
@@ -281,7 +289,7 @@ fun CameraScanScreen(
                     val matchItem = currentItems.find { it.serialNumber == serial }
                     val isMatch = matchItem != null
                     val alreadyScanned = matchItem?.scanTimestamp != null
-                    searchViewModel.checkScannedCode(context, value)
+                    searchViewModel.checkScannedCode(value)
                     verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, matchItem?.scanTimestamp, parsed)
                 } else {
                     val serialList = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SERIAL_LIST") ?: emptyList()
@@ -355,17 +363,17 @@ fun CameraScanScreen(
         screenAlwaysOn = screenAlwaysOn,
         onToggleVibrate = {
             vibrateEnabled = !vibrateEnabled
-            prefs.edit { putBoolean("vibrateEnabled", vibrateEnabled) }
+            prefs.edit { putBoolean(ScanStorage.Keys.VIBRATE_ENABLED, vibrateEnabled) }
             toastMessage = if (vibrateEnabled) R.string.vibration_on else R.string.vibration_off
         },
         onToggleContinuous = {
             continuousScanEnabled = !continuousScanEnabled
-            prefs.edit { putBoolean("continuousScanEnabled", continuousScanEnabled) }
+            prefs.edit { putBoolean(ScanStorage.Keys.CONTINUOUS_SCAN_ENABLED, continuousScanEnabled) }
             toastMessage = if (continuousScanEnabled) R.string.continuous_scan_on else R.string.continuous_scan_off
         },
         onToggleScreenOn = {
             screenAlwaysOn = !screenAlwaysOn
-            prefs.edit { putBoolean("screenAlwaysOn", screenAlwaysOn) }
+            prefs.edit { putBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, screenAlwaysOn) }
             toastMessage = if (screenAlwaysOn) R.string.screen_always_on_on else R.string.screen_always_on_off
         },
         onToggleTorch = {
@@ -410,6 +418,7 @@ fun CameraScanScreen(
                     .build().also { it.surfaceProvider = previewView.surfaceProvider }
 
                 val analyzer = buildImageAnalyzer(
+                    barcodeScanner = barcodeScanner,
                     cameraExecutor = cameraExecutor,
                     shouldProcess = { !isPaused && scannedResult == null },
                     onScannedValue = { scannedValue ->
@@ -1040,31 +1049,30 @@ private fun ScannerOptionButton(
 }
 
 private fun appendPendingScan(context: Context, code: String, timestamp: Long) {
-    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-    val existing = prefs.getString("pending_scans", null)
+    val prefs = ScanStorage.prefs(context)
+    val existing = prefs.getString(ScanStorage.Keys.PENDING_SCANS, null)
     val list = try {
         if (existing.isNullOrBlank()) mutableListOf() 
         else com.google.gson.Gson().fromJson(existing, Array<com.neldasi.dafscanner.extras.ScanStorage.PendingScan>::class.java).toMutableList()
-    } catch (_: Exception) { mutableListOf() }
+    } catch (e: Exception) { 
+        Log.e("CameraScan", "Error parsing pending scans", e)
+        mutableListOf() 
+    }
     list.add(com.neldasi.dafscanner.extras.ScanStorage.PendingScan(code, timestamp))
-    prefs.edit { putString("pending_scans", com.google.gson.Gson().toJson(list)) }
+    prefs.edit { putString(ScanStorage.Keys.PENDING_SCANS, com.google.gson.Gson().toJson(list)) }
 }
 
 private fun buildImageAnalyzer(
+    barcodeScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
     cameraExecutor: ExecutorService,
     shouldProcess: () -> Boolean,
     onScannedValue: (String) -> Unit,
 ): ImageAnalysis {
-    val options = BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX).build()
-    val barcodeScanner = BarcodeScanning.getClient(options)
+    val dafAnalyzer = DafImageAnalyzer(barcodeScanner, onScannedValue)
     return ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
         .also { analysis ->
             analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                if (shouldProcess()) {
-                    processImageProxy(barcodeScanner, imageProxy, onScannedValue)
-                } else {
-                    imageProxy.close()
-                }
+                dafAnalyzer.process(imageProxy, shouldProcess())
             }
         }
 }

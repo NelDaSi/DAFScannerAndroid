@@ -1,38 +1,26 @@
 package com.neldasi.dafscanner.viewmodels
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.core.content.edit
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.neldasi.dafscanner.data.AppDatabase
+import com.neldasi.dafscanner.data.SearchItem
+import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.parseScannedCode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import androidx.core.content.edit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-
-data class SearchItem(
-    val typeCode: String,
-    val serialNumber: String,
-    val decSerial: String,
-    val scanTimestamp: Long? = null,
-    val scanOrder: Int? = null,
-    val machine: String? = null,
-    val outputMaterial: String? = null,
-    val startDate: String? = null,
-    val startTime: String? = null,
-    val completeDate: String? = null,
-    val completeTime: String? = null,
-)
 
 enum class SearchSortOption {
     DEFAULT,
@@ -47,9 +35,11 @@ data class ScanMatchResult(
     val isMatch: Boolean,
 )
 
-class SearchListViewModel : ViewModel() {
-    private val _searchItems = MutableStateFlow<List<SearchItem>>(emptyList())
-    val searchItems = _searchItems.asStateFlow()
+class SearchListViewModel(application: Application) : AndroidViewModel(application) {
+    private val searchItemDao = AppDatabase.getDatabase(application).searchItemDao()
+
+    val searchItems: StateFlow<List<SearchItem>> = searchItemDao.getAllItems()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -68,7 +58,7 @@ class SearchListViewModel : ViewModel() {
 
     private val _visibleCount = MutableStateFlow(50)
 
-    val availableMachines: StateFlow<List<String>> = _searchItems
+    val availableMachines: StateFlow<List<String>> = searchItems
         .map { items -> 
             items.mapNotNull { it.machine }
                 .map { it.split(" ").first() }
@@ -77,12 +67,12 @@ class SearchListViewModel : ViewModel() {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val availableTypes: StateFlow<List<String>> = _searchItems
+    val availableTypes: StateFlow<List<String>> = searchItems
         .map { items -> items.map { it.typeCode }.distinct().sorted() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _filteredAndSortedItems = combine(
-        _searchItems,
+        searchItems,
         _searchQuery,
         _sortOption,
         _machineFilter,
@@ -153,13 +143,6 @@ class SearchListViewModel : ViewModel() {
 
     private val _lastScannedResult = MutableStateFlow<ScanMatchResult?>(null)
 
-    private val gson = Gson()
-    private val prefKey = "search_list_data"
-    private val queryKey = "search_query"
-    private val sortKey = "sort_option"
-    private val machineKey = "machine_filter"
-    private val typeKey = "type_filter"
-
     fun onSearchQueryChange(context: Context, query: String) {
         _searchQuery.value = query
         _visibleCount.value = 50 // Reset pagination on search
@@ -191,71 +174,32 @@ class SearchListViewModel : ViewModel() {
         val type = _typeFilter.value
 
         viewModelScope.launch(Dispatchers.IO) {
-            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val prefs = ScanStorage.prefs(context)
             prefs.edit { 
-                putString(queryKey, query)
-                putString(sortKey, sort)
-                putString(machineKey, machine)
-                putString(typeKey, type)
+                putString(ScanStorage.Keys.SEARCH_QUERY, query)
+                putString(ScanStorage.Keys.SEARCH_SORT_OPTION, sort)
+                putString(ScanStorage.Keys.SEARCH_MACHINE_FILTER, machine)
+                putString(ScanStorage.Keys.SEARCH_TYPE_FILTER, type)
             }
         }
     }
 
     fun loadMore() {
-        if (_visibleCount.value < _searchItems.value.size) {
+        if (_visibleCount.value < searchItems.value.size) {
             _visibleCount.value += 50
         }
     }
 
     fun initStorage(context: Context) {
-        if (_searchItems.value.isNotEmpty()) return
-        _isLoading.value = true
         viewModelScope.launch {
-            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val prefs = ScanStorage.prefs(context)
             
-            // Load items
-            val json = prefs.getString(prefKey, null)
-            if (json != null) {
-                try {
-                    val items = withContext(Dispatchers.Default) {
-                        val type = object : TypeToken<List<SearchItem>>() {}.type
-                        gson.fromJson<List<SearchItem>>(json, type)
-                    }
-                    _searchItems.value = items
-                    Log.d("SearchListVM", "Loaded ${items.size} items from storage")
-                } catch (e: Exception) {
-                    Log.e("SearchListVM", "Error loading from storage", e)
-                }
-            }
-
             // Load filters
-            _searchQuery.value = prefs.getString(queryKey, "") ?: ""
-            val savedSort = prefs.getString(sortKey, SearchSortOption.DEFAULT.name)
+            _searchQuery.value = prefs.getString(ScanStorage.Keys.SEARCH_QUERY, "") ?: ""
+            val savedSort = prefs.getString(ScanStorage.Keys.SEARCH_SORT_OPTION, SearchSortOption.DEFAULT.name)
             _sortOption.value = SearchSortOption.entries.find { it.name == savedSort } ?: SearchSortOption.DEFAULT
-            _machineFilter.value = prefs.getString(machineKey, null)
-            _typeFilter.value = prefs.getString(typeKey, null)
-
-            _isLoading.value = false
-        }
-    }
-
-    private fun saveToStorage(context: Context) {
-        val currentItems = _searchItems.value
-        val query = _searchQuery.value
-        val sort = _sortOption.value.name
-        val machine = _machineFilter.value
-        val type = _typeFilter.value
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-            val json = gson.toJson(currentItems)
-            prefs.edit { 
-                putString(prefKey, json)
-                putString(queryKey, query)
-                putString(sortKey, sort)
-                putString(machineKey, machine)
-                putString(typeKey, type)
-            }
+            _machineFilter.value = prefs.getString(ScanStorage.Keys.SEARCH_MACHINE_FILTER, null)
+            _typeFilter.value = prefs.getString(ScanStorage.Keys.SEARCH_TYPE_FILTER, null)
         }
     }
 
@@ -399,9 +343,9 @@ class SearchListViewModel : ViewModel() {
                     }
                     itemsList
                 }
-                _searchItems.value = results
+                searchItemDao.deleteAll()
+                searchItemDao.insertAll(results)
                 _visibleCount.value = 50
-                saveToStorage(context)
             } catch (e: Exception) {
                 Log.e("SearchListVM", "Error loading CSV", e)
             } finally {
@@ -414,37 +358,33 @@ class SearchListViewModel : ViewModel() {
         return if ((index != -1) && (row.size > index)) row[index].ifBlank { null } else null
     }
 
-    fun checkScannedCode(context: Context, fullCode: String) {
+    fun checkScannedCode(fullCode: String) {
         val parsed = parseScannedCode(fullCode)
         val serial = parsed?.serialNumber ?: (if (fullCode.length >= 6) fullCode.takeLast(6) else fullCode)
-        forceMarkAsScanned(context, serial)
+        forceMarkAsScanned(serial)
     }
 
-    fun forceMarkAsScanned(context: Context, serial: String) {
-        Log.d("SearchListVM", "forceMarkAsScanned: $serial")
-        val currentItems = _searchItems.value
-        val itemIndex = currentItems.indexOfFirst { it.serialNumber == serial }
-        
-        val isMatch = itemIndex != -1
-        if (isMatch) {
-            val updatedItems = currentItems.toMutableList()
-            val item = updatedItems[itemIndex]
-            if (item.scanTimestamp == null) {
-                val nextOrder = (currentItems.maxOfOrNull { it.scanOrder ?: 0 } ?: 0) + 1
-                updatedItems[itemIndex] = item.copy(
-                    scanTimestamp = System.currentTimeMillis(),
-                    scanOrder = nextOrder,
-                )
-                _searchItems.value = updatedItems
-                saveToStorage(context)
-                Log.d("SearchListVM", "Match found! Scan order: $nextOrder")
+    fun forceMarkAsScanned(serial: String) {
+        viewModelScope.launch {
+            val item = searchItemDao.getItemBySerial(serial)
+            if (item != null) {
+                if (item.scanTimestamp == null) {
+                    val nextOrder = (searchItemDao.getMaxScanOrder() ?: 0) + 1
+                    val updated = item.copy(
+                        scanTimestamp = System.currentTimeMillis(),
+                        scanOrder = nextOrder,
+                    )
+                    searchItemDao.update(updated)
+                    Log.d("SearchListVM", "Match found! Scan order: $nextOrder")
+                } else {
+                    Log.d("SearchListVM", "Match found but already scanned at ${item.scanTimestamp}")
+                }
+                _lastScannedResult.value = ScanMatchResult(serial, true)
             } else {
-                Log.d("SearchListVM", "Match found but already scanned at ${item.scanTimestamp}")
+                Log.d("SearchListVM", "No match for $serial")
+                _lastScannedResult.value = ScanMatchResult(serial, false)
             }
-        } else {
-            Log.d("SearchListVM", "No match for $serial")
         }
-        _lastScannedResult.value = ScanMatchResult(serial, isMatch)
     }
 
     fun clearResult() {
@@ -452,19 +392,21 @@ class SearchListViewModel : ViewModel() {
     }
 
     fun clearList(context: Context) {
-        _searchItems.value = emptyList()
-        _lastScannedResult.value = null
-        _searchQuery.value = ""
-        _machineFilter.value = null
-        _typeFilter.value = null
-        _sortOption.value = SearchSortOption.DEFAULT
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit { 
-            remove(prefKey)
-            remove(queryKey)
-            remove(sortKey)
-            remove(machineKey)
-            remove(typeKey)
+        viewModelScope.launch {
+            searchItemDao.deleteAll()
+            _lastScannedResult.value = null
+            _searchQuery.value = ""
+            _machineFilter.value = null
+            _typeFilter.value = null
+            _sortOption.value = SearchSortOption.DEFAULT
+            val prefs = ScanStorage.prefs(context)
+            prefs.edit { 
+                remove(ScanStorage.Keys.SEARCH_QUERY)
+                remove(ScanStorage.Keys.SEARCH_SORT_OPTION)
+                remove(ScanStorage.Keys.SEARCH_MACHINE_FILTER)
+                remove(ScanStorage.Keys.SEARCH_TYPE_FILTER)
+                remove(ScanStorage.Keys.SEARCH_LIST_DATA)
+            }
         }
     }
 }

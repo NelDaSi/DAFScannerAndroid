@@ -10,36 +10,37 @@ object SettingsRepository {
     )
 
     fun loadAllowedTypes(context: Context): Set<String> {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        return prefs.getStringSet("allowedTypes", defaultAllowedTypes) ?: defaultAllowedTypes
+        val prefs = ScanStorage.prefs(context)
+        return prefs.getStringSet(ScanStorage.Keys.ALLOWED_TYPES, defaultAllowedTypes) ?: defaultAllowedTypes
     }
+    
     fun shouldKeepScreenOn(context: Context): Boolean {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        return prefs.getBoolean("screenAlwaysOn", false)
+        val prefs = ScanStorage.prefs(context)
+        return prefs.getBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, false)
     }
 
     fun getTheme(context: Context): String {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        return prefs.getString("appTheme", "DAF") ?: "DAF"
+        val prefs = ScanStorage.prefs(context)
+        return prefs.getString(ScanStorage.Keys.APP_THEME, "DAF") ?: "DAF"
     }
 
     fun setTheme(context: Context, theme: String) {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit { putString("appTheme", theme) }
+        val prefs = ScanStorage.prefs(context)
+        prefs.edit { putString(ScanStorage.Keys.APP_THEME, theme) }
     }
 
     fun getFontSizeScale(context: Context): Float {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        return prefs.getFloat("fontSizeScale", 1.0f)
+        val prefs = ScanStorage.prefs(context)
+        return prefs.getFloat(ScanStorage.Keys.FONT_SIZE_SCALE, 1.0f)
     }
 
     fun setFontSizeScale(context: Context, scale: Float) {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit { putFloat("fontSizeScale", scale) }
+        val prefs = ScanStorage.prefs(context)
+        prefs.edit { putFloat(ScanStorage.Keys.FONT_SIZE_SCALE, scale) }
     }
 
     fun saveAllowedTypes(context: Context, types: Collection<String>) {
-        val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        prefs.edit { putStringSet("allowedTypes", types.toSet()) }
+        val prefs = ScanStorage.prefs(context)
+        prefs.edit { putStringSet(ScanStorage.Keys.ALLOWED_TYPES, types.toSet()) }
     }
 }

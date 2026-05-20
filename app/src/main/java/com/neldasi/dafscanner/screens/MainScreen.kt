@@ -1,5 +1,7 @@
 
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
+@file:Suppress("AssignedValueIsNeverRead")
+
 package com.neldasi.dafscanner.screens
 
 import android.Manifest
@@ -8,6 +10,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -207,7 +210,9 @@ fun MainScreenContent(
         fun consumePendingFromPrefs(exclude: Set<String>) {
             ScanStorage.consumePendingQueue(sharedPreferences).forEach { scan ->
                 if (!exclude.contains(scan.code)) {
-                    try { addCodeIfNew(scan.code, scan.timestamp) } catch (_: Exception) {}
+                    try { addCodeIfNew(scan.code, scan.timestamp) } catch (e: Exception) {
+                        Log.e("MainScreen", "Error adding pending part: ${scan.code}", e)
+                    }
                 }
             }
         }

@@ -10,6 +10,19 @@ object ScanStorage {
     object Keys {
         const val PREFS_NAME = "prefs"
         const val PENDING_SCANS = "pending_scans"
+        const val APP_THEME = "appTheme"
+        const val FONT_SIZE_SCALE = "fontSizeScale"
+        const val SCREEN_ALWAYS_ON = "screenAlwaysOn"
+        const val VIBRATE_ENABLED = "vibrateEnabled"
+        const val CONTINUOUS_SCAN_ENABLED = "continuousScanEnabled"
+        const val ALLOWED_TYPES = "allowedTypes"
+        
+        // Search List Keys
+        const val SEARCH_LIST_DATA = "search_list_data"
+        const val SEARCH_QUERY = "search_query"
+        const val SEARCH_SORT_OPTION = "sort_option"
+        const val SEARCH_MACHINE_FILTER = "machine_filter"
+        const val SEARCH_TYPE_FILTER = "type_filter"
     }
 
     fun prefs(context: Context): SharedPreferences {

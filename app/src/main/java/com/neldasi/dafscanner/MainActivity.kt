@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.neldasi.dafscanner.extras.LockScreenOrientation
+import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.SettingsRepository
 import com.neldasi.dafscanner.extras.findActivity
 import com.neldasi.dafscanner.navigation.AppNavigation
@@ -51,15 +52,15 @@ class MainActivity : ComponentActivity() {
             val listener = remember {
                 SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
                     when (key) {
-                        "appTheme" -> theme = p.getString("appTheme", "SYSTEM") ?: "SYSTEM"
-                        "fontSizeScale" -> fontSizeScale = p.getFloat("fontSizeScale", 1.0f)
-                        "screenAlwaysOn" -> screenAlwaysOn = p.getBoolean("screenAlwaysOn", false)
+                        ScanStorage.Keys.APP_THEME -> theme = p.getString(key, "SYSTEM") ?: "SYSTEM"
+                        ScanStorage.Keys.FONT_SIZE_SCALE -> fontSizeScale = p.getFloat(key, 1.0f)
+                        ScanStorage.Keys.SCREEN_ALWAYS_ON -> screenAlwaysOn = p.getBoolean(key, false)
                     }
                 }
             }
 
             DisposableEffect(context) {
-                val prefs = context.getSharedPreferences("prefs", MODE_PRIVATE)
+                val prefs = ScanStorage.prefs(context)
                 prefs.registerOnSharedPreferenceChangeListener(listener)
                 onDispose {
                     prefs.unregisterOnSharedPreferenceChangeListener(listener)

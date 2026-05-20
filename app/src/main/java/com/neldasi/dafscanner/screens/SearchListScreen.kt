@@ -98,9 +98,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.neldasi.dafscanner.R
+import com.neldasi.dafscanner.data.SearchItem
 import com.neldasi.dafscanner.navigation.CameraRoute
 import com.neldasi.dafscanner.ui.theme.JetpackComposeTheme
-import com.neldasi.dafscanner.viewmodels.SearchItem
 import com.neldasi.dafscanner.viewmodels.SearchListViewModel
 import com.neldasi.dafscanner.viewmodels.SearchSortOption
 import java.io.File
