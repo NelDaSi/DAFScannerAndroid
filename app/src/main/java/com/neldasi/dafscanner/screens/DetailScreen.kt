@@ -153,7 +153,6 @@ fun DetailScreenContent(
     val shareSubject = stringResource(R.string.share_subject)
     val shareLabel = stringResource(R.string.share)
 
-    var imageFileUri by remember { mutableStateOf<Uri?>(value = null) }
     var showImageSourceDialog by remember { mutableStateOf(value = false) }
     var showImagePreview by remember { mutableStateOf(value = false) }
 
@@ -188,11 +187,13 @@ fun DetailScreenContent(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
                 navigationIcon = {
-                    IconButton(onClick = { 
-                        if (navController.previousBackStackEntry != null) {
-                            navController.popBackStack()
-                        }
-                    }) {
+                    IconButton(
+                        onClick = { 
+                            if (navController.previousBackStackEntry != null) {
+                                navController.popBackStack()
+                            }
+                        },
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
@@ -402,7 +403,6 @@ fun DetailScreenContent(
                         if (file.exists()) file.delete()
 
                         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                        imageFileUri = uri
                         cameraLauncher.launch(uri)
                         showImageSourceDialog = false
                     }

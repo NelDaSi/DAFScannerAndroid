@@ -41,7 +41,6 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.FileUpload
-import androidx.compose.material.icons.rounded.FilterAlt
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.PrecisionManufacturing
@@ -153,7 +152,11 @@ fun SearchListScreen(
 
     LaunchedEffect(searchItems) {
         navController.currentBackStackEntry?.savedStateHandle?.set("SERIAL_LIST", searchItems.map { it.serialNumber })
-        navController.currentBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", searchItems.filter { it.scanTimestamp != null }.map { it.serialNumber })
+        val scannedSerials = searchItems.asSequence()
+            .filter { it.scanTimestamp != null }
+            .map { it.serialNumber }
+            .toList()
+        navController.currentBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", scannedSerials)
     }
 
     DisposableEffect(Unit) {
@@ -243,7 +246,7 @@ fun SearchListScreen(
             sb.append(summaryTitle + "\n")
             
             // Add filter info to summary if applicable
-            if (machineFilter != null || typeFilter != null) {
+            if ((machineFilter != null) || (typeFilter != null)) {
                 sb.append("Filtered by: ")
                 val filters = mutableListOf<String>()
                 machineFilter?.let { filters.add("Machine: $it") }
@@ -309,7 +312,7 @@ fun SearchListContent(
     totalCount: Int,
     scannedCount: Int,
     onShareCsv: () -> Unit,
-    onShareSummary: () -> Unit
+    onShareSummary: () -> Unit,
 ) {
     val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -408,6 +411,28 @@ fun SearchListContent(
                 },
                 actions = {
                     if (searchItems.isNotEmpty() || searchQuery.isNotEmpty() || machineFilter != null || typeFilter != null) {
+                        // Sort Menu
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(
+                                    Icons.AutoMirrored.Rounded.Sort,
+                                    contentDescription = stringResource(R.string.sort_by),
+                                    tint = if (sortOption != SearchSortOption.DEFAULT) Color.Red else Color.White
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false },
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surface).width(220.dp)
+                            ) {
+                                DropdownHeader(stringResource(R.string.sort_by), Icons.AutoMirrored.Rounded.Sort)
+                                SortMenuItem(SearchSortOption.DEFAULT, R.string.sort_default, Icons.Rounded.FilterList, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.MACHINE, R.string.sort_machine, Icons.Rounded.PrecisionManufacturing, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.TYPE, R.string.sort_type, Icons.Rounded.Inventory2, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.FOUND_TIME, R.string.sort_found_time, Icons.Rounded.Schedule, sortOption, onSortOptionChange) { showSortMenu = false }
+                                SortMenuItem(SearchSortOption.PRODUCTION_TIME, R.string.sort_production_time, Icons.Rounded.TableChart, sortOption, onSortOptionChange) { showSortMenu = false }
+                            }
+                        }
                         IconButton(onClick = { onShowShareOptionsChange(true) }) {
                             Icon(Icons.Rounded.Share, contentDescription = stringResource(R.string.share))
                         }
@@ -827,31 +852,6 @@ fun SearchListContent(
                                     elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
                                 ) {
                                     Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.search_items))
-                                }
-
-                                // Sort Menu
-                                Box {
-                                    FloatingActionButton(
-                                        onClick = { showSortMenu = true },
-                                        containerColor = if (sortOption != SearchSortOption.DEFAULT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = if (sortOption != SearchSortOption.DEFAULT) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape,
-                                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                                    ) {
-                                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort")
-                                    }
-                                    DropdownMenu(
-                                        expanded = showSortMenu,
-                                        onDismissRequest = { showSortMenu = false },
-                                        modifier = Modifier.background(MaterialTheme.colorScheme.surface).width(220.dp)
-                                    ) {
-                                        DropdownHeader(stringResource(R.string.sort_by), Icons.AutoMirrored.Rounded.Sort)
-                                        SortMenuItem(SearchSortOption.DEFAULT, R.string.sort_default, Icons.Rounded.FilterList, sortOption, onSortOptionChange) { showSortMenu = false }
-                                        SortMenuItem(SearchSortOption.MACHINE, R.string.sort_machine, Icons.Rounded.PrecisionManufacturing, sortOption, onSortOptionChange) { showSortMenu = false }
-                                        SortMenuItem(SearchSortOption.TYPE, R.string.sort_type, Icons.Rounded.Inventory2, sortOption, onSortOptionChange) { showSortMenu = false }
-                                        SortMenuItem(SearchSortOption.FOUND_TIME, R.string.sort_found_time, Icons.Rounded.Schedule, sortOption, onSortOptionChange) { showSortMenu = false }
-                                        SortMenuItem(SearchSortOption.PRODUCTION_TIME, R.string.sort_production_time, Icons.Rounded.TableChart, sortOption, onSortOptionChange) { showSortMenu = false }
-                                    }
                                 }
 
                                 // Machine Filter

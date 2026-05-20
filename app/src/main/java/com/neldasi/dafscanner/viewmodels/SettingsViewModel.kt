@@ -1,32 +1,28 @@
 package com.neldasi.dafscanner.viewmodels
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.content.edit
 import com.neldasi.dafscanner.data.AppDatabase
-import com.neldasi.dafscanner.data.ScanRepository
 import com.neldasi.dafscanner.extras.ScanStorage
 import com.neldasi.dafscanner.extras.UpdateManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: ScanRepository
-
     private val _updateInfo = MutableStateFlow<UpdateManager.ReleaseInfo?>(null)
     val updateInfo = _updateInfo.asStateFlow()
 
-    private val _isCheckingUpdates = MutableStateFlow(false)
+    private val _isCheckingUpdates = MutableStateFlow(value = false)
     val isCheckingUpdates = _isCheckingUpdates.asStateFlow()
 
     private val _updateMessage = MutableStateFlow<String?>(null)
     val updateMessage = _updateMessage.asStateFlow()
-
-    init {
-        val scanDao = AppDatabase.getDatabase(application).scanDao()
-        repository = ScanRepository(scanDao)
-    }
 
     fun checkForUpdates() {
         viewModelScope.launch {
@@ -55,21 +51,39 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun clearAllData() {
-        viewModelScope.launch {
-            // 1. Delete all database entries
-            repository.deleteAll()
-            
-            // Delete conversion history
-            AppDatabase.getDatabase(getApplication()).conversionDao().deleteAll()
-            
-            // 2. Clear all SharedPreferences
-            val prefs = ScanStorage.prefs(getApplication())
-            ScanStorage.clearAll(prefs)
-            
-            // 3. Delete all files in internal storage (images, etc.)
+        viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
-            context.filesDir.listFiles()?.forEach { it.delete() }
-            context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+            
+            // 1. Explicitly clear the database first
+            try {
+                AppDatabase.getDatabase(context).clearAllTables()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // 2. Synchronously clear all SharedPreferences using the KTX extension
+            try {
+                val prefs = ScanStorage.prefs(context)
+                prefs.edit(commit = true) {
+                    clear()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // 3. Delete files manually just in case
+            try {
+                context.filesDir.listFiles()?.forEach { it.deleteRecursively() }
+                context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // 4. Nuclear option: Ask the system to wipe the app data and kill the process
+            withContext(Dispatchers.Main) {
+                val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                activityManager.clearApplicationUserData()
+            }
         }
     }
 }

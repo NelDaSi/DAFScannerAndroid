@@ -126,7 +126,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -172,9 +171,9 @@ fun CameraScanScreen(
     val context = LocalContext.current
     val prefs = remember { ScanStorage.prefs(context) }
     
-    var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.VIBRATE_ENABLED, false)) }
+    var vibrateEnabled by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.VIBRATE_ENABLED, true)) }
     var continuousScanEnabled by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.CONTINUOUS_SCAN_ENABLED, false)) }
-    var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, false)) }
+    var screenAlwaysOn by remember { mutableStateOf(prefs.getBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, true)) }
     val cameraErrorString = stringResource(R.string.camera_error)
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -201,11 +200,11 @@ fun CameraScanScreen(
     var isTorchOn by remember { mutableStateOf(value = false) }
 
     // State for Feedback and Cooldowns
-    var verifyResult by remember { mutableStateOf<ScanFeedback?>(null) }
+    var scanFeedback by remember { mutableStateOf<ScanFeedback?>(null) }
     var continuousCooldown by remember { mutableIntStateOf(0) }
     var cooldownJob: kotlinx.coroutines.Job? by remember { mutableStateOf(null) }
     val verifyScope = rememberCoroutineScope()
-    var isPaused by remember { mutableStateOf(false) }
+    var isPaused by remember { mutableStateOf(value = false) }
     
     // Custom Toast State
     var toastMessage by remember { mutableStateOf<Int?>(null) }
@@ -249,7 +248,7 @@ fun CameraScanScreen(
             val now = System.currentTimeMillis()
             
             // 1. Debounce rapid-fire scans of the exact same code in Continuous Mode
-            if (continuousScanEnabled && value == lastProcessedCode && (now - lastProcessedTimestamp) < 2000) {
+            if ((continuousScanEnabled && value == lastProcessedCode) && (now - lastProcessedTimestamp) < 2000) {
                 scannedResult = null
                 isPaused = false
                 return@let
@@ -290,13 +289,13 @@ fun CameraScanScreen(
                     val isMatch = matchItem != null
                     val alreadyScanned = matchItem?.scanTimestamp != null
                     searchViewModel.checkScannedCode(value)
-                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, matchItem?.scanTimestamp, parsed)
+                    scanFeedback = ScanFeedback(serial, isMatch, alreadyScanned, matchItem?.scanTimestamp, parsed)
                 } else {
                     val serialList = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SERIAL_LIST") ?: emptyList()
                     val scannedSerials = navController.previousBackStackEntry?.savedStateHandle?.get<List<String>>("SCANNED_SERIALS") ?: emptyList()
                     val isMatch = serialList.contains(serial)
                     val alreadyScanned = scannedSerials.contains(serial)
-                    verifyResult = ScanFeedback(serial, isMatch, alreadyScanned, parsedPart = parsed)
+                    scanFeedback = ScanFeedback(serial, isMatch, alreadyScanned, parsedPart = parsed)
                     if (isMatch && !alreadyScanned) {
                         val updatedScanned = scannedSerials + serial
                         navController.previousBackStackEntry?.savedStateHandle?.set("SCANNED_SERIALS", updatedScanned)
@@ -314,7 +313,7 @@ fun CameraScanScreen(
                 if (finalTimestamp != null) {
                     // DUPLICATE DETECTED
                     val serial = parsed?.serialNumber ?: extractSerial(value)
-                    verifyResult = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp, parsedPart = parsed)
+                    scanFeedback = ScanFeedback(serial, isMatch = false, alreadyScanned = true, scanTimestamp = finalTimestamp, parsedPart = parsed)
                     isPaused = true
                 } else {
                     // NEW SCAN SUCCESS
@@ -355,7 +354,70 @@ fun CameraScanScreen(
         isTorchOn = isTorchOn,
         flashAlpha = flashAlpha.value,
         transformableState = transformableState,
-        verifyResult = verifyResult,
+        onToggleTorch = {
+            val newState = !isTorchOn
+            isTorchOn = newState
+            camera?.cameraControl?.enableTorch(newState)
+            previewViewRef?.let { requestCenterFocus(it, camera) }
+        },
+        onClose = {
+            searchViewModel?.clearResult()
+            if (navController.previousBackStackEntry != null) {
+                navController.popBackStack()
+            }
+        },
+        onAndroidViewFactory = { ctx ->
+            val previewView = PreviewView(ctx).apply {
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
+            previewViewRef = previewView
+            cameraProviderFuture.addListener({
+                try {
+                    val provider = cameraProviderFuture.get()
+                    cameraProvider = provider
+                    val preview = Preview.Builder()
+                        .setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_16_9, AspectRatioStrategy.FALLBACK_RULE_AUTO))
+                                .build(),
+                        )
+                        .build().also { it.surfaceProvider = previewView.surfaceProvider }
+
+                    val analyzer = buildImageAnalyzer(
+                        barcodeScanner = barcodeScanner,
+                        cameraExecutor = cameraExecutor,
+                        shouldProcess = { !isPaused && scannedResult == null },
+                    ) { scannedValue ->
+                        val type = scannedValue.take(7)
+                        if (type in allowedTypes) {
+                            if (scannedResult == null && !isPaused) {
+                                isPaused = true
+                                scannedResult = scannedValue
+                            }
+                        } else {
+                            scannedNotAllowedType = type
+                            showNotAllowedDialog = true
+                            isPaused = true
+                        }
+                    }
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    provider.unbindAll()
+                    val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
+                    camera = boundCamera
+                    try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
+                    try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
+                    isCameraReady = true
+                    requestCenterFocus(previewView, boundCamera)
+                } catch (_: Exception) {
+                    cameraError = cameraErrorString
+                    isCameraReady = false
+                }
+            }, ContextCompat.getMainExecutor(ctx))
+            previewView
+        },
+        verifyResult = scanFeedback,
         continuousCooldown = continuousCooldown,
         isVerifyMode = isVerifyMode,
         vibrateEnabled = vibrateEnabled,
@@ -376,20 +438,8 @@ fun CameraScanScreen(
             prefs.edit { putBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, screenAlwaysOn) }
             toastMessage = if (screenAlwaysOn) R.string.screen_always_on_on else R.string.screen_always_on_off
         },
-        onToggleTorch = {
-            val newState = !isTorchOn
-            isTorchOn = newState
-            camera?.cameraControl?.enableTorch(newState)
-            previewViewRef?.let { requestCenterFocus(it, camera) }
-        },
-        onClose = {
-            searchViewModel?.clearResult()
-            if (navController.previousBackStackEntry != null) {
-                navController.popBackStack()
-            }
-        },
         onDismissVerify = {
-            verifyResult = null
+            scanFeedback = null
             isPaused = false
             scannedResult = null
         },
@@ -400,56 +450,8 @@ fun CameraScanScreen(
             isPaused = false
         },
         toastMessage = toastMessage,
-    ) { ctx ->
-        val previewView = PreviewView(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-            scaleType = PreviewView.ScaleType.FILL_CENTER
-        }
-        previewViewRef = previewView
-        cameraProviderFuture.addListener({
-            try {
-                val provider = cameraProviderFuture.get()
-                cameraProvider = provider
-                val preview = Preview.Builder()
-                    .setResolutionSelector(ResolutionSelector.Builder()
-                        .setAspectRatioStrategy(AspectRatioStrategy(AspectRatio.RATIO_16_9, AspectRatioStrategy.FALLBACK_RULE_AUTO))
-                        .build())
-                    .build().also { it.surfaceProvider = previewView.surfaceProvider }
+    )
 
-                val analyzer = buildImageAnalyzer(
-                    barcodeScanner = barcodeScanner,
-                    cameraExecutor = cameraExecutor,
-                    shouldProcess = { !isPaused && scannedResult == null },
-                    onScannedValue = { scannedValue ->
-                        val type = scannedValue.take(7)
-                        if (type in allowedTypes) {
-                            if (scannedResult == null && !isPaused) {
-                                isPaused = true
-                                scannedResult = scannedValue
-                            }
-                        } else {
-                            scannedNotAllowedType = type
-                            showNotAllowedDialog = true
-                            isPaused = true
-                        }
-                    },
-                )
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                provider.unbindAll()
-                val boundCamera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analyzer)
-                camera = boundCamera
-                try { boundCamera.cameraControl.enableTorch(isTorchOn) } catch (_: Exception) {}
-                try { boundCamera.cameraControl.setExposureCompensationIndex(2) } catch (_: Exception) {}
-                isCameraReady = true
-                requestCenterFocus(previewView, boundCamera)
-            } catch (_: Exception) {
-                cameraError = cameraErrorString
-                isCameraReady = false
-            }
-        }, ContextCompat.getMainExecutor(ctx))
-        previewView
-    }
 
     LaunchedEffect(isCameraReady, camera) {
         if (!isCameraReady || (camera == null)) return@LaunchedEffect
@@ -569,24 +571,25 @@ fun CameraScanScreenContent(
     isTorchOn: Boolean,
     flashAlpha: Float,
     transformableState: androidx.compose.foundation.gestures.TransformableState,
+    onToggleTorch: () -> Unit,
+    onClose: () -> Unit,
+    onAndroidViewFactory: (Context) -> android.view.View,
+    modifier: Modifier = Modifier,
     verifyResult: ScanFeedback? = null,
     continuousCooldown: Int = 0,
     isVerifyMode: Boolean = false,
-    vibrateEnabled: Boolean = false,
+    vibrateEnabled: Boolean = true,
     continuousScanEnabled: Boolean = false,
-    screenAlwaysOn: Boolean = false,
+    screenAlwaysOn: Boolean = true,
     onToggleVibrate: () -> Unit = {},
     onToggleContinuous: () -> Unit = {},
     onToggleScreenOn: () -> Unit = {},
-    onToggleTorch: () -> Unit,
-    onClose: () -> Unit,
     onDismissVerify: () -> Unit = {},
     onDismissCooldown: () -> Unit = {},
     toastMessage: Int? = null,
-    onAndroidViewFactory: (Context) -> android.view.View,
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .transformable(state = transformableState)
             .then(
@@ -693,12 +696,8 @@ fun CameraScanScreenContent(
                             }
                             
                             verifyResult.scanTimestamp?.let { ts ->
-                                val configuration = LocalConfiguration.current
-                                // Accessing locales through LocalConfiguration ensures recomposition on change
-                                val locale = configuration.locales[0] ?: Locale.getDefault()
-                                val dateStr = remember(ts, locale) {
-                                    SimpleDateFormat("dd MMM, HH:mm:ss", locale).format(Date(ts))
-                                }
+                                val locale = LocalConfiguration.current.locales[0]
+                                val dateStr = SimpleDateFormat("dd MMM, HH:mm:ss", locale).format(Date(ts))
                                 Text(
                                     text = stringResource(R.string.first_seen, dateStr),
                                     color = Color.White.copy(alpha = 0.8f),
@@ -961,8 +960,8 @@ private fun BottomScannerBar(
     screenAlwaysOn: Boolean,
     onToggleScreenOn: () -> Unit,
     onClose: () -> Unit,
-    isVerifyMode: Boolean = false,
     modifier: Modifier = Modifier,
+    isVerifyMode: Boolean = false,
 ) {
     Surface(
         modifier = modifier.navigationBarsPadding(),
@@ -1053,12 +1052,12 @@ private fun appendPendingScan(context: Context, code: String, timestamp: Long) {
     val existing = prefs.getString(ScanStorage.Keys.PENDING_SCANS, null)
     val list = try {
         if (existing.isNullOrBlank()) mutableListOf() 
-        else com.google.gson.Gson().fromJson(existing, Array<com.neldasi.dafscanner.extras.ScanStorage.PendingScan>::class.java).toMutableList()
+        else com.google.gson.Gson().fromJson(existing, Array<ScanStorage.PendingScan>::class.java).toMutableList()
     } catch (e: Exception) { 
         Log.e("CameraScan", "Error parsing pending scans", e)
         mutableListOf() 
     }
-    list.add(com.neldasi.dafscanner.extras.ScanStorage.PendingScan(code, timestamp))
+    list.add(ScanStorage.PendingScan(code, timestamp))
     prefs.edit { putString(ScanStorage.Keys.PENDING_SCANS, com.google.gson.Gson().toJson(list)) }
 }
 
@@ -1093,10 +1092,11 @@ fun CameraScanScreenPreview() {
             isTorchOn = false,
             flashAlpha = 0f,
             transformableState = rememberTransformableState { _, _, _, _ -> },
-            isVerifyMode = false,
             onToggleTorch = {},
             onClose = {},
-        ) { android.view.View(it) }
+            onAndroidViewFactory = { android.view.View(it) },
+            isVerifyMode = false,
+        )
     }
 }
 
@@ -1112,6 +1112,9 @@ fun CameraScanScreenDuplicatePreview() {
             isTorchOn = false,
             flashAlpha = 0f,
             transformableState = rememberTransformableState { _, _, _, _ -> },
+            onToggleTorch = {},
+            onClose = {},
+            onAndroidViewFactory = { android.view.View(it) },
             verifyResult = ScanFeedback(
                 serial = "01C821",
                 isMatch = false,
@@ -1119,8 +1122,6 @@ fun CameraScanScreenDuplicatePreview() {
                 scanTimestamp = System.currentTimeMillis() - 3600000,
             ),
             isVerifyMode = false,
-            onToggleTorch = {},
-            onClose = {},
-        ) { android.view.View(it) }
+        )
     }
 }

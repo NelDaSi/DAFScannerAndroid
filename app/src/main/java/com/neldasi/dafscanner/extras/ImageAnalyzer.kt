@@ -60,7 +60,7 @@ private class ByteArrayLuminanceSource(
 class DafImageAnalyzer(
     private val barcodeScanner: BarcodeScanner,
     private val onScannedValue: (String) -> Unit,
-    private val onError: ((Throwable) -> Unit)? = null
+    private val onError: ((Throwable) -> Unit)? = null,
 ) {
     private var frameSkipCounter = 0
     private var lumaBuffer: ByteArray? = null
@@ -70,7 +70,7 @@ class DafImageAnalyzer(
     fun process(imageProxy: ImageProxy, shouldProcess: Boolean) {
         // Throttle analysis: only run on every other frame to help stability / focus
         frameSkipCounter++
-        if (frameSkipCounter % 2 != 0 || !shouldProcess) {
+        if ((frameSkipCounter % 2 != 0) || !shouldProcess) {
             imageProxy.close()
             return
         }

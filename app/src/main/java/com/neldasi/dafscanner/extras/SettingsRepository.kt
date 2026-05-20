@@ -16,7 +16,7 @@ object SettingsRepository {
     
     fun shouldKeepScreenOn(context: Context): Boolean {
         val prefs = ScanStorage.prefs(context)
-        return prefs.getBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, false)
+        return prefs.getBoolean(ScanStorage.Keys.SCREEN_ALWAYS_ON, true)
     }
 
     fun getTheme(context: Context): String {

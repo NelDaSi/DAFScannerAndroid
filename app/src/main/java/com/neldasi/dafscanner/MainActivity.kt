@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                     when (key) {
                         ScanStorage.Keys.APP_THEME -> theme = p.getString(key, "SYSTEM") ?: "SYSTEM"
                         ScanStorage.Keys.FONT_SIZE_SCALE -> fontSizeScale = p.getFloat(key, 1.0f)
-                        ScanStorage.Keys.SCREEN_ALWAYS_ON -> screenAlwaysOn = p.getBoolean(key, false)
+                        ScanStorage.Keys.SCREEN_ALWAYS_ON -> screenAlwaysOn = p.getBoolean(key, true)
                     }
                 }
             }

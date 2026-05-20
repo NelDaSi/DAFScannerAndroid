@@ -1,6 +1,5 @@
 
 @file:OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
-@file:Suppress("AssignedValueIsNeverRead")
 
 package com.neldasi.dafscanner.screens
 
@@ -137,7 +136,7 @@ fun MainScreen(
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
 
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
-    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+    var showPermissionRationaleDialog by remember { mutableStateOf(value = false) }
 
     LaunchedEffect(Unit) {
         if (!cameraPermissionState.status.isGranted) {
@@ -161,7 +160,7 @@ fun MainScreen(
     ) { viewModel.exportToCsv() }
 
     updateInfo?.let { info ->
-        UpdateDialog(info = info, onDismiss = { viewModel.dismissUpdateDialog() })
+        UpdateDialog(info = info) { viewModel.dismissUpdateDialog() }
     }
 
     PermissionRationaleDialog(
@@ -464,7 +463,7 @@ fun MainScreenContent(
                                 FloatingActionButton(
                                     onClick = {
                                         if (cameraPermissionState.status.isGranted) {
-                                            val existingMap = scannedParts.associate { it.fullCode to it.timestamp }
+                                            val existingMap = scannedParts.associateBy({ it.fullCode }, { it.timestamp })
                                             navController.currentBackStackEntry?.savedStateHandle?.set("EXISTING_PARTS", existingMap)
                                             navController.navigate(CameraRoute(isVerifyMode = false))
                                         }

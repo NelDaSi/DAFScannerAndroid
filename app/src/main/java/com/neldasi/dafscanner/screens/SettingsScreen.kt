@@ -106,8 +106,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val prefs = remember { ScanStorage.prefs(context) }
     
-    var vibrateEnabled by remember { mutableStateOf(value = false) }
-    var screenAlwaysOn by remember { mutableStateOf(value = false) }
+    var vibrateEnabled by remember { mutableStateOf(value = true) }
+    var screenAlwaysOn by remember { mutableStateOf(value = true) }
     var continuousScanEnabled by remember { mutableStateOf(value = false) }
     var currentTheme by remember { mutableStateOf(SettingsRepository.getTheme(context)) }
     var fontSizeScale by remember { mutableFloatStateOf(SettingsRepository.getFontSizeScale(context)) }
@@ -124,8 +124,8 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(Unit) {
-        vibrateEnabled = prefs.getBoolean("vibrateEnabled", false)
-        screenAlwaysOn = prefs.getBoolean("screenAlwaysOn", false)
+        vibrateEnabled = prefs.getBoolean("vibrateEnabled", true)
+        screenAlwaysOn = prefs.getBoolean("screenAlwaysOn", true)
         continuousScanEnabled = prefs.getBoolean("continuousScanEnabled", false)
     }
 
@@ -159,8 +159,8 @@ fun SettingsScreen(
         onClearAllData = {
             viewModel.clearAllData()
             // Reset local UI state to default values immediately
-            vibrateEnabled = false
-            screenAlwaysOn = false
+            vibrateEnabled = true
+            screenAlwaysOn = true
             continuousScanEnabled = false
             currentTheme = "DAF"
             fontSizeScale = 1.0f
@@ -815,7 +815,7 @@ fun SettingsScreenPreview() {
             navController = rememberNavController(),
             vibrateEnabled = true,
             onVibrateChange = {},
-            screenAlwaysOn = false,
+            screenAlwaysOn = true,
             onScreenAlwaysOnChange = {},
             continuousScanEnabled = true,
             onContinuousScanChange = {},

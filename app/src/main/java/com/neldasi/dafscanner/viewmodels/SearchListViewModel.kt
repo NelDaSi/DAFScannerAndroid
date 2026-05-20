@@ -60,10 +60,12 @@ class SearchListViewModel(application: Application) : AndroidViewModel(applicati
 
     val availableMachines: StateFlow<List<String>> = searchItems
         .map { items -> 
-            items.mapNotNull { it.machine }
+            items.asSequence()
+                .mapNotNull { it.machine }
                 .map { it.split(" ").first() }
                 .distinct()
-                .sorted() 
+                .sorted()
+                .toList()
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -379,10 +381,10 @@ class SearchListViewModel(application: Application) : AndroidViewModel(applicati
                 } else {
                     Log.d("SearchListVM", "Match found but already scanned at ${item.scanTimestamp}")
                 }
-                _lastScannedResult.value = ScanMatchResult(serial, true)
+                _lastScannedResult.value = ScanMatchResult(serial = serial, isMatch = true)
             } else {
                 Log.d("SearchListVM", "No match for $serial")
-                _lastScannedResult.value = ScanMatchResult(serial, false)
+                _lastScannedResult.value = ScanMatchResult(serial = serial, isMatch = false)
             }
         }
     }
