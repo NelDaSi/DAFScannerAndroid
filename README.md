@@ -1,4 +1,3 @@
-# DAF Scanner Releases
+# Scanner Releases
 
-This repository is used for hosting official releases of the DAF Scanner application.
-The source code is now private.
+This repository is used for hosting releases of the Scanner application.
